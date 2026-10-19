@@ -1,0 +1,29 @@
+{
+  "name": "brainagent",
+  "private": true,
+  "packageManager": "pnpm@9.12.0",
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "dev": "turbo run dev --parallel",
+    "dev:web": "pnpm --filter @brainagent/web dev",
+    "dev:agent": "cd apps/agent && uv run python -m brainagent_agent.worker dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "test:e2e": "pnpm --filter @brainagent/web test:e2e",
+    "db:migrate": "pnpm --filter @brainagent/db migrate",
+    "db:seed": "pnpm --filter @brainagent/db seed",
+    "db:generate": "pnpm --filter @brainagent/db generate",
+    "infra:up": "docker compose -f infra/docker-compose.yml --env-file .env up -d",
+    "infra:down": "docker compose -f infra/docker-compose.yml --env-file .env down",
+    "format": "prettier --write ."
+  },
+  "devDependencies": {
+    "prettier": "3.9.10",
+    "turbo": "2.11.9",
+    "typescript": "5.9.3"
+  }
+}
