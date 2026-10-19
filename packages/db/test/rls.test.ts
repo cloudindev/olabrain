@@ -2,7 +2,18 @@ import { randomUUID } from "node:crypto";
 import { eq, sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createDb, withTenant, type Database } from "../src/client";
-import { agents, conversations, personas, tenants, turnMetrics, auditLog } from "../src/schema";
+import {
+  agentTools,
+  agents,
+  auditLog,
+  connections,
+  conversations,
+  personas,
+  tenants,
+  toolCalls,
+  tools,
+  turnMetrics,
+} from "../src/schema";
 import { TEST_ADMIN_URL, TEST_APP_URL } from "./env";
 
 /** Drizzle wraps driver errors ("Failed query: …"); the Postgres message is in `cause`. */
@@ -198,6 +209,47 @@ describe("audit_log", () => {
   });
 });
 
+describe("connectors and tools", () => {
+  it("an agent cannot be linked to another tenant's tool", async () => {
+    const toolB = await withTenant(app.db, tenantB, async (tx) => {
+      const [conn] = await tx
+        .insert(connections)
+        .values({ tenantId: tenantB, kind: "http", name: "API de B", config: {} })
+        .returning();
+      const [tool] = await tx
+        .insert(tools)
+        .values({
+          tenantId: tenantB,
+          connectionId: conn!.id,
+          name: "secreto_b",
+          sourceRef: "studio",
+        })
+        .returning();
+      return tool!;
+    });
+    expect(
+      await pgError(
+        withTenant(app.db, tenantA, (tx) =>
+          tx.insert(agentTools).values({ tenantId: tenantA, agentId: agentA, toolId: toolB.id }),
+        ),
+      ),
+    ).toMatch(/foreign key/);
+    const visibleToA = await withTenant(app.db, tenantA, (tx) => tx.select().from(tools));
+    expect(visibleToA).toHaveLength(0);
+  });
+
+  it("the tool call log is append-only for the app role", async () => {
+    await withTenant(app.db, tenantA, (tx) =>
+      tx.insert(toolCalls).values({ tenantId: tenantA, toolName: "x", status: "ok" }),
+    );
+    expect(
+      await pgError(
+        withTenant(app.db, tenantA, (tx) => tx.update(toolCalls).set({ toolName: "y" })),
+      ),
+    ).toMatch(/permission denied/);
+  });
+});
+
 describe("schema guard", () => {
   it("every table with a tenant_id column has RLS enabled and forced", async () => {
     const rows = await admin.db.execute<{ table: string; enabled: boolean; forced: boolean }>(sql`
@@ -208,7 +260,7 @@ describe("schema guard", () => {
       where n.nspname = 'public' and c.relkind = 'r'
       order by c.relname
     `);
-    expect(rows.length).toBeGreaterThanOrEqual(6);
+    expect(rows.length).toBeGreaterThanOrEqual(14);
     const unprotected = rows.filter((r) => !r.enabled || !r.forced).map((r) => r.table);
     expect(unprotected).toEqual([]);
   });

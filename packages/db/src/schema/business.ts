@@ -4,6 +4,7 @@
  * bypass RLS, so this is what stops a tenant from pointing at another tenant's rows.
  */
 import {
+  boolean,
   foreignKey,
   index,
   integer,
@@ -11,6 +12,7 @@ import {
   numeric,
   pgEnum,
   pgTable,
+  primaryKey,
   text,
   timestamp,
   unique,
@@ -163,4 +165,188 @@ export const auditLog = pgTable(
     createdAt: createdAt(),
   },
   (t) => [index("audit_log_tenant_created_idx").on(t.tenantId, t.createdAt)],
+);
+
+// --- Phase 1: connectors, tools, vault, messages ------------------------------
+
+export const connectionKind = pgEnum("connection_kind", [
+  "mcp",
+  "openapi",
+  "sql",
+  "http",
+  "native",
+]);
+export const connectionStatus = pgEnum("connection_status", ["active", "needs_auth", "error"]);
+export const toolMode = pgEnum("tool_mode", ["read", "write"]);
+export const toolConfirmation = pgEnum("tool_confirmation", ["required", "auto"]);
+export const messageRole = pgEnum("message_role", ["user", "assistant", "system"]);
+export const toolCallStatus = pgEnum("tool_call_status", [
+  "ok",
+  "error",
+  "needs_confirmation",
+  "timeout",
+]);
+
+/** Per-tenant data key (AES-256), wrapped with the master key (key_version = master version). */
+export const tenantKeys = pgTable("tenant_keys", {
+  tenantId: uuid("tenant_id")
+    .primaryKey()
+    .references(() => tenants.id, { onDelete: "cascade" }),
+  wrappedKey: text("wrapped_key").notNull(),
+  keyVersion: integer("key_version").notNull(),
+  createdAt: createdAt(),
+});
+
+/** Encrypted secrets (AES-256-GCM with the tenant key). Only apps/connector decrypts them. */
+export const credentials = pgTable(
+  "credentials",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: tenantId(),
+    encryptedBlob: text("encrypted_blob").notNull(),
+    keyVersion: integer("key_version").notNull(),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [unique("credentials_id_tenant_uq").on(t.id, t.tenantId)],
+);
+
+export const connections = pgTable(
+  "connections",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: tenantId(),
+    kind: connectionKind("kind").notNull(),
+    name: text("name").notNull(),
+    /** Non-secret configuration (URL, dialect, auth type…). */
+    config: jsonb("config").$type<Record<string, unknown>>().notNull().default({}),
+    credentialId: uuid("credential_id"),
+    status: connectionStatus("status").notNull().default("active"),
+    lastError: text("last_error"),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique("connections_id_tenant_uq").on(t.id, t.tenantId),
+    index("connections_tenant_idx").on(t.tenantId),
+    foreignKey({
+      name: "connections_credential_fk",
+      columns: [t.credentialId, t.tenantId],
+      foreignColumns: [credentials.id, credentials.tenantId],
+    }),
+  ],
+);
+
+export const tools = pgTable(
+  "tools",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: tenantId(),
+    connectionId: uuid("connection_id").notNull(),
+    name: text("name").notNull(),
+    description: text("description").notNull().default(""),
+    inputSchema: jsonb("input_schema").$type<Record<string, unknown>>().notNull().default({}),
+    mode: toolMode("mode").notNull().default("read"),
+    confirmation: toolConfirmation("confirmation").notNull().default("required"),
+    enabled: boolean("enabled").notNull().default(true),
+    /** Reference inside the connection: MCP tool name, OpenAPI operation, "studio"… */
+    sourceRef: text("source_ref").notNull(),
+    /** Execution details: SQL query, HTTP template, OpenAPI operation mapping… */
+    config: jsonb("config").$type<Record<string, unknown>>().notNull().default({}),
+    limits: jsonb("limits").$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique("tools_id_tenant_uq").on(t.id, t.tenantId),
+    unique("tools_connection_name_uq").on(t.connectionId, t.name),
+    index("tools_tenant_idx").on(t.tenantId),
+    foreignKey({
+      name: "tools_connection_fk",
+      columns: [t.connectionId, t.tenantId],
+      foreignColumns: [connections.id, connections.tenantId],
+    }).onDelete("cascade"),
+  ],
+);
+
+export const agentTools = pgTable(
+  "agent_tools",
+  {
+    tenantId: tenantId(),
+    agentId: uuid("agent_id").notNull(),
+    toolId: uuid("tool_id").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    primaryKey({ name: "agent_tools_pk", columns: [t.agentId, t.toolId] }),
+    foreignKey({
+      name: "agent_tools_agent_fk",
+      columns: [t.agentId, t.tenantId],
+      foreignColumns: [agents.id, agents.tenantId],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "agent_tools_tool_fk",
+      columns: [t.toolId, t.tenantId],
+      foreignColumns: [tools.id, tools.tenantId],
+    }).onDelete("cascade"),
+  ],
+);
+
+export const messages = pgTable(
+  "messages",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: tenantId(),
+    conversationId: uuid("conversation_id").notNull(),
+    role: messageRole("role").notNull(),
+    content: text("content").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index("messages_conversation_idx").on(t.conversationId, t.createdAt),
+    foreignKey({
+      name: "messages_conversation_fk",
+      columns: [t.conversationId, t.tenantId],
+      foreignColumns: [conversations.id, conversations.tenantId],
+    }).onDelete("cascade"),
+  ],
+);
+
+export const toolCalls = pgTable(
+  "tool_calls",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: tenantId(),
+    conversationId: uuid("conversation_id"),
+    agentId: uuid("agent_id"),
+    toolId: uuid("tool_id"),
+    toolName: text("tool_name").notNull(),
+    status: toolCallStatus("status").notNull(),
+    durationMs: integer("duration_ms"),
+    /** Arguments and result with secrets redacted and size-capped. */
+    request: jsonb("request").$type<unknown>(),
+    response: jsonb("response").$type<unknown>(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index("tool_calls_tenant_created_idx").on(t.tenantId, t.createdAt),
+    index("tool_calls_conversation_idx").on(t.conversationId),
+  ],
+);
+
+/** A write the user must approve before it runs. Single use, bound to the exact arguments. */
+export const pendingConfirmations = pgTable(
+  "pending_confirmations",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: tenantId(),
+    agentId: uuid("agent_id").notNull(),
+    conversationId: uuid("conversation_id"),
+    toolId: uuid("tool_id").notNull(),
+    argsHash: text("args_hash").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    usedAt: timestamp("used_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [index("pending_confirmations_tenant_idx").on(t.tenantId)],
 );

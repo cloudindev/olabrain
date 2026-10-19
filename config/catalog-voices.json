@@ -1,0 +1,17 @@
+{
+  "$comment": "Voz por defecto de cada personaje del catálogo, por proveedor de TTS. Son voces 'premade' de ElevenLabs (las únicas usables por API en el plan gratuito). Cámbialas por voces con acento de España cuando haya plan de pago.",
+  "elevenlabs": {
+    "lia": "EXAVITQu4vr4xnSDxMaL",
+    "mateo": "cjVigY5qzO86Huf0OWal",
+    "nora": "XrExE9yKIg1WjnnlVkGX",
+    "hugo": "nPczCjzI2devNBz1zQrb",
+    "vega": "FGY2WhTYpPnrIDTdsKH5",
+    "teo": "onwK4e9ZLuTAKqWW03F9",
+    "iris": "cgSgspJ2msm6clMCkdW9",
+    "bruno": "iP95p4xoKVk53GoZ742B",
+    "alba": "Xb7hH8MSUJpSbSDYk0k2",
+    "leo": "bIHbv24MWmeRgasZH58o",
+    "sara": "pFZP5JQG7iQjIQuC4Bku",
+    "max": "TX3LPaxmHKxFdv7VOQHJ"
+  }
+}

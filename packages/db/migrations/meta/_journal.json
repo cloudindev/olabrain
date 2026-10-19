@@ -15,6 +15,20 @@
       "when": 1792443529518,
       "tag": "0001_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792451832685,
+      "tag": "0002_connectors",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1792451833421,
+      "tag": "0003_connectors_rls",
+      "breakpoints": true
     }
   ]
 }

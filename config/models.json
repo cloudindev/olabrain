@@ -1,0 +1,10 @@
+{
+  "$comment": "Modelos que se pueden elegir para un agente. id = '<proveedor>:<modelo>'. El primero con default=true se usa si el agente no elige. Los precios viven aparte (Fase 4).",
+  "models": [
+    { "id": "anthropic:claude-haiku-5-5", "label": "Claude Haiku 5.5 — rápido (recomendado para voz)", "default": true },
+    { "id": "anthropic:claude-sonnet-5-5", "label": "Claude Sonnet 5.5 — equilibrado" },
+    { "id": "anthropic:claude-opus-5-5", "label": "Claude Opus 5.5 — máxima calidad (más lento)" },
+    { "id": "openai:gpt-4.1-mini", "label": "OpenAI GPT-4.1 mini" },
+    { "id": "google:gemini-2.5-flash", "label": "Google Gemini 2.5 Flash" }
+  ]
+}
