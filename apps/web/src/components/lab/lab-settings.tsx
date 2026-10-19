@@ -66,14 +66,19 @@ export function LabSettings({
   disabled: boolean;
 }) {
   const t = useTranslations("lab");
-  const set = <K extends keyof LabForm>(key: K, value: LabForm[K]) => onChange({ ...form, [key]: value });
+  const set = <K extends keyof LabForm>(key: K, value: LabForm[K]) =>
+    onChange({ ...form, [key]: value });
   const def = t("workerDefault");
   const realtime = form.mode === "realtime";
 
   return (
     <fieldset disabled={disabled} className="flex flex-col gap-4 p-5">
       <Field label={t("mode")} htmlFor="lab-mode">
-        <Select id="lab-mode" value={form.mode} onChange={(e) => set("mode", e.target.value as LabForm["mode"])}>
+        <Select
+          id="lab-mode"
+          value={form.mode}
+          onChange={(e) => set("mode", e.target.value as LabForm["mode"])}
+        >
           <option value="">{def}</option>
           <option value="pipeline">{t("modePipeline")}</option>
           <option value="realtime">{t("modeRealtime")}</option>
@@ -83,17 +88,31 @@ export function LabSettings({
       {realtime ? (
         <>
           <Field label={t("realtimeModel")} htmlFor="lab-rt-model">
-            <Input id="lab-rt-model" value={form.realtimeModel} placeholder={def} onChange={(e) => set("realtimeModel", e.target.value)} />
+            <Input
+              id="lab-rt-model"
+              value={form.realtimeModel}
+              placeholder={def}
+              onChange={(e) => set("realtimeModel", e.target.value)}
+            />
           </Field>
           <Field label={t("realtimeVoice")} htmlFor="lab-rt-voice">
-            <Input id="lab-rt-voice" value={form.realtimeVoice} placeholder={def} onChange={(e) => set("realtimeVoice", e.target.value)} />
+            <Input
+              id="lab-rt-voice"
+              value={form.realtimeVoice}
+              placeholder={def}
+              onChange={(e) => set("realtimeVoice", e.target.value)}
+            />
           </Field>
         </>
       ) : (
         <>
           <div className="grid grid-cols-2 gap-3">
             <Field label={t("tts")} htmlFor="lab-tts">
-              <Select id="lab-tts" value={form.ttsProvider} onChange={(e) => set("ttsProvider", e.target.value)}>
+              <Select
+                id="lab-tts"
+                value={form.ttsProvider}
+                onChange={(e) => set("ttsProvider", e.target.value)}
+              >
                 <option value="">{def}</option>
                 {LAB_TTS_PROVIDERS.map((p) => (
                   <option key={p} value={p}>
@@ -103,12 +122,21 @@ export function LabSettings({
               </Select>
             </Field>
             <Field label={t("ttsVoice")} htmlFor="lab-tts-voice">
-              <Input id="lab-tts-voice" value={form.ttsVoice} placeholder={def} onChange={(e) => set("ttsVoice", e.target.value)} />
+              <Input
+                id="lab-tts-voice"
+                value={form.ttsVoice}
+                placeholder={def}
+                onChange={(e) => set("ttsVoice", e.target.value)}
+              />
             </Field>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <Field label={t("llm")} htmlFor="lab-llm">
-              <Select id="lab-llm" value={form.llmProvider} onChange={(e) => set("llmProvider", e.target.value)}>
+              <Select
+                id="lab-llm"
+                value={form.llmProvider}
+                onChange={(e) => set("llmProvider", e.target.value)}
+              >
                 <option value="">{def}</option>
                 {LAB_LLM_PROVIDERS.map((p) => (
                   <option key={p} value={p}>
@@ -118,7 +146,11 @@ export function LabSettings({
               </Select>
             </Field>
             <Field label={t("llmRoute")} htmlFor="lab-route">
-              <Select id="lab-route" value={form.llmRoute} onChange={(e) => set("llmRoute", e.target.value as LabForm["llmRoute"])}>
+              <Select
+                id="lab-route"
+                value={form.llmRoute}
+                onChange={(e) => set("llmRoute", e.target.value as LabForm["llmRoute"])}
+              >
                 <option value="">{def}</option>
                 <option value="direct">{t("routeDirect")}</option>
                 <option value="litellm">{t("routeLitellm")}</option>
@@ -126,10 +158,19 @@ export function LabSettings({
             </Field>
           </div>
           <Field label={t("llmModel")} htmlFor="lab-llm-model">
-            <Input id="lab-llm-model" value={form.llmModel} placeholder={def} onChange={(e) => set("llmModel", e.target.value)} />
+            <Input
+              id="lab-llm-model"
+              value={form.llmModel}
+              placeholder={def}
+              onChange={(e) => set("llmModel", e.target.value)}
+            />
           </Field>
           <Field label={t("preemptive")} htmlFor="lab-preemptive">
-            <Select id="lab-preemptive" value={form.preemptive} onChange={(e) => set("preemptive", e.target.value as LabForm["preemptive"])}>
+            <Select
+              id="lab-preemptive"
+              value={form.preemptive}
+              onChange={(e) => set("preemptive", e.target.value as LabForm["preemptive"])}
+            >
               <option value="">{def}</option>
               <option value="on">On</option>
               <option value="off">Off</option>

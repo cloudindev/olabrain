@@ -102,7 +102,10 @@ function LiveAgentPanel() {
       </div>
       <div>
         <p className="font-display text-xl font-semibold tracking-tight">Lía</p>
-        <Badge tone={state === "speaking" ? "signal" : state === "listening" ? "ok" : "neutral"} data-testid="agent-state">
+        <Badge
+          tone={state === "speaking" ? "signal" : state === "listening" ? "ok" : "neutral"}
+          data-testid="agent-state"
+        >
           {t(`agentState.${state}`)}
         </Badge>
       </div>
@@ -164,14 +167,22 @@ export function LabSession({
 
       <Card>
         <CardHeader title={t("transcript")} />
-        <div ref={scrollRef} className="max-h-80 overflow-y-auto px-5 py-4" data-testid="transcript">
+        <div
+          ref={scrollRef}
+          className="max-h-80 overflow-y-auto px-5 py-4"
+          data-testid="transcript"
+        >
           {transcript.length === 0 ? (
             <p className="text-sm text-ink-3">{t("transcriptEmpty")}</p>
           ) : (
             <ul className="flex flex-col gap-3">
               {transcript.map((line) => (
                 <li key={line.id} className="text-sm leading-relaxed">
-                  <span className={line.who === "agent" ? "font-semibold text-signal" : "font-semibold text-ink"}>
+                  <span
+                    className={
+                      line.who === "agent" ? "font-semibold text-signal" : "font-semibold text-ink"
+                    }
+                  >
                     {line.who === "agent" ? "Lía" : t("you")}
                   </span>{" "}
                   <span className="text-ink-2">{line.text}</span>

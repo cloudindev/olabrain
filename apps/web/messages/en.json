@@ -88,7 +88,6 @@
     "eot": "End of turn",
     "firstToken": "First token",
     "firstAudio": "First audio",
-    "serverEstimate": "Server estimate",
     "ttsTtfb": "TTS TTFB",
     "providers": "Providers",
     "target": "Target",
@@ -101,10 +100,12 @@
       "conn": "From clicking Connect until the agent is in the room.",
       "eot": "From when you stop talking until the agent decides your turn is over.",
       "firstToken": "Time to the LLM's first token.",
-      "firstAudio": "From when you stop talking until the first sample of the reply plays."
+      "firstAudio": "From when you stop talking until the first sample of the reply plays.",
+      "serverFirstAudio": "On the server: from when you stop talking until Lía starts playing. Excludes network and playback."
     },
     "p95": "p95",
     "samples": "{count, plural, =0 {no turns} one {# turn} other {# turns}}",
-    "agentError": "Agent error: {message}"
+    "agentError": "Agent error: {message}",
+    "serverFirstAudio": "Server first audio"
   }
 }

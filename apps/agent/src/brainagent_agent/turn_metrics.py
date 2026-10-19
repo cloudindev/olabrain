@@ -5,6 +5,10 @@ We merge them and publish a single `TurnBreakdown` once the turn has its TTS TTF
 and, for turns answering the user, its LLM TTFT. Turns without an LLM call (e.g. the
 fixed greeting spoken with `session.say`) are published with the TTS data alone.
 Realtime (speech-to-speech) models report one `RealtimeModelMetrics` per response.
+
+`server_first_audio_ms` is measured, not estimated: from the user's end of speech (EOU
+timestamp minus its delay) to the agent's first audio frame (state -> "speaking").
+It includes the LLM time to a first full sentence, which EOT + TTFT + TTFB misses.
 """
 
 from __future__ import annotations
@@ -30,14 +34,16 @@ class TurnBreakdown:
     transcription_ms: int | None = None
     first_token_ms: int | None = None
     tts_ttfb_ms: int | None = None
+    server_first_audio_ms: int | None = None
+    user_end_at: float | None = None
     prompt_tokens: int = 0
     completion_tokens: int = 0
     tts_characters: int = 0
     labels: dict[str, str] = field(default_factory=dict)
 
     @property
-    def server_first_audio_ms(self) -> int | None:
-        """EOT + TTFT + TTFB: when the first audio byte leaves the TTS, from end of speech."""
+    def pipeline_sum_ms(self) -> int | None:
+        """EOT + TTFT + TTFB: lower bound of the first audio (ignores first-sentence time)."""
         parts = (self.eot_ms, self.first_token_ms, self.tts_ttfb_ms)
         if any(p is None for p in parts):
             return None
@@ -45,7 +51,8 @@ class TurnBreakdown:
 
     def to_payload(self) -> dict:
         data = asdict(self)
-        data["server_first_audio_ms"] = self.server_first_audio_ms
+        data.pop("user_end_at")
+        data["pipeline_sum_ms"] = self.pipeline_sum_ms
         return data
 
 
@@ -54,11 +61,17 @@ class TurnMetricsCollector:
         self._on_turn = on_turn
         self._pending: dict[str, TurnBreakdown] = {}
         self._emitted: set[str] = set()
+        self._last_user_end_at: float | None = None
+        self._last_speaking_at: float | None = None
 
     def _turn(self, speech_id: str) -> TurnBreakdown:
         if speech_id not in self._pending:
             self._pending[speech_id] = TurnBreakdown(speech_id=speech_id)
         return self._pending[speech_id]
+
+    def agent_started_speaking(self, at: float) -> None:
+        """Wall-clock time (time.time()) of the agent's first audio frame of a reply."""
+        self._last_speaking_at = at
 
     def collect(self, m: metrics.AgentMetrics) -> None:
         if isinstance(m, metrics.RealtimeModelMetrics):
@@ -81,6 +94,9 @@ class TurnMetricsCollector:
         if isinstance(m, metrics.EOUMetrics):
             turn.eot_ms = _ms(m.end_of_utterance_delay)
             turn.transcription_ms = _ms(m.transcription_delay)
+            if m.end_of_utterance_delay > 0:
+                turn.user_end_at = m.timestamp - m.end_of_utterance_delay
+                self._last_user_end_at = turn.user_end_at
         elif isinstance(m, metrics.LLMMetrics):
             # Tool calls produce extra LLM inferences in the same turn; the first one
             # is the one the user waits for.
@@ -106,4 +122,11 @@ class TurnMetricsCollector:
             return
         del self._pending[speech_id]
         self._emitted.add(speech_id)
+        # The reply's first frame is the latest "speaking" after this turn's end of speech.
+        if (
+            turn.user_end_at is not None
+            and self._last_speaking_at is not None
+            and self._last_speaking_at > turn.user_end_at
+        ):
+            turn.server_first_audio_ms = _ms(self._last_speaking_at - turn.user_end_at)
         self._on_turn(turn)

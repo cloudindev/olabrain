@@ -52,7 +52,10 @@ export const serverTurnSchema = z.object({
   transcription_ms: z.number().int().nonnegative().nullable(),
   first_token_ms: z.number().int().nonnegative().nullable(),
   tts_ttfb_ms: z.number().int().nonnegative().nullable(),
+  /** Measured in the worker: user end of speech → agent's first audio frame. */
   server_first_audio_ms: z.number().int().nonnegative().nullable(),
+  /** EOT + TTFT + TTFB, a lower bound (ignores the LLM's time to a first sentence). */
+  pipeline_sum_ms: z.number().int().nonnegative().nullable().optional(),
   prompt_tokens: z.number().int().nonnegative(),
   completion_tokens: z.number().int().nonnegative(),
   tts_characters: z.number().int().nonnegative(),

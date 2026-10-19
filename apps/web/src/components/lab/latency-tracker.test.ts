@@ -84,4 +84,14 @@ describe("LatencyTracker", () => {
     const turn = tr.serverTurn(serverTurn(1), 3700);
     expect(turn.firstAudioMs).toBe(3300 - 2490);
   });
+
+  it("registers a quiet microphone above the noise floor", () => {
+    const tr = new LatencyTracker(CONV);
+    feed((r, t) => tr.micLevel(r, t), 0.0005, 0, 1000); // quiet room
+    feed((r, t) => tr.micLevel(r, t), 0.009, 1000, 2000); // soft voice
+    feed((r, t) => tr.micLevel(r, t), 0.0005, 2000, 2600);
+    feed((r, t) => tr.agentLevel(r, t), 0.1, 2600, 3000);
+    const turn = tr.serverTurn(serverTurn(1), 3100);
+    expect(turn.firstAudioMs).toBe(2600 - 1990);
+  });
 });

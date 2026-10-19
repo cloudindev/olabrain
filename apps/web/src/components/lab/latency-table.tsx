@@ -5,7 +5,11 @@ import { Badge, Card, cn } from "@brainagent/ui";
 import { useTranslations } from "next-intl";
 import type { MergedTurn } from "./latency-tracker";
 
-const COLUMNS: { key: LatencyKey; label: "conn" | "eot" | "firstToken" | "firstAudio"; where: "browser" | "worker" }[] = [
+const COLUMNS: {
+  key: LatencyKey;
+  label: "conn" | "eot" | "firstToken" | "firstAudio";
+  where: "browser" | "worker";
+}[] = [
   { key: "connMs", label: "conn", where: "browser" },
   { key: "eotMs", label: "eot", where: "worker" },
   { key: "firstTokenMs", label: "firstToken", where: "worker" },
@@ -22,7 +26,9 @@ function Ms({ value, k }: { value: number | null; k: LatencyKey }) {
   if (value === null) return <span className="text-ink-3">—</span>;
   const tn = tone(k, value);
   return (
-    <span className={cn("font-mono tabular-nums", tn === "ok" && "text-ok", tn === "bad" && "text-bad")}>
+    <span
+      className={cn("font-mono tabular-nums", tn === "ok" && "text-ok", tn === "bad" && "text-bad")}
+    >
       {value.toLocaleString("es-ES")}
     </span>
   );
@@ -56,7 +62,9 @@ export function LatencySummary({ turns }: { turns: MergedTurn[] }) {
             </p>
             <div className="mt-3 flex flex-wrap gap-1.5">
               <Badge>{t("measuredIn", { where: t(where) })}</Badge>
-              {target ? <Badge tone="signal">{`${t("target")} < ${target.toLocaleString("es-ES")} ms`}</Badge> : null}
+              {target ? (
+                <Badge tone="signal">{`${t("target")} < ${target.toLocaleString("es-ES")} ms`}</Badge>
+              ) : null}
             </div>
           </Card>
         );
@@ -77,12 +85,18 @@ export function LatencyTable({ turns }: { turns: MergedTurn[] }) {
           <tr className="border-b border-line text-left text-xs text-ink-3">
             <th className="px-5 py-2.5 font-medium">{t("turn")}</th>
             {COLUMNS.map((c) => (
-              <th key={c.key} className="px-3 py-2.5 text-right font-medium" title={t(`help.${c.label}`)}>
+              <th
+                key={c.key}
+                className="px-3 py-2.5 text-right font-medium"
+                title={t(`help.${c.label}`)}
+              >
                 {t(c.label)}
               </th>
             ))}
             <th className="px-3 py-2.5 text-right font-medium">{t("ttsTtfb")}</th>
-            <th className="px-3 py-2.5 text-right font-medium">{t("serverEstimate")}</th>
+            <th className="px-3 py-2.5 text-right font-medium" title={t("help.serverFirstAudio")}>
+              {t("serverFirstAudio")}
+            </th>
             <th className="px-5 py-2.5 font-medium">{t("providers")}</th>
           </tr>
         </thead>
@@ -99,9 +113,12 @@ export function LatencyTable({ turns }: { turns: MergedTurn[] }) {
                 <Ms value={turn.server.tts_ttfb_ms} k="eotMs" />
               </td>
               <td className="px-3 py-2.5 text-right">
-                <Ms value={turn.server.server_first_audio_ms} k="eotMs" />
+                <Ms value={turn.server.server_first_audio_ms} k="firstAudioMs" />
               </td>
-              <td className="max-w-56 truncate px-5 py-2.5 text-xs text-ink-3" title={Object.values(turn.server.labels).join(" · ")}>
+              <td
+                className="max-w-56 truncate px-5 py-2.5 text-xs text-ink-3"
+                title={Object.values(turn.server.labels).join(" · ")}
+              >
                 {Object.values(turn.server.labels).join(" · ")}
               </td>
             </tr>

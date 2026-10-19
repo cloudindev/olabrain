@@ -18,6 +18,7 @@ from livekit.agents import (
     Agent,
     AgentServer,
     AgentSession,
+    AgentStateChangedEvent,
     ErrorEvent,
     JobContext,
     JobProcess,
@@ -133,6 +134,11 @@ async def entrypoint(ctx: JobContext) -> None:
     @session.on("metrics_collected")
     def _on_metrics(ev: MetricsCollectedEvent) -> None:
         collector.collect(ev.metrics)
+
+    @session.on("agent_state_changed")
+    def _on_agent_state(ev: AgentStateChangedEvent) -> None:
+        if ev.new_state == "speaking":
+            collector.agent_started_speaking(ev.created_at)
 
     @session.on("error")
     def _on_error(ev: ErrorEvent) -> None:

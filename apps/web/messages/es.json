@@ -88,7 +88,6 @@
     "eot": "Fin de turno",
     "firstToken": "Primer token",
     "firstAudio": "Primer audio",
-    "serverEstimate": "Estimado servidor",
     "ttsTtfb": "TTFB TTS",
     "providers": "Proveedores",
     "target": "Objetivo",
@@ -101,10 +100,12 @@
       "conn": "Desde que pulsas Conectar hasta que el agente está en la sala.",
       "eot": "Desde que dejas de hablar hasta que el agente da tu turno por terminado.",
       "firstToken": "Tiempo hasta el primer token del LLM.",
-      "firstAudio": "Desde que dejas de hablar hasta que suena la primera muestra de la respuesta."
+      "firstAudio": "Desde que dejas de hablar hasta que suena la primera muestra de la respuesta.",
+      "serverFirstAudio": "En el servidor: desde que dejas de hablar hasta que Lía empieza a sonar. Sin red ni reproducción."
     },
     "p95": "p95",
     "samples": "{count, plural, =0 {sin turnos} one {# turno} other {# turnos}}",
-    "agentError": "Error del agente: {message}"
+    "agentError": "Error del agente: {message}",
+    "serverFirstAudio": "Primer audio servidor"
   }
 }

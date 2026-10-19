@@ -58,7 +58,9 @@ Formato breve: contexto → decisión → consecuencias. Las más recientes, al 
 - **Primer audio** se mide en el navegador: fin de habla (VAD por energía sobre el micrófono, umbral `MIC_VOICE_THRESHOLD`) → primera muestra audible del agente tras ≥ 300 ms de silencio. Incluye la red y el jitter buffer de WebRTC, que es lo que percibe el usuario.
 - El VAD del navegador ignora el micrófono mientras suena el agente, para no contar el eco como voz del usuario. Un barge-in muy temprano puede quedar sin medir (`—`).
 - Cada turno del servidor se empareja con el inicio de audio más reciente anterior a su llegada. El worker publica el turno cuando conoce el TTFB del TTS, que siempre es después de empezar a sonar.
-- El «estimado servidor» (fin de turno + TTFT + TTFB) sirve de control: si el primer audio del navegador supera en mucho al estimado, el tiempo se va en red o en el reproductor.
+- **Primer audio servidor** se mide en el worker: fin de habla según el EOU (timestamp − retraso) → primer frame de audio del agente (estado `speaking`). La primera versión usaba la suma fin de turno + TTFT + TTFB, pero en la primera sesión real se quedó ~600 ms corta: el TTS no empieza con el primer token, sino con la primera frase completa del LLM. La suma se conserva como `pipeline_sum_ms` (cota inferior) en `breakdown`.
+- La diferencia entre el primer audio del navegador y el del servidor es red + jitter buffer + reproducción.
+- El umbral de voz del micrófono se adapta al ruido de fondo (mínimo `MIC_VOICE_THRESHOLD`, ×3 sobre el suelo de ruido). Con un umbral fijo, en la primera sesión solo 1 de 3 turnos quedó medido.
 - Validación pendiente: contrastar una sesión con una grabación de pantalla y audio medida a mano.
 
 ## Resultados del spike (Fase 0)

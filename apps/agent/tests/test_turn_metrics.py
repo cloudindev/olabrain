@@ -63,7 +63,8 @@ def test_full_pipeline_turn_is_merged_once() -> None:
     assert turn.transcription_ms == 200
     assert turn.first_token_ms == 350
     assert turn.tts_ttfb_ms == 150
-    assert turn.server_first_audio_ms == 900
+    assert turn.pipeline_sum_ms == 900
+    assert turn.server_first_audio_ms is None  # no "speaking" event seen
     assert turn.prompt_tokens == 100
     assert turn.tts_characters == 42
     assert turn.labels == {"llm": "google.LLM", "tts": "elevenlabs.TTS"}
@@ -77,7 +78,7 @@ def test_user_turn_waits_for_llm_even_if_tts_arrives_first() -> None:
     assert out == []
     collector.collect(llm_m("s1"))
     assert len(out) == 1
-    assert out[0].server_first_audio_ms == 900
+    assert out[0].pipeline_sum_ms == 900
 
 
 def test_greeting_without_llm_is_emitted_with_tts_only() -> None:
@@ -85,7 +86,7 @@ def test_greeting_without_llm_is_emitted_with_tts_only() -> None:
     assert len(turns) == 1
     assert turns[0].eot_ms is None
     assert turns[0].first_token_ms is None
-    assert turns[0].server_first_audio_ms is None
+    assert turns[0].pipeline_sum_ms is None
 
 
 def test_cancelled_llm_inference_does_not_set_ttft() -> None:
@@ -105,7 +106,31 @@ def test_metrics_without_speech_id_are_ignored() -> None:
     assert collect(m) == []
 
 
-def test_payload_includes_server_first_audio() -> None:
+def test_payload_includes_pipeline_sum_and_hides_wall_clock() -> None:
     payload = collect(eou("s1"), llm_m("s1"), tts_m("s1"))[0].to_payload()
-    assert payload["server_first_audio_ms"] == 900
+    assert payload["pipeline_sum_ms"] == 900
     assert payload["speech_id"] == "s1"
+    assert "user_end_at" not in payload
+
+
+def test_server_first_audio_from_speaking_event() -> None:
+    out: list[TurnBreakdown] = []
+    collector = TurnMetricsCollector(out.append)
+    e = eou("s1", delay=0.5)
+    collector.collect(e)
+    collector.collect(llm_m("s1"))
+    # Agent starts playing 1.4 s after the user stopped talking.
+    collector.agent_started_speaking(e.timestamp - 0.5 + 1.4)
+    collector.collect(tts_m("s1"))
+    assert out[0].server_first_audio_ms == 1400
+
+
+def test_speaking_before_user_end_is_ignored() -> None:
+    out: list[TurnBreakdown] = []
+    collector = TurnMetricsCollector(out.append)
+    e = eou("s1", delay=0.5)
+    collector.agent_started_speaking(e.timestamp - 5)  # previous reply
+    collector.collect(e)
+    collector.collect(llm_m("s1"))
+    collector.collect(tts_m("s1"))
+    assert out[0].server_first_audio_ms is None

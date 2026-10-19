@@ -10,7 +10,12 @@ import { EMPTY_FORM, LabSettings, toLabConfig, type LabForm } from "./lab-settin
 import { LatencyTracker, type MergedTurn } from "./latency-tracker";
 import { createMeterContext } from "./level-meter";
 
-type Active = { room: Room; conversationId: string; tracker: LatencyTracker; audioContext: AudioContext };
+type Active = {
+  room: Room;
+  conversationId: string;
+  tracker: LatencyTracker;
+  audioContext: AudioContext;
+};
 type Status = "idle" | "connecting" | "connected" | "error";
 
 export function LabClient() {
@@ -25,7 +30,10 @@ export function LabClient() {
   const activeRef = useRef<Active | null>(null);
 
   const onTurn = useCallback((turn: MergedTurn) => setTurns((prev) => [...prev, turn]), []);
-  const onAgentError = useCallback((message: string) => setError(t("agentError", { message })), [t]);
+  const onAgentError = useCallback(
+    (message: string) => setError(t("agentError", { message })),
+    [t],
+  );
 
   const disconnect = useCallback(async () => {
     const current = activeRef.current;
@@ -69,7 +77,8 @@ export function LabClient() {
       };
       room.on(RoomEvent.ParticipantConnected, markAgent);
       room.on(RoomEvent.ParticipantDisconnected, (participant) => {
-        if (participant.kind === ParticipantKind.AGENT && activeRef.current?.room === room) void disconnect();
+        if (participant.kind === ParticipantKind.AGENT && activeRef.current?.room === room)
+          void disconnect();
       });
       room.on(RoomEvent.Disconnected, () => {
         if (activeRef.current?.room === room) void disconnect();
@@ -104,11 +113,21 @@ export function LabClient() {
       <div className="flex flex-col gap-6">
         <Card>
           <CardHeader title={t("settings")} />
-          <LabSettings form={form} onChange={setForm} disabled={status === "connecting" || status === "connected"} />
+          <LabSettings
+            form={form}
+            onChange={setForm}
+            disabled={status === "connecting" || status === "connected"}
+          />
         </Card>
         <Card className="p-5">
           {status === "connected" ? (
-            <Button variant="danger" size="lg" className="w-full" onClick={disconnect} data-testid="lab-disconnect">
+            <Button
+              variant="danger"
+              size="lg"
+              className="w-full"
+              onClick={disconnect}
+              data-testid="lab-disconnect"
+            >
               {t("disconnect")}
             </Button>
           ) : (
