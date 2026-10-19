@@ -54,14 +54,17 @@ function createAuth() {
     account: { modelName: "accounts" },
     verification: { modelName: "verifications" },
     advanced: { database: { generateId: "uuid" } },
+    // In-memory store: per process. Move to Redis (secondaryStorage) before running
+    // several web instances.
+    rateLimit: { enabled: e.AUTH_RATE_LIMIT },
     emailAndPassword: {
       enabled: true,
       minPasswordLength: 8,
       requireEmailVerification: e.AUTH_REQUIRE_EMAIL_VERIFICATION,
     },
     emailVerification: {
-      sendOnSignUp: true,
-      sendOnSignIn: true,
+      sendOnSignUp: e.AUTH_REQUIRE_EMAIL_VERIFICATION,
+      sendOnSignIn: e.AUTH_REQUIRE_EMAIL_VERIFICATION,
       autoSignInAfterVerification: true,
       sendVerificationEmail: async ({ user, url }) => {
         await sendEmail(

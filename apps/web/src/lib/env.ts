@@ -16,6 +16,11 @@ const schema = z.object({
     .enum(["true", "false"])
     .default("true")
     .transform((v) => v === "true"),
+  // Better Auth rate limiting (on by default; e2e turns it off to sign up several users).
+  AUTH_RATE_LIMIT: z
+    .enum(["true", "false"])
+    .default("true")
+    .transform((v) => v === "true"),
   GOOGLE_CLIENT_ID: optional,
   GOOGLE_CLIENT_SECRET: optional,
   MICROSOFT_CLIENT_ID: optional,

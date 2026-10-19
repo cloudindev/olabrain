@@ -24,6 +24,7 @@ export default defineConfig({
       BETTER_AUTH_URL: `http://localhost:${PORT}`,
       APP_URL: `http://localhost:${PORT}`,
       AUTH_REQUIRE_EMAIL_VERIFICATION: "false",
+      AUTH_RATE_LIMIT: "false",
     },
   },
 });
