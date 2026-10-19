@@ -1,0 +1,491 @@
+/**
+ * Admin operations on connections and tools (called by apps/web after it has checked the
+ * user's session and role). Secrets enter here and go straight to the vault.
+ */
+import {
+  httpConfigSchema,
+  httpToolDefinitionSchema,
+  mcpConfigSchema,
+  openapiConfigSchema,
+  sqlConfigSchema,
+  sqlToolDefinitionSchema,
+  studioParamsToJsonSchema,
+  type ApiAuth,
+} from "@brainagent/core";
+import { connections, tools, withTenant } from "@brainagent/db";
+import { and, eq, notInArray } from "drizzle-orm";
+import { z } from "zod";
+import type { ConnectorContext } from "./context";
+import {
+  executeTool,
+  mcpAuthStore,
+  oauthRedirectUrl,
+  type ConnectionRow,
+  type ToolRow,
+} from "./execute";
+import type { ApiSecret } from "./adapters/http";
+import {
+  McpOAuthProvider,
+  authorizeMcp,
+  connectMcp,
+  listMcpTools,
+  type McpAuthState,
+} from "./adapters/mcp";
+import { loadSpecText, parseSpec, type ParsedSpec } from "./adapters/openapi";
+import { runReadOnlyQuery, validateReadOnlySql } from "./adapters/sql";
+
+export class ServiceError extends Error {
+  constructor(
+    message: string,
+    readonly status = 400,
+  ) {
+    super(message);
+    this.name = "ServiceError";
+  }
+}
+
+const apiSecretSchema = z.object({
+  token: z.string().max(4_000).optional(),
+  apiKey: z.string().max(4_000).optional(),
+  username: z.string().max(400).optional(),
+  password: z.string().max(4_000).optional(),
+});
+
+async function getConnection(
+  ctx: ConnectorContext,
+  tenantId: string,
+  id: string,
+): Promise<ConnectionRow> {
+  const [row] = await withTenant(ctx.db, tenantId, (tx) =>
+    tx.select().from(connections).where(eq(connections.id, id)).limit(1),
+  );
+  if (!row) throw new ServiceError("conexión no encontrada", 404);
+  return row as ConnectionRow;
+}
+
+async function createConnection(
+  ctx: ConnectorContext,
+  tenantId: string,
+  values: {
+    kind: ConnectionRow["kind"];
+    name: string;
+    config: Record<string, unknown>;
+    secret?: Record<string, unknown>;
+  },
+): Promise<ConnectionRow> {
+  return withTenant(ctx.db, tenantId, async (tx) => {
+    const credentialId = values.secret ? await ctx.vault.put(tx, tenantId, values.secret) : null;
+    const [row] = await tx
+      .insert(connections)
+      .values({
+        tenantId,
+        kind: values.kind,
+        name: values.name,
+        config: values.config,
+        credentialId,
+      })
+      .returning();
+    return row as ConnectionRow;
+  });
+}
+
+async function setStatus(
+  ctx: ConnectorContext,
+  conn: ConnectionRow,
+  status: "active" | "needs_auth" | "error",
+  lastError: string | null = null,
+) {
+  await withTenant(ctx.db, conn.tenantId, (tx) =>
+    tx.update(connections).set({ status, lastError }).where(eq(connections.id, conn.id)),
+  );
+}
+
+// --- MCP ------------------------------------------------------------------------
+
+export const createMcpSchema = z.object({
+  name: z.string().trim().min(1).max(80),
+  url: mcpConfigSchema.shape.url,
+  auth: mcpConfigSchema.shape.auth,
+  bearer: z.string().max(4_000).optional(),
+});
+
+export async function createMcpConnection(
+  ctx: ConnectorContext,
+  tenantId: string,
+  input: z.infer<typeof createMcpSchema>,
+) {
+  if (input.auth === "bearer" && !input.bearer) throw new ServiceError("falta el token");
+  const conn = await createConnection(ctx, tenantId, {
+    kind: "mcp",
+    name: input.name,
+    config: { url: input.url, auth: input.auth },
+    // OAuth state also lives in the vault, so create the credential up front.
+    secret: { bearer: input.bearer } satisfies McpAuthState,
+  });
+  return syncMcpConnection(ctx, tenantId, conn.id);
+}
+
+/** Connects, lists tools and upserts them. Starts OAuth when the server requires it. */
+export async function syncMcpConnection(
+  ctx: ConnectorContext,
+  tenantId: string,
+  connectionId: string,
+) {
+  const conn = await getConnection(ctx, tenantId, connectionId);
+  const cfg = conn.config as { url: string; auth: "none" | "bearer" | "oauth" };
+  const store = mcpAuthStore(ctx, conn);
+  const state = await store.load();
+  const provider =
+    cfg.auth === "oauth"
+      ? new McpOAuthProvider(state, store, oauthRedirectUrl(ctx), conn.id)
+      : undefined;
+
+  if (provider && !state.tokens) {
+    const authorizationUrl = await authorizeMcp(provider, cfg.url, ctx.fetcher);
+    if (authorizationUrl) {
+      await setStatus(ctx, conn, "needs_auth");
+      return {
+        connectionId: conn.id,
+        status: "needs_auth" as const,
+        authorizationUrl: authorizationUrl.toString(),
+      };
+    }
+  }
+
+  try {
+    const session = await connectMcp(
+      cfg.url,
+      { bearer: cfg.auth === "bearer" ? state.bearer : undefined, authProvider: provider },
+      ctx.fetcher,
+    );
+    try {
+      const found = await listMcpTools(session);
+      await upsertTools(
+        ctx,
+        conn,
+        found.map((t) => ({
+          name: t.name,
+          sourceRef: t.name,
+          description: t.description,
+          inputSchema: t.inputSchema,
+          mode: t.readOnly ? "read" : "write",
+          // New write tools start disabled: the admin opts in explicitly.
+          enabled: t.readOnly,
+          config: {},
+        })),
+      );
+    } finally {
+      await session.close().catch(() => undefined);
+    }
+    await setStatus(ctx, conn, "active");
+    return { connectionId: conn.id, status: "active" as const };
+  } catch (e) {
+    if (provider?.pendingAuthorizationUrl) {
+      await setStatus(ctx, conn, "needs_auth");
+      return {
+        connectionId: conn.id,
+        status: "needs_auth" as const,
+        authorizationUrl: provider.pendingAuthorizationUrl.toString(),
+      };
+    }
+    await setStatus(ctx, conn, "error", (e as Error).message.slice(0, 500));
+    throw new ServiceError(
+      `no se pudo conectar con el servidor MCP: ${(e as Error).message.slice(0, 300)}`,
+    );
+  }
+}
+
+export async function completeMcpOAuth(
+  ctx: ConnectorContext,
+  tenantId: string,
+  state: string,
+  code: string,
+) {
+  const connectionId = state.split(".")[0] ?? "";
+  if (!/^[0-9a-f-]{36}$/i.test(connectionId)) throw new ServiceError("estado OAuth no válido");
+  const conn = await getConnection(ctx, tenantId, connectionId);
+  const store = mcpAuthStore(ctx, conn);
+  const authState = await store.load();
+  if (!authState.oauthState || authState.oauthState !== state)
+    throw new ServiceError("estado OAuth no válido");
+  const provider = new McpOAuthProvider(authState, store, oauthRedirectUrl(ctx), conn.id);
+  await authorizeMcp(provider, (conn.config as { url: string }).url, ctx.fetcher, code);
+  return syncMcpConnection(ctx, tenantId, conn.id);
+}
+
+// --- OpenAPI --------------------------------------------------------------------
+
+export const openapiSourceSchema = z
+  .object({ specUrl: z.url().optional(), specText: z.string().max(5_000_000).optional() })
+  .refine((v) => v.specUrl || v.specText, "indica una URL o pega la especificación");
+
+export async function previewOpenApi(
+  ctx: ConnectorContext,
+  input: z.infer<typeof openapiSourceSchema>,
+): Promise<ParsedSpec> {
+  const text = await loadSpecText({ url: input.specUrl, text: input.specText }, ctx.fetcher);
+  return parseSpec(text, input.specUrl);
+}
+
+export const createOpenApiSchema = z.object({
+  name: z.string().trim().min(1).max(80),
+  specUrl: z.url().optional(),
+  specText: z.string().max(5_000_000).optional(),
+  baseUrl: openapiConfigSchema.shape.baseUrl,
+  auth: openapiConfigSchema.shape.auth,
+  secret: apiSecretSchema.default({}),
+  operationIds: z.array(z.string()).min(1).max(500),
+});
+
+export async function createOpenApiConnection(
+  ctx: ConnectorContext,
+  tenantId: string,
+  input: z.infer<typeof createOpenApiSchema>,
+) {
+  const spec = await previewOpenApi(ctx, input);
+  const selected = spec.operations.filter((o) => input.operationIds.includes(o.operationId));
+  if (selected.length === 0) throw new ServiceError("elige al menos una operación");
+  const conn = await createConnection(ctx, tenantId, {
+    kind: "openapi",
+    name: input.name,
+    config: { specUrl: input.specUrl, baseUrl: input.baseUrl, auth: input.auth, title: spec.title },
+    secret: input.secret,
+  });
+  await upsertTools(
+    ctx,
+    conn,
+    selected.map((o) => ({
+      name: o.name,
+      sourceRef: o.operationId,
+      description: o.description,
+      inputSchema: o.inputSchema,
+      mode: o.mode,
+      enabled: true,
+      config: { mapping: o.mapping },
+    })),
+  );
+  return { connectionId: conn.id, tools: selected.length };
+}
+
+// --- SQL and HTTP (Tool Studio) ----------------------------------------------------
+
+export const createSqlSchema = z.object({
+  name: z.string().trim().min(1).max(80),
+  config: sqlConfigSchema,
+  password: z.string().max(1_000),
+});
+
+export async function createSqlConnection(
+  ctx: ConnectorContext,
+  tenantId: string,
+  input: z.infer<typeof createSqlSchema>,
+) {
+  // Test before saving: wrong credentials are the most common mistake.
+  try {
+    await runReadOnlyQuery(
+      { ...input.config, password: input.password },
+      { query: "SELECT 1 AS ok", params: [], maxRows: 1, timeoutMs: 5_000 },
+      {},
+      ctx.policy,
+    );
+  } catch (e) {
+    throw new ServiceError(
+      `no se pudo conectar a la base de datos: ${(e as Error).message.slice(0, 300)}`,
+    );
+  }
+  const conn = await createConnection(ctx, tenantId, {
+    kind: "sql",
+    name: input.name,
+    config: input.config,
+    secret: { password: input.password },
+  });
+  return { connectionId: conn.id };
+}
+
+export const createHttpSchema = z.object({
+  name: z.string().trim().min(1).max(80),
+  baseUrl: httpConfigSchema.shape.baseUrl,
+  auth: httpConfigSchema.shape.auth,
+  secret: apiSecretSchema.default({}),
+});
+
+export async function createHttpConnection(
+  ctx: ConnectorContext,
+  tenantId: string,
+  input: z.infer<typeof createHttpSchema>,
+) {
+  const conn = await createConnection(ctx, tenantId, {
+    kind: "http",
+    name: input.name,
+    config: { baseUrl: input.baseUrl, auth: input.auth as ApiAuth },
+    secret: input.secret as ApiSecret,
+  });
+  return { connectionId: conn.id };
+}
+
+export const studioToolSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("sql"), definition: sqlToolDefinitionSchema }),
+  z.object({ kind: z.literal("http"), definition: httpToolDefinitionSchema }),
+]);
+
+/** Builds the tool row for a Tool Studio definition (validates SQL statically). */
+function studioToolValues(
+  kind: "sql" | "http",
+  definition: z.infer<typeof sqlToolDefinitionSchema> | z.infer<typeof httpToolDefinitionSchema>,
+) {
+  if (kind === "sql") {
+    const def = definition as z.infer<typeof sqlToolDefinitionSchema>;
+    try {
+      validateReadOnlySql(def.query);
+    } catch (e) {
+      throw new ServiceError((e as Error).message);
+    }
+    return {
+      name: def.name,
+      description: def.description,
+      inputSchema: studioParamsToJsonSchema(def.params),
+      mode: "read" as const,
+      config: {
+        query: def.query,
+        params: def.params,
+        maxRows: def.maxRows,
+        timeoutMs: def.timeoutMs,
+      },
+      limits: { timeoutMs: def.timeoutMs, maxRows: def.maxRows, maxBytes: 200_000 },
+    };
+  }
+  const def = definition as z.infer<typeof httpToolDefinitionSchema>;
+  return {
+    name: def.name,
+    description: def.description,
+    inputSchema: studioParamsToJsonSchema(def.params),
+    mode: def.method === "GET" ? ("read" as const) : ("write" as const),
+    config: {
+      method: def.method,
+      path: def.path,
+      bodyTemplate: def.bodyTemplate,
+      params: def.params,
+      timeoutMs: def.timeoutMs,
+    },
+    limits: { timeoutMs: def.timeoutMs, maxBytes: 200_000 },
+  };
+}
+
+export async function saveStudioTool(
+  ctx: ConnectorContext,
+  tenantId: string,
+  connectionId: string,
+  input: z.infer<typeof studioToolSchema>,
+  toolId?: string,
+) {
+  const conn = await getConnection(ctx, tenantId, connectionId);
+  if (conn.kind !== input.kind)
+    throw new ServiceError("el tipo de herramienta no coincide con la conexión");
+  const values = studioToolValues(input.kind, input.definition);
+  return withTenant(ctx.db, tenantId, async (tx) => {
+    if (toolId) {
+      const [row] = await tx
+        .update(tools)
+        .set(values)
+        .where(and(eq(tools.id, toolId), eq(tools.connectionId, connectionId)))
+        .returning({ id: tools.id });
+      if (!row) throw new ServiceError("herramienta no encontrada", 404);
+      return { toolId: row.id };
+    }
+    const [row] = await tx
+      .insert(tools)
+      .values({ ...values, tenantId, connectionId, sourceRef: "studio", enabled: true })
+      .returning({ id: tools.id });
+    return { toolId: row!.id };
+  });
+}
+
+/** "Probar" in Tool Studio: runs a definition without saving it. Writes need explicit consent. */
+export async function testStudioTool(
+  ctx: ConnectorContext,
+  tenantId: string,
+  connectionId: string,
+  input: z.infer<typeof studioToolSchema>,
+  args: Record<string, unknown>,
+  allowWrite: boolean,
+) {
+  const conn = await getConnection(ctx, tenantId, connectionId);
+  const values = studioToolValues(input.kind, input.definition);
+  if (values.mode === "write" && !allowWrite)
+    throw new ServiceError("esta prueba modifica datos: confirma que quieres ejecutarla");
+  const started = performance.now();
+  const res = await executeTool(
+    ctx,
+    conn,
+    {
+      id: "test",
+      name: values.name,
+      sourceRef: "studio",
+      config: values.config,
+      limits: values.limits,
+    },
+    args,
+  );
+  return { ...res, durationMs: Math.round(performance.now() - started) };
+}
+
+export async function testSavedTool(
+  ctx: ConnectorContext,
+  tenantId: string,
+  toolId: string,
+  args: Record<string, unknown>,
+  allowWrite: boolean,
+) {
+  const [row] = await withTenant(ctx.db, tenantId, (tx) =>
+    tx.select().from(tools).where(eq(tools.id, toolId)).limit(1),
+  );
+  if (!row) throw new ServiceError("herramienta no encontrada", 404);
+  if (row.mode === "write" && !allowWrite)
+    throw new ServiceError("esta prueba modifica datos: confirma que quieres ejecutarla");
+  const conn = await getConnection(ctx, tenantId, row.connectionId);
+  const started = performance.now();
+  const res = await executeTool(ctx, conn, row as ToolRow, args);
+  return { ...res, durationMs: Math.round(performance.now() - started) };
+}
+
+// --- Shared ---------------------------------------------------------------------
+
+type ToolUpsert = {
+  name: string;
+  sourceRef: string;
+  description: string;
+  inputSchema: Record<string, unknown>;
+  mode: "read" | "write";
+  enabled: boolean;
+  config: Record<string, unknown>;
+};
+
+/** Inserts new tools, refreshes descriptions/schemas of existing ones (keeping admin
+ *  choices: enabled, confirmation), and removes tools the source no longer offers. */
+async function upsertTools(ctx: ConnectorContext, conn: ConnectionRow, list: ToolUpsert[]) {
+  await withTenant(ctx.db, conn.tenantId, async (tx) => {
+    for (const t of list) {
+      await tx
+        .insert(tools)
+        .values({ ...t, tenantId: conn.tenantId, connectionId: conn.id })
+        .onConflictDoUpdate({
+          target: [tools.connectionId, tools.name],
+          set: {
+            description: t.description,
+            inputSchema: t.inputSchema,
+            sourceRef: t.sourceRef,
+            config: t.config,
+            mode: t.mode,
+          },
+        });
+    }
+    const names = list.map((t) => t.name);
+    await tx
+      .delete(tools)
+      .where(
+        names.length
+          ? and(eq(tools.connectionId, conn.id), notInArray(tools.name, names))
+          : eq(tools.connectionId, conn.id),
+      );
+  });
+}
