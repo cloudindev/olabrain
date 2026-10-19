@@ -1,0 +1,141 @@
+"""LiveKit Agents worker for the /lab voice spike.
+
+Run:  uv run python -m brainagent_agent.worker dev
+apps/web dispatches this agent explicitly (agent_name = LIVEKIT_AGENT_NAME) and
+passes the lab config as dispatch metadata.
+"""
+
+from __future__ import annotations
+
+import asyncio
+import json
+import logging
+import os
+import time
+
+from dotenv import load_dotenv
+from livekit.agents import (
+    Agent,
+    AgentServer,
+    AgentSession,
+    JobContext,
+    JobProcess,
+    MetricsCollectedEvent,
+    TurnHandlingOptions,
+    cli,
+)
+from livekit.plugins import silero
+from livekit.plugins.turn_detector.multilingual import MultilingualModel
+
+from .config import InvalidLabConfig, LabConfig, load_lab_config
+from .persona import LIA
+from .providers import build_llm, build_realtime, build_stt, build_tts, describe
+from .turn_metrics import TurnBreakdown, TurnMetricsCollector
+
+# Monorepo root .env (apps/agent/src/brainagent_agent -> ../../../../.env), then local.
+load_dotenv(os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", ".env"))
+load_dotenv()
+
+logger = logging.getLogger("brainagent.agent")
+
+METRICS_TOPIC = "lab.metrics"
+DEFAULT_AGENT_NAME = "brainagent-lab"
+
+
+def prewarm(proc: JobProcess) -> None:
+    proc.userdata["vad"] = silero.VAD.load()
+
+
+server = AgentServer(setup_fnc=prewarm)
+
+
+def build_session(cfg: LabConfig, proc: JobProcess) -> tuple[AgentSession, Agent]:
+    if cfg.mode == "realtime":
+        model = build_realtime(cfg.realtime, LIA.instructions)
+        return AgentSession(llm=model), Agent(instructions=LIA.instructions)
+
+    session: AgentSession = AgentSession(
+        vad=proc.userdata["vad"],
+        stt=build_stt(cfg.stt),
+        llm=build_llm(cfg.llm),
+        tts=build_tts(cfg.tts),
+        turn_handling=TurnHandlingOptions(
+            turn_detection=MultilingualModel(),
+            interruption={"enabled": True},
+            preemptive_generation={"enabled": cfg.preemptive_generation},
+        ),
+    )
+    return session, Agent(instructions=LIA.instructions)
+
+
+@server.rtc_session(agent_name=os.environ.get("LIVEKIT_AGENT_NAME") or DEFAULT_AGENT_NAME)
+async def entrypoint(ctx: JobContext) -> None:
+    try:
+        cfg = load_lab_config(ctx.job.metadata)
+    except InvalidLabConfig:
+        logger.exception("invalid lab config, closing job")
+        ctx.shutdown(reason="invalid lab config")
+        return
+
+    labels = describe(cfg)
+    logger.info("starting lab session", extra={"labels": labels, "room": ctx.room.name})
+
+    session, agent = build_session(cfg, ctx.proc)
+    turn_index = 0
+    background: set[asyncio.Task[None]] = set()
+
+    async def publish(payload: dict) -> None:
+        try:
+            await ctx.room.local_participant.publish_data(
+                json.dumps(payload), reliable=True, topic=METRICS_TOPIC
+            )
+        except Exception:
+            logger.exception("failed to publish lab metrics")
+
+    def on_turn(turn: TurnBreakdown) -> None:
+        nonlocal turn_index
+        turn_index += 1
+        payload = {
+            "type": "turn",
+            "turn": turn_index,
+            "sentAt": time.time() * 1000,
+            "labels": {**labels, **turn.labels},
+            **turn.to_payload(),
+        }
+        task = asyncio.create_task(publish(payload))
+        background.add(task)
+        task.add_done_callback(background.discard)
+
+    collector = TurnMetricsCollector(on_turn)
+
+    @session.on("metrics_collected")
+    def _on_metrics(ev: MetricsCollectedEvent) -> None:
+        collector.collect(ev.metrics)
+
+    await session.start(agent=agent, room=ctx.room)
+
+    if cfg.mode == "realtime":
+        session.generate_reply(instructions=f"Saluda diciendo exactamente: {LIA.greeting}")
+    else:
+        session.say(LIA.greeting)
+
+    async def enforce_max_duration() -> None:
+        await asyncio.sleep(cfg.max_session_seconds)
+        logger.info("lab session reached max duration", extra={"room": ctx.room.name})
+        handle = session.say(
+            "Hemos llegado al límite de tiempo de esta prueba. Hasta pronto.",
+            allow_interruptions=False,
+        )
+        await handle
+        ctx.shutdown(reason="max session duration")
+
+    limiter = asyncio.create_task(enforce_max_duration())
+    ctx.add_shutdown_callback(lambda: _cancel(limiter))
+
+
+async def _cancel(task: asyncio.Task[None]) -> None:
+    task.cancel()
+
+
+if __name__ == "__main__":
+    cli.run_app(server)
