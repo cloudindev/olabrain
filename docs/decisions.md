@@ -87,7 +87,7 @@ group by 1 order by first_audio_p50;
 
 ---
 
-## ADR-006 — Claves de IA del cliente (BYOK) por defecto (2026-10-20)
+## ADR-006 — Claves de IA del cliente (BYOK) por defecto (2026-10-20) — **SUSTITUIDO por ADR-007**
 
 **Contexto.** No hay sistema de cobro por uso (Stripe llega en la Fase 4). Revender STT, TTS y LLM obligaría a medir, facturar y asumir el riesgo de consumo de cada cliente desde el primer día.
 
@@ -98,3 +98,20 @@ group by 1 order by first_audio_p50;
 - Las métricas de uso (`usage_events`) se siguen registrando para mostrar al cliente su consumo y su coste estimado.
 - Fricción de alta: una pyme tiene que crear cuentas en varios proveedores. Mitigación: asistente con enlaces, botón «Probar clave» y mínimos claros (un LLM, y STT + TTS solo si usa voz).
 - El diseño admite añadir más adelante un modo «claves de BrainAgent» con cobro por uso, sin cambiar el runtime: la resolución de credenciales es la misma, solo cambia de quién es la clave.
+
+---
+
+## ADR-007 — Saldo prepago con recarga automática (2026-10-20)
+
+**Contexto.** Se descarta BYOK (ADR-006): BrainAgent usa sus propias claves de proveedor y cobra el uso al cliente de forma transparente.
+
+**Decisión.**
+1. **Monedero prepago por organización** (en euros). Cada uso (minutos de voz, mensajes, llamadas a herramientas si procede) genera un `usage_event` con su coste de proveedor y su **precio de venta**, que sale de una tabla de precios en configuración. El precio de venta se descuenta del saldo mediante un libro de movimientos (`wallet_ledger`) inmutable.
+2. **Sin saldo no hay servicio.** Antes de abrir una conversación se comprueba que el saldo sea mayor que 0. Durante una llamada de voz se reserva saldo por tramos; si se agota, el agente lo dice y cierra con cortesía.
+3. **Recarga automática:** el usuario define un umbral X y un importe Y. Cuando el saldo baja de X, se cobra Y al método de pago guardado (Stripe, sin intervención). Si el cobro falla, se avisa por email y el servicio sigue hasta llegar a 0.
+4. **Transparencia:** el panel muestra el saldo, los movimientos y el coste de cada conversación desglosado (voz, mensajes, herramientas).
+
+**Consecuencias.**
+- Desde la Fase 1 cada conversación registra `usage_events` (cantidades por proveedor); el precio se aplica al construir el monedero.
+- La Fase 4 implementa el monedero, Stripe (recargas y recarga automática), los avisos y el bloqueo por saldo.
+- Los planes de suscripción de la especificación se sustituyen por recargas prepago. Si hay cuota fija de plataforma, se decide en la Fase 4.

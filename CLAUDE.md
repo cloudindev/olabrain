@@ -73,7 +73,7 @@ docs/
 | Agente | Python 3.12, `livekit-agents`, STT (deepgram), realtime speech-to-speech (Gemini Live), TTS (elevenlabs, cartesia, google), LiteLLM como router de modelos |
 | MCP | SDK oficial `@modelcontextprotocol/sdk` (cliente Streamable HTTP + OAuth 2.1/PKCE + registro dinámico) |
 | Conectores nativos | Nango self-hosted |
-| Pagos | Stripe (suscripción + uso medido con Meters) |
+| Pagos | Stripe (recargas prepago y recarga automática con método de pago guardado) |
 | Observabilidad | OpenTelemetry + Langfuse self-host; logs JSON (pino / structlog) |
 | Tests | Vitest, Playwright (e2e), pytest |
 
@@ -89,7 +89,7 @@ docs/
 `channels(id, tenant_id, agent_id, kind, config jsonb)`,
 `contacts`, `conversations`, `messages`, `tool_calls(duration_ms, status, request/response redacted)`,
 `turn_metrics(conversation_id, turn, conn_ms, eot_ms, first_token_ms, first_audio_ms)`,
-`usage_events(tenant_id, kind, provider, quantity, unit, cost_usd)`,
+`usage_events(tenant_id, kind, provider, quantity, unit, cost_usd, price_eur)`, `wallets(tenant_id, balance_eur, auto_recharge_threshold, auto_recharge_amount)`, `wallet_ledger` (inmutable),
 `credentials(tenant_id, encrypted_blob, key_version)` (AES-256-GCM, clave por tenant envuelta con una master key de entorno/KMS),
 `audit_log`.
 
@@ -135,7 +135,7 @@ El runtime de agentes solo conoce `list_tools(agent_id)` y `call_tool(agent_id, 
 - Panel de conversaciones (transcripción, tools con tiempos, latencias, coste, valoración) y de uso.
 
 ### Fase 4 — Monetización y beta (semanas 12–16)
-- Stripe: planes Starter 59 € / Pro 199 € / Business 499 € con minutos y mensajes incluidos y exceso medido (voz 0,35 €/min, mensaje 0,01 €; precios en configuración). Límites y alertas de gasto.
+- Cobro **prepago** (ADR-007): monedero por organización con libro de movimientos, recargas con Stripe y **recarga automática** cuando el saldo baja del umbral que define el usuario. Sin saldo, el agente no se puede usar. Precios de venta en configuración (referencia: voz 0,35 €/min, mensaje 0,01 €). Desglose transparente del coste de cada conversación y alertas.
 - Teléfono SIP (LiveKit SIP), Slack y Teams.
 - Agente expuesto como servidor MCP y API REST con API keys.
 - Auditoría, retención, exportación y borrado por contacto; checklist de seguridad (`docs/security.md`).
