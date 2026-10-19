@@ -26,6 +26,7 @@ from livekit.agents import (
     cli,
     inference,
 )
+from livekit.agents.worker import ServerEnvOption
 from livekit.plugins import silero
 
 from .config import InvalidLabConfig, LabConfig, load_lab_config
@@ -47,7 +48,12 @@ def prewarm(proc: JobProcess) -> None:
     proc.userdata["vad"] = silero.VAD.load()
 
 
-server = AgentServer(setup_fnc=prewarm)
+# One warm process in dev too (LiveKit's dev default is 0, which adds seconds to every
+# connection while a process spawns and loads the VAD).
+server = AgentServer(
+    setup_fnc=prewarm,
+    num_idle_processes=ServerEnvOption(dev_default=1, prod_default=8),
+)
 
 
 def build_session(cfg: LabConfig, proc: JobProcess) -> tuple[AgentSession, Agent]:

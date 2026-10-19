@@ -8,8 +8,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { LabSession, type TranscriptLine } from "./lab-session";
 import { EMPTY_FORM, LabSettings, toLabConfig, type LabForm } from "./lab-settings";
 import { LatencyTracker, type MergedTurn } from "./latency-tracker";
+import { createMeterContext } from "./level-meter";
 
-type Active = { room: Room; conversationId: string; tracker: LatencyTracker };
+type Active = { room: Room; conversationId: string; tracker: LatencyTracker; audioContext: AudioContext };
 type Status = "idle" | "connecting" | "connected" | "error";
 
 export function LabClient() {
@@ -32,6 +33,7 @@ export function LabClient() {
     setActive(null);
     setStatus("idle");
     await current?.room.disconnect();
+    await current?.audioContext.close().catch(() => undefined);
   }, []);
 
   useEffect(() => () => void activeRef.current?.room.disconnect(), []);
@@ -42,6 +44,8 @@ export function LabClient() {
     setTurns([]);
     setTranscript([]);
     const startedAt = performance.now();
+    // Must happen synchronously inside the click (see createMeterContext).
+    const audioContext = createMeterContext();
     try {
       const response = await fetch("/api/lab/token", {
         method: "POST",
@@ -84,11 +88,12 @@ export function LabClient() {
         throw new Error(t("micPermission"));
       }
 
-      const next = { room, conversationId, tracker };
+      const next = { room, conversationId, tracker, audioContext };
       activeRef.current = next;
       setActive(next);
       setStatus("connected");
     } catch (e) {
+      void audioContext.close().catch(() => undefined);
       setStatus("error");
       setError(e instanceof Error && e.message === t("micPermission") ? e.message : tc("error"));
     }
@@ -129,7 +134,13 @@ export function LabClient() {
         <RoomContext.Provider value={active.room}>
           <RoomAudioRenderer />
           <LabSession
-            live={{ tracker: active.tracker, onTurn, onTranscript: setTranscript, onError: onAgentError }}
+            live={{
+              tracker: active.tracker,
+              audioContext: active.audioContext,
+              onTurn,
+              onTranscript: setTranscript,
+              onError: onAgentError,
+            }}
             turns={turns}
             transcript={transcript}
           />

@@ -31,11 +31,13 @@ async function saveTurn(turn: MergedTurn): Promise<void> {
 /** Hooks that only work inside a connected RoomContext. Renders nothing. */
 function LiveBindings({
   tracker,
+  audioContext,
   onTurn,
   onTranscript,
   onError,
 }: {
   tracker: LatencyTracker;
+  audioContext: AudioContext;
   onTurn: (turn: MergedTurn) => void;
   onTranscript: (lines: TranscriptLine[]) => void;
   onError: (message: string) => void;
@@ -67,14 +69,14 @@ function LiveBindings({
   const micTrack = microphoneTrack?.track?.mediaStreamTrack;
   useEffect(() => {
     if (!micTrack) return;
-    return startLevelMeter(micTrack, (rms, now) => tracker.micLevel(rms, now));
-  }, [micTrack, tracker]);
+    return startLevelMeter(audioContext, micTrack, (rms, now) => tracker.micLevel(rms, now));
+  }, [audioContext, micTrack, tracker]);
 
   const agentTrack = audioTrack?.publication?.track?.mediaStreamTrack;
   useEffect(() => {
     if (!agentTrack) return;
-    return startLevelMeter(agentTrack, (rms, now) => tracker.agentLevel(rms, now));
-  }, [agentTrack, tracker]);
+    return startLevelMeter(audioContext, agentTrack, (rms, now) => tracker.agentLevel(rms, now));
+  }, [audioContext, agentTrack, tracker]);
 
   const localIdentity = localParticipant.identity;
   useEffect(() => {
@@ -132,6 +134,7 @@ export function LabSession({
 }: {
   live: {
     tracker: LatencyTracker;
+    audioContext: AudioContext;
     onTurn: (turn: MergedTurn) => void;
     onTranscript: (lines: TranscriptLine[]) => void;
     onError: (message: string) => void;
