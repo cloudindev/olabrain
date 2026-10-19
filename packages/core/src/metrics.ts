@@ -29,7 +29,10 @@ export const LATENCY_TARGETS_MS: Partial<Record<LatencyKey, number>> = {
 };
 
 /** Nearest-rank percentile (p in 0..100). Ignores nulls; returns null on empty input. */
-export function percentile(values: ReadonlyArray<number | null | undefined>, p: number): number | null {
+export function percentile(
+  values: ReadonlyArray<number | null | undefined>,
+  p: number,
+): number | null {
   if (p < 0 || p > 100) throw new RangeError("percentile must be between 0 and 100");
   const sorted = values
     .filter((v): v is number => typeof v === "number" && Number.isFinite(v))
@@ -39,7 +42,10 @@ export function percentile(values: ReadonlyArray<number | null | undefined>, p: 
   return sorted[rank - 1] ?? null;
 }
 
-export type LatencySummary = Record<LatencyKey, { p50: number | null; p95: number | null; n: number }>;
+export type LatencySummary = Record<
+  LatencyKey,
+  { p50: number | null; p95: number | null; n: number }
+>;
 
 export function summarizeLatencies(
   turns: ReadonlyArray<Partial<Record<LatencyKey, number | null>>>,
