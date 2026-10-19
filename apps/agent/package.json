@@ -5,10 +5,11 @@
   "description": "Python voice runtime (LiveKit Agents). Scripts delegate to uv so Turborepo runs it with the rest.",
   "scripts": {
     "setup": "uv sync && uv run python -m brainagent_agent.worker download-files",
-    "dev": "uv run python -m brainagent_agent.worker dev",
+    "dev": "sh -c 'uv run python -m brainagent_agent.chat_server & CHAT=$!; trap \"kill $CHAT\" EXIT INT TERM; uv run python -m brainagent_agent.worker dev'",
     "start": "uv run python -m brainagent_agent.worker start",
     "lint": "uv run ruff check . && uv run ruff format --check .",
     "typecheck": "uv run mypy src",
-    "test": "uv run pytest -q"
+    "test": "uv run pytest -q",
+    "dev:chat": "uv run python -m brainagent_agent.chat_server"
   }
 }

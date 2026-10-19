@@ -49,6 +49,9 @@ class LabConfig(BaseModel):
     """Everything the worker needs to build one voice session."""
 
     conversation_id: str | None = Field(default=None, alias="conversationId")
+    # When set, the session runs this agent (persona, instructions, model, tools) instead
+    # of the built-in lab persona.
+    agent_id: str | None = Field(default=None, alias="agentId")
     tenant_id: str | None = Field(default=None, alias="tenantId")
     mode: Mode = "pipeline"
     stt: STTConfig = STTConfig()
@@ -57,6 +60,8 @@ class LabConfig(BaseModel):
     realtime: RealtimeConfig = RealtimeConfig()
     max_session_seconds: int = Field(default=600, alias="maxSessionSeconds", ge=30, le=3600)
     preemptive_generation: bool = Field(default=True, alias="preemptiveGeneration")
+    # True when the room metadata chose a TTS voice (it then wins over the persona's voice).
+    voice_overridden: bool = False
     # Also synthesize audio before the turn is confirmed (more TTS spend on false starts).
     preemptive_tts: bool = Field(default=True, alias="preemptiveTts")
     # Minimum silence before a turn can end (LiveKit default 0.5 s for this detector).
@@ -139,6 +144,8 @@ def load_lab_config(room_metadata: str | None) -> LabConfig:
             raise InvalidLabConfig("room metadata must be a JSON object")
         override = parsed
     try:
-        return LabConfig.model_validate(_deep_merge(defaults_from_env(), override))
+        cfg = LabConfig.model_validate(_deep_merge(defaults_from_env(), override))
+        voice_set = isinstance(override.get("tts"), dict) and bool(override["tts"].get("voice_id"))
+        return cfg.model_copy(update={"voice_overridden": voice_set})
     except ValidationError as exc:
         raise InvalidLabConfig(str(exc)) from exc
