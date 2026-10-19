@@ -8,6 +8,7 @@ from brainagent_agent.agent_runtime import (
     RuntimeAgent,
     ToolBridge,
     build_function_tools,
+    date_context,
     llm_config_for,
 )
 from brainagent_agent.chat_server import create_app
@@ -131,3 +132,13 @@ def test_chat_endpoint_requires_the_service_token(chat_client: TestClient) -> No
         assert client.post("/v1/chat", json={}).status_code == 401
         bad = client.post("/v1/chat", json={}, headers={"authorization": "Bearer " + "t" * 64})
         assert bad.status_code == 400
+
+
+def test_date_context_is_spanish_and_in_the_agent_timezone() -> None:
+    from datetime import UTC, datetime
+
+    # 23:30 UTC on 19 Oct is already 20 Oct in Madrid.
+    text = date_context(datetime(2026, 10, 19, 23, 30, tzinfo=UTC), "Europe/Madrid")
+    assert text.startswith("Hoy es martes, 20 de octubre de 2026 (2026-10-20)")
+    assert "RuntimeAgent" not in text
+    assert "Hoy es" in RuntimeAgent.from_config("t-1", CONFIG).instructions

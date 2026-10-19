@@ -12,9 +12,12 @@ the same arguments *after a new user message*, so the LLM can't confirm on its o
 from __future__ import annotations
 
 import json
+import os
 import time
 from dataclasses import dataclass, field
+from datetime import datetime
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from livekit.agents import function_tool, llm
 
@@ -34,6 +37,35 @@ TOOL_GUIDANCE = (
     "explica al usuario exactamente qué vas a hacer y pregúntale si quiere continuar. "
     "Solo si responde que sí, vuelve a llamar a la herramienta con los mismos argumentos."
 )
+
+
+WEEKDAYS = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"]
+MONTHS = [
+    "enero",
+    "febrero",
+    "marzo",
+    "abril",
+    "mayo",
+    "junio",
+    "julio",
+    "agosto",
+    "septiembre",
+    "octubre",
+    "noviembre",
+    "diciembre",
+]
+
+
+def date_context(now: datetime | None = None, tz: str | None = None) -> str:
+    """Today's date for the system prompt. Date only (no time) so the prompt prefix stays
+    stable for a whole day and provider prompt caching keeps working."""
+    zone = ZoneInfo(tz or os.environ.get("AGENT_TIMEZONE") or "Europe/Madrid")
+    today = (now or datetime.now(zone)).astimezone(zone)
+    return (
+        f"Hoy es {WEEKDAYS[today.weekday()]}, {today.day} de {MONTHS[today.month - 1]} de "
+        f"{today.year} ({today.date().isoformat()}), zona horaria {zone.key}. Usa esta fecha "
+        "cuando el usuario diga «hoy», «mañana» o «ayer»."
+    )
 
 
 @dataclass
@@ -57,6 +89,7 @@ class RuntimeAgent:
             persona.get("basePrompt") or f"Eres {agent['name']}, un asistente de la empresa.",
             agent.get("instructions") or "",
             AI_DISCLOSURE,
+            date_context(),
             TOOL_GUIDANCE if cfg.get("tools") else "",
         ]
         policy = agent.get("policy") or {}

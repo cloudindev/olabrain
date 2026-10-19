@@ -8,6 +8,10 @@ config({
   quiet: true,
 });
 
+/** `KEY=` in .env means "not set", not "empty string" or 0. */
+const emptyAsUndefined = <T extends z.ZodType>(schema: T) =>
+  z.preprocess((v) => (typeof v === "string" && v.trim() === "" ? undefined : v), schema);
+
 const csv = z
   .string()
   .optional()
@@ -25,8 +29,8 @@ const schema = z.object({
   CONNECTOR_SERVICE_TOKEN: z.string().min(32, "CONNECTOR_SERVICE_TOKEN must be ≥ 32 chars"),
   VAULT_MASTER_KEY: z.string().min(1),
   VAULT_MASTER_KEY_VERSION: z.coerce.number().int().min(1).default(1),
-  VAULT_MASTER_KEY_PREVIOUS: z.string().optional(),
-  VAULT_MASTER_KEY_PREVIOUS_VERSION: z.coerce.number().int().min(1).optional(),
+  VAULT_MASTER_KEY_PREVIOUS: emptyAsUndefined(z.string().optional()),
+  VAULT_MASTER_KEY_PREVIOUS_VERSION: emptyAsUndefined(z.coerce.number().int().min(1).optional()),
   /** Private hosts/IPs outgoing calls may reach (dev demo DB, on-prem allowlist). */
   EGRESS_ALLOWED_PRIVATE_HOSTS: csv,
   APP_URL: z.string().default("http://localhost:3000"),
