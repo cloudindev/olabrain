@@ -114,8 +114,9 @@ async def entrypoint(ctx: JobContext) -> None:
             "type": "turn",
             "turn": turn_index,
             "sentAt": time.time() * 1000,
-            "labels": {**labels, **turn.labels},
             **turn.to_payload(),
+            # After to_payload(): its per-turn labels must not drop the session labels.
+            "labels": {**labels, **turn.labels},
         }
         task = asyncio.create_task(publish(payload))
         background.add(task)
