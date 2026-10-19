@@ -35,7 +35,8 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
       </head>
-      <body className="min-h-dvh">
+      {/* Extensions (e.g. ColorZilla) add attributes to <body> before hydration. */}
+      <body className="min-h-dvh" suppressHydrationWarning>
         <NextIntlClientProvider>{children}</NextIntlClientProvider>
       </body>
     </html>
