@@ -1,5 +1,6 @@
 import { labConfigSchema } from "@brainagent/core";
-import { auditLog, conversations } from "@brainagent/db";
+import { agents, auditLog, conversations } from "@brainagent/db";
+import { eq } from "drizzle-orm";
 import { env } from "@/lib/env";
 import { createLabToken, labRoomName } from "@/lib/livekit";
 import { authErrorResponse, requireTenant, tenantTx } from "@/lib/tenant";
@@ -13,15 +14,27 @@ export async function POST(request: Request) {
     const body = await request.json().catch(() => ({}));
     const parsed = labConfigSchema.safeParse(body?.config ?? {});
     if (!parsed.success) {
-      return Response.json({ error: "invalid_config", issues: parsed.error.issues }, { status: 400 });
+      return Response.json(
+        { error: "invalid_config", issues: parsed.error.issues },
+        { status: 400 },
+      );
     }
 
     const conversationId = await tenantTx(ctx, async (tx) => {
+      if (parsed.data.agent_id) {
+        const [agent] = await tx
+          .select({ id: agents.id })
+          .from(agents)
+          .where(eq(agents.id, parsed.data.agent_id))
+          .limit(1);
+        if (!agent) return null;
+      }
       const [conversation] = await tx
         .insert(conversations)
         .values({
           tenantId: ctx.tenantId,
           channel: "lab",
+          agentId: parsed.data.agent_id ?? null,
           startedByUserId: ctx.user.id,
           config: parsed.data,
         })
@@ -35,6 +48,7 @@ export async function POST(request: Request) {
       });
       return conversation!.id;
     });
+    if (!conversationId) return Response.json({ error: "agent_not_found" }, { status: 404 });
 
     const e = env();
     const token = await createLabToken({

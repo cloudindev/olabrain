@@ -6,7 +6,11 @@ import { DEFAULT_LOCALE, LOCALE_COOKIE, isLocale } from "./config";
 export default getRequestConfig(async () => {
   const fromCookie = (await cookies()).get(LOCALE_COOKIE)?.value;
   const envDefault = process.env.DEFAULT_LOCALE;
-  const locale = isLocale(fromCookie) ? fromCookie : isLocale(envDefault) ? envDefault : DEFAULT_LOCALE;
+  const locale = isLocale(fromCookie)
+    ? fromCookie
+    : isLocale(envDefault)
+      ? envDefault
+      : DEFAULT_LOCALE;
   return {
     locale,
     messages: (await import(`../../messages/${locale}.json`)).default,

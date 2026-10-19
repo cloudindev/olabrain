@@ -10,9 +10,13 @@ export default async function AuthLayout({ children }: { children: ReactNode }) 
         <Logo inverted />
         <div className="max-w-md">
           <Waveform />
-          <p className="mt-8 font-display text-4xl leading-tight font-semibold tracking-tight">{t("signInSubtitle")}</p>
+          <p className="mt-8 font-display text-4xl leading-tight font-semibold tracking-tight">
+            {t("signInSubtitle")}
+          </p>
         </div>
-        <p className="text-sm text-paper/60">Hecho en la UE · Datos en la UE cuando el proveedor lo permite</p>
+        <p className="text-sm text-paper/60">
+          Hecho en la UE · Datos en la UE cuando el proveedor lo permite
+        </p>
       </section>
       <section className="flex items-center justify-center px-4 py-12 sm:px-8">
         <div className="w-full max-w-sm">

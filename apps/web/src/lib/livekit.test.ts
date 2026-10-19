@@ -15,7 +15,9 @@ describe("createLabToken", () => {
       config: { tts: { provider: "cartesia" }, preemptive_generation: false },
     });
 
-    const claims = await new TokenVerifier("devkey", "secret-secret-secret-secret-secret").verify(jwt);
+    const claims = await new TokenVerifier("devkey", "secret-secret-secret-secret-secret").verify(
+      jwt,
+    );
     expect(claims.sub).toBe("user-1");
     expect(claims.video?.room).toBe(labRoomName("conv-1"));
     expect(claims.video?.roomJoin).toBe(true);

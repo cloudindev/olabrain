@@ -5,7 +5,11 @@ import { getLocale } from "next-intl/server";
 import type { ReactNode } from "react";
 import "./globals.css";
 
-const heading = Bricolage_Grotesque({ subsets: ["latin"], variable: "--font-heading", display: "swap" });
+const heading = Bricolage_Grotesque({
+  subsets: ["latin"],
+  variable: "--font-heading",
+  display: "swap",
+});
 const body = IBM_Plex_Sans({
   subsets: ["latin"],
   weight: ["400", "500", "600"],
@@ -31,7 +35,11 @@ const THEME_SCRIPT = `try{var t=localStorage.getItem("ba-theme");if(t==="light"|
 export default async function RootLayout({ children }: { children: ReactNode }) {
   const locale = await getLocale();
   return (
-    <html lang={locale} suppressHydrationWarning className={`${heading.variable} ${body.variable} ${numeric.variable}`}>
+    <html
+      lang={locale}
+      suppressHydrationWarning
+      className={`${heading.variable} ${body.variable} ${numeric.variable}`}
+    >
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
       </head>

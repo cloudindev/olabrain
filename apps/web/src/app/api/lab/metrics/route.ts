@@ -11,7 +11,10 @@ export async function POST(request: Request) {
     const ctx = await requireTenant("builder");
     const parsed = turnMetricsInputSchema.safeParse(await request.json().catch(() => null));
     if (!parsed.success) {
-      return Response.json({ error: "invalid_metrics", issues: parsed.error.issues }, { status: 400 });
+      return Response.json(
+        { error: "invalid_metrics", issues: parsed.error.issues },
+        { status: 400 },
+      );
     }
     const m = parsed.data;
 

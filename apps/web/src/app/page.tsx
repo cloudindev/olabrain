@@ -5,5 +5,5 @@ export default async function Home() {
   const session = await getSession();
   if (!session) redirect("/login");
   if (!session.session.activeOrganizationId) redirect("/onboarding");
-  redirect("/lab");
+  redirect("/agents");
 }

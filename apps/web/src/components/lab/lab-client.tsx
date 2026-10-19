@@ -18,7 +18,7 @@ type Active = {
 };
 type Status = "idle" | "connecting" | "connected" | "error";
 
-export function LabClient() {
+export function LabClient({ agent = null }: { agent?: { id: string; name: string } | null }) {
   const t = useTranslations("lab");
   const tc = useTranslations("common");
   const [form, setForm] = useState<LabForm>(EMPTY_FORM);
@@ -58,7 +58,9 @@ export function LabClient() {
       const response = await fetch("/api/lab/token", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ config: toLabConfig(form) }),
+        body: JSON.stringify({
+          config: { ...toLabConfig(form), ...(agent ? { agent_id: agent.id } : {}) },
+        }),
       });
       if (!response.ok) throw new Error(`token request failed (${response.status})`);
       const { serverUrl, token, conversationId } = (await response.json()) as {
@@ -153,6 +155,7 @@ export function LabClient() {
         <RoomContext.Provider value={active.room}>
           <RoomAudioRenderer />
           <LabSession
+            agentName={agent?.name ?? "Lía"}
             live={{
               tracker: active.tracker,
               audioContext: active.audioContext,
@@ -165,7 +168,12 @@ export function LabClient() {
           />
         </RoomContext.Provider>
       ) : (
-        <LabSession live={null} turns={turns} transcript={transcript} />
+        <LabSession
+          agentName={agent?.name ?? "Lía"}
+          live={null}
+          turns={turns}
+          transcript={transcript}
+        />
       )}
     </div>
   );

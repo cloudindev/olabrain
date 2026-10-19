@@ -92,7 +92,7 @@ function LiveBindings({
   return null;
 }
 
-function LiveAgentPanel() {
+function LiveAgentPanel({ name }: { name: string }) {
   const t = useTranslations("lab");
   const { state, audioTrack } = useVoiceAssistant();
   return (
@@ -101,7 +101,7 @@ function LiveAgentPanel() {
         <BarVisualizer state={state} trackRef={audioTrack} barCount={9} />
       </div>
       <div>
-        <p className="font-display text-xl font-semibold tracking-tight">Lía</p>
+        <p className="font-display text-xl font-semibold tracking-tight">{name}</p>
         <Badge
           tone={state === "speaking" ? "signal" : state === "listening" ? "ok" : "neutral"}
           data-testid="agent-state"
@@ -113,7 +113,7 @@ function LiveAgentPanel() {
   );
 }
 
-function IdleAgentPanel() {
+function IdleAgentPanel({ name }: { name: string }) {
   const t = useTranslations("lab");
   return (
     <div className="flex items-center gap-5">
@@ -123,7 +123,7 @@ function IdleAgentPanel() {
         ))}
       </div>
       <div>
-        <p className="font-display text-xl font-semibold tracking-tight">Lía</p>
+        <p className="font-display text-xl font-semibold tracking-tight">{name}</p>
         <Badge>{t("agentState.disconnected")}</Badge>
       </div>
     </div>
@@ -131,10 +131,12 @@ function IdleAgentPanel() {
 }
 
 export function LabSession({
+  agentName,
   live,
   turns,
   transcript,
 }: {
+  agentName: string;
   live: {
     tracker: LatencyTracker;
     audioContext: AudioContext;
@@ -156,7 +158,9 @@ export function LabSession({
     <div className="flex min-w-0 flex-col gap-6">
       {live ? <LiveBindings {...live} /> : null}
 
-      <Card className="p-5">{live ? <LiveAgentPanel /> : <IdleAgentPanel />}</Card>
+      <Card className="p-5">
+        {live ? <LiveAgentPanel name={agentName} /> : <IdleAgentPanel name={agentName} />}
+      </Card>
 
       <LatencySummary turns={turns} />
 
@@ -183,7 +187,7 @@ export function LabSession({
                       line.who === "agent" ? "font-semibold text-signal" : "font-semibold text-ink"
                     }
                   >
-                    {line.who === "agent" ? "Lía" : t("you")}
+                    {line.who === "agent" ? agentName : t("you")}
                   </span>{" "}
                   <span className="text-ink-2">{line.text}</span>
                 </li>

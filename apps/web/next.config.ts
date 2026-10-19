@@ -12,6 +12,8 @@ const nextConfig: NextConfig = {
   transpilePackages: ["@brainagent/core", "@brainagent/db", "@brainagent/ui"],
   serverExternalPackages: ["postgres"],
   poweredByHeader: false,
+  // Lets the e2e server (port 3100) run next to `pnpm dev` without sharing build output.
+  distDir: process.env.NEXT_DIST_DIR || ".next",
   typedRoutes: false,
 };
 

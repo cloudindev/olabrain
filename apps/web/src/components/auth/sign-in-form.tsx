@@ -36,7 +36,13 @@ export function SignInForm({ next }: { next?: string }) {
         <Input id="email" name="email" type="email" autoComplete="email" required />
       </Field>
       <Field label={t("password")} htmlFor="password">
-        <Input id="password" name="password" type="password" autoComplete="current-password" required />
+        <Input
+          id="password"
+          name="password"
+          type="password"
+          autoComplete="current-password"
+          required
+        />
       </Field>
       {error ? (
         <p role="alert" className="text-sm text-bad">

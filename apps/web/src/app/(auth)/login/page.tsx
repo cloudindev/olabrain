@@ -6,7 +6,11 @@ import { Divider, SocialButtons } from "@/components/auth/social-buttons";
 
 export const metadata = { title: "Entrar" };
 
-export default async function LoginPage({ searchParams }: { searchParams: Promise<{ next?: string }> }) {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ next?: string }>;
+}) {
   const t = await getTranslations("auth");
   const tc = await getTranslations("common");
   const { next } = await searchParams;

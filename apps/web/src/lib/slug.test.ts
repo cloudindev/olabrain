@@ -3,7 +3,9 @@ import { slugify } from "./slug";
 
 describe("slugify", () => {
   it("strips accents and symbols", () => {
-    expect(slugify("Peluquería Núñez & Hijos, S.L.", "ab12")).toBe("peluqueria-nunez-hijos-s-l-ab12");
+    expect(slugify("Peluquería Núñez & Hijos, S.L.", "ab12")).toBe(
+      "peluqueria-nunez-hijos-s-l-ab12",
+    );
   });
 
   it("falls back when the name has no usable characters", () => {

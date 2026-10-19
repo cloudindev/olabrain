@@ -10,7 +10,9 @@ const schema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   APP_URL: z.url().default("http://localhost:3000"),
   DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
-  BETTER_AUTH_SECRET: z.string().min(32, "BETTER_AUTH_SECRET must be at least 32 chars (openssl rand -base64 32)"),
+  BETTER_AUTH_SECRET: z
+    .string()
+    .min(32, "BETTER_AUTH_SECRET must be at least 32 chars (openssl rand -base64 32)"),
   BETTER_AUTH_URL: z.url().default("http://localhost:3000"),
   AUTH_REQUIRE_EMAIL_VERIFICATION: z
     .enum(["true", "false"])
@@ -35,6 +37,11 @@ const schema = z.object({
   LIVEKIT_API_KEY: z.string().min(1).default("devkey"),
   LIVEKIT_API_SECRET: z.string().min(1).default("secret"),
   LIVEKIT_AGENT_NAME: z.string().min(1).default("brainagent-lab"),
+  CONNECTOR_URL: z.string().default("http://127.0.0.1:4100"),
+  CONNECTOR_SERVICE_TOKEN: z.string().default(""),
+  AGENT_CHAT_URL: z.string().default("http://127.0.0.1:4200"),
+  /** Dev-only demo database (pnpm db:demo); empty disables the "add demo" button. */
+  DEMO_DB_PASSWORD: optional,
 });
 
 export type ServerEnv = z.infer<typeof schema>;

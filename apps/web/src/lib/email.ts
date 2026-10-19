@@ -26,6 +26,8 @@ export async function sendEmail(to: string, subject: string, text: string): Prom
     await mailer().sendMail({ from: env().EMAIL_FROM, to, subject, text });
   } catch (error) {
     if (env().NODE_ENV === "production") throw error;
-    console.warn(`[email] SMTP unavailable, message not sent.\nTo: ${to}\nSubject: ${subject}\n\n${text}`);
+    console.warn(
+      `[email] SMTP unavailable, message not sent.\nTo: ${to}\nSubject: ${subject}\n\n${text}`,
+    );
   }
 }

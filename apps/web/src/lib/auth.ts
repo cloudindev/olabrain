@@ -1,5 +1,13 @@
 import "server-only";
-import { accounts, invitations, memberships, sessions, tenants, users, verifications } from "@brainagent/db";
+import {
+  accounts,
+  invitations,
+  memberships,
+  sessions,
+  tenants,
+  users,
+  verifications,
+} from "@brainagent/db";
 import { betterAuth, type BetterAuthOptions } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { nextCookies } from "better-auth/next-js";
@@ -79,7 +87,10 @@ function createAuth() {
       session: {
         create: {
           before: async (session) => ({
-            data: { ...session, activeOrganizationId: await defaultOrganizationFor(session.userId) },
+            data: {
+              ...session,
+              activeOrganizationId: await defaultOrganizationFor(session.userId),
+            },
           }),
         },
       },

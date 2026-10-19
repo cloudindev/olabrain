@@ -1,28 +1,10 @@
-import { expect, test, type Page } from "@playwright/test";
-
-function uniqueEmail(prefix: string) {
-  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}@example.test`;
-}
-
-async function signUpAndCreateOrg(page: Page, orgName: string) {
-  await page.goto("/signup", { waitUntil: "networkidle" });
-  await page.getByLabel("Nombre", { exact: true }).fill("Ana Prueba");
-  await page.getByLabel("Email").fill(uniqueEmail("ana"));
-  await page.getByLabel("Contraseña").fill("contraseña-segura-123");
-  await page.getByRole("button", { name: "Crear cuenta" }).click();
-
-  await expect(page).toHaveURL(/\/onboarding$/);
-  await page.waitForLoadState("networkidle");
-  await page.getByLabel("Nombre de la organización").fill(orgName);
-  await page.getByRole("button", { name: "Crear organización" }).click();
-
-  await expect(page).toHaveURL(/\/lab$/);
-  await expect(page.getByRole("heading", { name: "Laboratorio de voz" })).toBeVisible();
-  await expect(page.getByTestId("tenant-name")).toHaveText(orgName);
-}
+import { expect, test } from "@playwright/test";
+import { signUpAndCreateOrg } from "./helpers";
 
 test("sign up → create organization → lab session token and metrics", async ({ page }) => {
   await signUpAndCreateOrg(page, "Peluquería Núñez");
+  await page.goto("/lab");
+  await expect(page.getByRole("heading", { name: "Laboratorio de voz" })).toBeVisible();
 
   const tokenResponse = await page.request.post("/api/lab/token", {
     data: { config: { tts: { provider: "cartesia" } } },
@@ -51,7 +33,9 @@ test("lab API rejects anonymous requests and invalid config", async ({ page, req
   expect(anonymous.status()).toBe(401);
 
   await signUpAndCreateOrg(page, "Taller Ruiz");
-  const invalid = await page.request.post("/api/lab/token", { data: { config: { mode: "avatar" } } });
+  const invalid = await page.request.post("/api/lab/token", {
+    data: { config: { mode: "avatar" } },
+  });
   expect(invalid.status()).toBe(400);
 });
 
@@ -59,7 +43,9 @@ test("a tenant cannot write metrics into another tenant's conversation", async (
   const contextA = await browser.newContext();
   const pageA = await contextA.newPage();
   await signUpAndCreateOrg(pageA, "Empresa A");
-  const { conversationId } = await (await pageA.request.post("/api/lab/token", { data: {} })).json();
+  const { conversationId } = await (
+    await pageA.request.post("/api/lab/token", { data: {} })
+  ).json();
 
   const contextB = await browser.newContext();
   const pageB = await contextB.newPage();

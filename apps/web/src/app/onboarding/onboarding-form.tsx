@@ -20,21 +20,30 @@ export function OnboardingForm() {
     if (!name) return;
     setPending(true);
     setError(null);
-    const { data, error: createError } = await authClient.organization.create({ name, slug: slugify(name) });
+    const { data, error: createError } = await authClient.organization.create({
+      name,
+      slug: slugify(name),
+    });
     if (createError || !data) {
       setPending(false);
       setError(createError?.status === 400 ? t("slugTaken") : tc("error"));
       return;
     }
     await authClient.organization.setActive({ organizationId: data.id });
-    router.push("/lab");
+    router.push("/agents");
     router.refresh();
   }
 
   return (
     <form method="post" onSubmit={onSubmit} className="flex flex-col gap-4">
       <Field label={t("orgName")} htmlFor="name">
-        <Input id="name" name="name" placeholder={t("orgNamePlaceholder")} required maxLength={80} />
+        <Input
+          id="name"
+          name="name"
+          placeholder={t("orgNamePlaceholder")}
+          required
+          maxLength={80}
+        />
       </Field>
       {error ? (
         <p role="alert" className="text-sm text-bad">

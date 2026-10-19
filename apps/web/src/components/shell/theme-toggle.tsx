@@ -19,7 +19,9 @@ export function ThemeToggle() {
   const t = useTranslations("common");
   const [theme, setTheme] = useState<Theme>("system");
 
-  useEffect(() => setTheme(readTheme()), []);
+  useEffect(() => {
+    setTheme(readTheme());
+  }, []);
 
   function cycle() {
     const next = ORDER[(ORDER.indexOf(theme) + 1) % ORDER.length]!;

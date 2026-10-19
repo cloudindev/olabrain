@@ -47,7 +47,14 @@ export function SignUpForm({ requiresVerification }: { requiresVerification: boo
         <Input id="email" name="email" type="email" autoComplete="email" required />
       </Field>
       <Field label={t("password")} htmlFor="password" hint={t("passwordHint")}>
-        <Input id="password" name="password" type="password" autoComplete="new-password" minLength={8} required />
+        <Input
+          id="password"
+          name="password"
+          type="password"
+          autoComplete="new-password"
+          minLength={8}
+          required
+        />
       </Field>
       {error ? (
         <p role="alert" className="text-sm text-bad">

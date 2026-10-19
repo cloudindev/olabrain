@@ -7,7 +7,11 @@ async function setLocale(formData: FormData) {
   "use server";
   const value = String(formData.get("locale"));
   if (!isLocale(value)) return;
-  (await cookies()).set(LOCALE_COOKIE, value, { path: "/", maxAge: 60 * 60 * 24 * 365, sameSite: "lax" });
+  (await cookies()).set(LOCALE_COOKIE, value, {
+    path: "/",
+    maxAge: 60 * 60 * 24 * 365,
+    sameSite: "lax",
+  });
   revalidatePath("/", "layout");
 }
 
