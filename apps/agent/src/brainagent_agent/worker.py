@@ -18,14 +18,15 @@ from livekit.agents import (
     Agent,
     AgentServer,
     AgentSession,
+    ErrorEvent,
     JobContext,
     JobProcess,
     MetricsCollectedEvent,
     TurnHandlingOptions,
     cli,
+    inference,
 )
 from livekit.plugins import silero
-from livekit.plugins.turn_detector.multilingual import MultilingualModel
 
 from .config import InvalidLabConfig, LabConfig, load_lab_config
 from .persona import LIA
@@ -60,8 +61,12 @@ def build_session(cfg: LabConfig, proc: JobProcess) -> tuple[AgentSession, Agent
         llm=build_llm(cfg.llm),
         tts=build_tts(cfg.tts),
         turn_handling=TurnHandlingOptions(
-            turn_detection=MultilingualModel(),
-            interruption={"enabled": True},
+            # Local audio model: no audio leaves our infra for turn detection (the default
+            # in dev mode would be LiveKit Inference, a cloud service).
+            turn_detection=inference.TurnDetector(version="v1-mini"),
+            # "vad" keeps barge-in local; the default "adaptive" mode streams audio to
+            # LiveKit's cloud gateway.
+            interruption={"enabled": True, "mode": "vad"},
             preemptive_generation={"enabled": cfg.preemptive_generation},
         ),
     )
@@ -80,10 +85,6 @@ async def entrypoint(ctx: JobContext) -> None:
     labels = describe(cfg)
     logger.info("starting lab session", extra={"labels": labels, "room": ctx.room.name})
 
-    session, agent = build_session(cfg, ctx.proc)
-    turn_index = 0
-    background: set[asyncio.Task[None]] = set()
-
     async def publish(payload: dict) -> None:
         try:
             await ctx.room.local_participant.publish_data(
@@ -91,6 +92,20 @@ async def entrypoint(ctx: JobContext) -> None:
             )
         except Exception:
             logger.exception("failed to publish lab metrics")
+
+    try:
+        session, agent = build_session(cfg, ctx.proc)
+    except Exception as exc:
+        # Usually a missing API key or an unknown provider: tell the lab UI instead of
+        # leaving the user waiting for an agent that never speaks.
+        logger.exception("could not build the voice session")
+        await ctx.connect()
+        await publish({"type": "error", "message": str(exc)})
+        ctx.shutdown(reason="invalid provider configuration")
+        return
+
+    turn_index = 0
+    background: set[asyncio.Task[None]] = set()
 
     def on_turn(turn: TurnBreakdown) -> None:
         nonlocal turn_index
@@ -111,6 +126,17 @@ async def entrypoint(ctx: JobContext) -> None:
     @session.on("metrics_collected")
     def _on_metrics(ev: MetricsCollectedEvent) -> None:
         collector.collect(ev.metrics)
+
+    @session.on("error")
+    def _on_error(ev: ErrorEvent) -> None:
+        # STT/LLM/TTS errors carry `recoverable`; only surface the ones that end the turn.
+        if getattr(ev.error, "recoverable", False):
+            return
+        label = getattr(ev.error, "label", type(ev.source).__name__)
+        detail = getattr(ev.error, "error", ev.error)
+        task = asyncio.create_task(publish({"type": "error", "message": f"{label}: {detail}"}))
+        background.add(task)
+        task.add_done_callback(background.discard)
 
     await session.start(agent=agent, room=ctx.room)
 
