@@ -251,6 +251,47 @@ describe("HTTP connection + Tool Studio + router", () => {
     expect(replay.status).toBe("error");
   });
 
+  it("text chat: confirm=true only works after a new stored user message", async () => {
+    const { conversations, messages } = await import("@brainagent/db");
+    const conversationId = await withTenant(appDb.db, tenantA, async (tx) => {
+      const [c] = await tx
+        .insert(conversations)
+        .values({ tenantId: tenantA, agentId: agentA, channel: "chat" })
+        .returning();
+      await tx
+        .insert(messages)
+        .values({
+          tenantId: tenantA,
+          conversationId: c!.id,
+          role: "user",
+          content: "Cierra el parte 11",
+        });
+      return c!.id;
+    });
+    const args = { id: 11, motivo: "hecho" };
+    const call = async () =>
+      (await (
+        await req("/v1/tools/call", {
+          body: { agentId: agentA, conversationId, toolName: "cerrar_parte", args, confirm: true },
+        })
+      ).json()) as Json;
+
+    // The only user message predates the request for confirmation: the LLM can't self-confirm.
+    expect((await call()).status).toBe("needs_confirmation");
+    expect((await call()).status).toBe("needs_confirmation");
+    const before = received.length;
+
+    await new Promise((r) => setTimeout(r, 20));
+    await withTenant(appDb.db, tenantA, (tx) =>
+      tx
+        .insert(messages)
+        .values({ tenantId: tenantA, conversationId, role: "user", content: "Sí, adelante" }),
+    );
+    expect((await call()).status).toBe("ok");
+    expect(received.length).toBe(before + 1);
+    expect(received.at(-1)).toMatchObject({ url: "/api/partes/11/cerrar" });
+  });
+
   it("auto-confirmed writes run directly; disabled tools are invisible", async () => {
     await withTenant(appDb.db, tenantA, (tx) =>
       tx.update(tools).set({ confirmation: "auto" }).where(eq(tools.name, "cerrar_parte")),

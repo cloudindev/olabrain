@@ -14,6 +14,7 @@ import {
   agentTools,
   agents,
   connections,
+  messages,
   pendingConfirmations,
   personas,
   toolCalls,
@@ -22,7 +23,7 @@ import {
 } from "@brainagent/db";
 import Ajv from "ajv";
 import addFormats from "ajv-formats";
-import { and, eq, gt, isNull } from "drizzle-orm";
+import { and, eq, gt, isNull, lt, max } from "drizzle-orm";
 import type { ConnectorContext } from "./context";
 import { executeTool, limitsOf, type ConnectionRow, type ToolRow } from "./execute";
 
@@ -158,6 +159,8 @@ export type CallToolInput = {
   toolName: string;
   args: Record<string, unknown>;
   confirmationId?: string;
+  /** Text chat: "the user has confirmed", verified against the stored conversation. */
+  confirm?: boolean;
 };
 
 export async function callTool(
@@ -210,7 +213,57 @@ export async function callTool(
 
   if (tool.mode === "write" && tool.confirmation === "required") {
     const hash = argsHash(input.args);
-    if (!input.confirmationId) {
+    const sameAction = and(
+      eq(pendingConfirmations.agentId, input.agentId),
+      eq(pendingConfirmations.toolId, tool.id),
+      eq(pendingConfirmations.argsHash, hash),
+      input.conversationId
+        ? eq(pendingConfirmations.conversationId, input.conversationId)
+        : isNull(pendingConfirmations.conversationId),
+      isNull(pendingConfirmations.usedAt),
+      gt(pendingConfirmations.expiresAt, new Date()),
+    );
+
+    let consumedId: string | undefined;
+    if (input.confirmationId) {
+      // Voice: the runtime holds the id and only sends it after a new user turn.
+      const [row] = await withTenant(ctx.db, input.tenantId, (tx) =>
+        tx
+          .update(pendingConfirmations)
+          .set({ usedAt: new Date() })
+          .where(and(eq(pendingConfirmations.id, input.confirmationId!), sameAction))
+          .returning({ id: pendingConfirmations.id }),
+      );
+      if (!row) {
+        await log("error", { error: "invalid_confirmation" });
+        return {
+          status: "error",
+          error:
+            "La confirmación no es válida, ha caducado o no coincide con la acción. Pide confirmación de nuevo.",
+          durationMs: elapsed(),
+        };
+      }
+      consumedId = row.id;
+    } else if (input.confirm && input.conversationId) {
+      // Text chat (stateless requests): valid only if the user wrote a message after the
+      // confirmation was requested — proven by the stored conversation, not by the LLM.
+      const conversationId = input.conversationId;
+      consumedId = await withTenant(ctx.db, input.tenantId, async (tx) => {
+        const [lastUser] = await tx
+          .select({ at: max(messages.createdAt) })
+          .from(messages)
+          .where(and(eq(messages.conversationId, conversationId), eq(messages.role, "user")));
+        if (!lastUser?.at) return undefined;
+        const [row] = await tx
+          .update(pendingConfirmations)
+          .set({ usedAt: new Date() })
+          .where(and(sameAction, lt(pendingConfirmations.createdAt, lastUser.at)))
+          .returning({ id: pendingConfirmations.id });
+        return row?.id;
+      });
+    }
+
+    if (!consumedId) {
       const [pending] = await withTenant(ctx.db, input.tenantId, (tx) =>
         tx
           .insert(pendingConfirmations)
@@ -229,35 +282,6 @@ export async function callTool(
         status: "needs_confirmation",
         confirmationId: pending!.id,
         summary: `${tool.name}(${JSON.stringify(redactSecrets(input.args))})`,
-      };
-    }
-    // Single use, same tool + exact args + conversation, not expired.
-    const consumed = await withTenant(ctx.db, input.tenantId, (tx) =>
-      tx
-        .update(pendingConfirmations)
-        .set({ usedAt: new Date() })
-        .where(
-          and(
-            eq(pendingConfirmations.id, input.confirmationId!),
-            eq(pendingConfirmations.agentId, input.agentId),
-            eq(pendingConfirmations.toolId, tool.id),
-            eq(pendingConfirmations.argsHash, hash),
-            input.conversationId
-              ? eq(pendingConfirmations.conversationId, input.conversationId)
-              : isNull(pendingConfirmations.conversationId),
-            isNull(pendingConfirmations.usedAt),
-            gt(pendingConfirmations.expiresAt, new Date()),
-          ),
-        )
-        .returning({ id: pendingConfirmations.id }),
-    );
-    if (consumed.length === 0) {
-      await log("error", { error: "invalid_confirmation" });
-      return {
-        status: "error",
-        error:
-          "La confirmación no es válida, ha caducado o no coincide con la acción. Pide confirmación de nuevo.",
-        durationMs: elapsed(),
       };
     }
   }

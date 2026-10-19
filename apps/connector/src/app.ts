@@ -44,6 +44,7 @@ const callSchema = z.object({
   toolName: z.string().min(1).max(64),
   args: z.record(z.string(), z.unknown()).default({}),
   confirmationId: uuid.optional(),
+  confirm: z.boolean().default(false),
 });
 
 const argsBody = z.object({
