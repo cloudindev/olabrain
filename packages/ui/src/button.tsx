@@ -17,9 +17,18 @@ const SIZES: Record<Size, string> = {
   lg: "h-12 px-6 text-base",
 };
 
-export type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant; size?: Size };
+export type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
+  variant?: Variant;
+  size?: Size;
+};
 
-export function Button({ variant = "primary", size = "md", className, type = "button", ...props }: ButtonProps) {
+export function Button({
+  variant = "primary",
+  size = "md",
+  className,
+  type = "button",
+  ...props
+}: ButtonProps) {
   return (
     <button
       type={type}

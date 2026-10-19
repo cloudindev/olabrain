@@ -1,4 +1,9 @@
-import type { InputHTMLAttributes, ReactNode, SelectHTMLAttributes } from "react";
+import type {
+  InputHTMLAttributes,
+  ReactNode,
+  SelectHTMLAttributes,
+  TextareaHTMLAttributes,
+} from "react";
 import { cn } from "./cn";
 
 const CONTROL =
@@ -36,5 +41,45 @@ export function Field({
       {children}
       {hint ? <p className="text-xs text-ink-3">{hint}</p> : null}
     </div>
+  );
+}
+
+export function Textarea({ className, ...props }: TextareaHTMLAttributes<HTMLTextAreaElement>) {
+  return (
+    <textarea className={cn(CONTROL, "min-h-24 py-2 leading-relaxed", className)} {...props} />
+  );
+}
+
+export function Checkbox({
+  label,
+  className,
+  ...props
+}: InputHTMLAttributes<HTMLInputElement> & { label?: ReactNode }) {
+  return (
+    <label
+      className={cn("inline-flex cursor-pointer items-center gap-2 text-sm text-ink", className)}
+    >
+      <input
+        type="checkbox"
+        className="size-4 rounded border-line-strong accent-[var(--ink)]"
+        {...props}
+      />
+      {label}
+    </label>
+  );
+}
+
+/** Accessible on/off switch (a styled checkbox with role="switch"). */
+export function Switch({
+  label,
+  className,
+  ...props
+}: Omit<InputHTMLAttributes<HTMLInputElement>, "type"> & { label: string }) {
+  return (
+    <label className={cn("relative inline-flex cursor-pointer items-center", className)}>
+      <input type="checkbox" role="switch" aria-label={label} className="peer sr-only" {...props} />
+      <span className="h-5 w-9 rounded-full bg-line-strong transition-colors peer-checked:bg-ok peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-focus peer-disabled:opacity-50" />
+      <span className="absolute left-0.5 size-4 rounded-full bg-surface shadow transition-transform peer-checked:translate-x-4" />
+    </label>
   );
 }
