@@ -1,0 +1,82 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: pgvector/pgvector:0.8.7-pg16-trixie
+        env:
+          POSTGRES_USER: brainagent_owner
+          POSTGRES_PASSWORD: brainagent_owner_dev
+          POSTGRES_DB: brainagent
+        ports: ["5433:5432"]
+        options: >-
+          --health-cmd "pg_isready -U brainagent_owner -d brainagent"
+          --health-interval 2s --health-timeout 3s --health-retries 30
+    env:
+      DATABASE_URL_ADMIN: postgres://brainagent_owner:brainagent_owner_dev@localhost:5433/brainagent
+      DATABASE_URL: postgres://brainagent_app:brainagent_app_dev@localhost:5433/brainagent
+      APP_DB_PASSWORD: brainagent_app_dev
+      BETTER_AUTH_SECRET: ci-only-secret-not-used-anywhere-else-0123456789
+      PGPASSWORD: brainagent_owner_dev
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: apps/agent/uv.lock
+
+      - name: Create test database
+        run: psql -h localhost -p 5433 -U brainagent_owner -d brainagent -c "CREATE DATABASE brainagent_test;"
+
+      - name: Install
+        run: |
+          pnpm install --frozen-lockfile
+          cd apps/agent && uv sync --frozen
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Unit and integration tests (incl. RLS isolation)
+        run: pnpm test
+
+      - name: Migrate e2e database
+        run: pnpm db:migrate && pnpm db:seed
+
+      - name: Build web
+        run: pnpm --filter @brainagent/web build
+
+      - name: Install Playwright browser
+        run: pnpm --filter @brainagent/web exec playwright install --with-deps chromium
+
+      - name: E2E
+        run: pnpm test:e2e
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: apps/web/test-results
+          retention-days: 7

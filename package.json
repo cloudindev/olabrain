@@ -6,9 +6,9 @@
     "node": ">=22.12"
   },
   "scripts": {
+    "setup": "pnpm install && pnpm --filter @brainagent/agent run setup && pnpm db:migrate && pnpm db:seed",
     "dev": "turbo run dev --parallel",
     "dev:web": "pnpm --filter @brainagent/web dev",
-    "dev:agent": "cd apps/agent && uv run python -m brainagent_agent.worker dev",
     "build": "turbo run build",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
@@ -19,7 +19,8 @@
     "db:generate": "pnpm --filter @brainagent/db generate",
     "infra:up": "docker compose -f infra/docker-compose.yml --env-file .env up -d",
     "infra:down": "docker compose -f infra/docker-compose.yml --env-file .env down",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "dev:agent": "pnpm --filter @brainagent/agent dev"
   },
   "devDependencies": {
     "prettier": "3.9.10",
