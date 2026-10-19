@@ -1,0 +1,13 @@
+# LiteLLM proxy (profile "llm"). Wildcard routing: the client sends "<provider>/<model>"
+# (LAB_LLM_MODEL) and LiteLLM forwards it with the matching key from .env.
+# No model names here on purpose: models live in configuration (.env), not in code.
+model_list:
+  - model_name: "*"
+    litellm_params:
+      model: "*"
+
+litellm_settings:
+  drop_params: true
+
+general_settings:
+  master_key: os.environ/LITELLM_MASTER_KEY
