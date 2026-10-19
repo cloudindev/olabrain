@@ -13,7 +13,7 @@ const COLUMNS: {
   { key: "connMs", label: "conn", where: "browser" },
   { key: "eotMs", label: "eot", where: "worker" },
   { key: "firstTokenMs", label: "firstToken", where: "worker" },
-  { key: "firstAudioMs", label: "firstAudio", where: "browser" },
+  { key: "firstAudioMs", label: "firstAudio", where: "worker" },
 ];
 
 function tone(key: LatencyKey, value: number | null): "ok" | "bad" | null {
@@ -94,8 +94,8 @@ export function LatencyTable({ turns }: { turns: MergedTurn[] }) {
               </th>
             ))}
             <th className="px-3 py-2.5 text-right font-medium">{t("ttsTtfb")}</th>
-            <th className="px-3 py-2.5 text-right font-medium" title={t("help.serverFirstAudio")}>
-              {t("serverFirstAudio")}
+            <th className="px-3 py-2.5 text-right font-medium" title={t("help.browserFirstAudio")}>
+              {t("browserFirstAudio")}
             </th>
             <th className="px-5 py-2.5 font-medium">{t("providers")}</th>
           </tr>
@@ -113,7 +113,7 @@ export function LatencyTable({ turns }: { turns: MergedTurn[] }) {
                 <Ms value={turn.server.tts_ttfb_ms} k="eotMs" />
               </td>
               <td className="px-3 py-2.5 text-right">
-                <Ms value={turn.server.server_first_audio_ms} k="firstAudioMs" />
+                <Ms value={turn.browserFirstAudioMs} k="eotMs" />
               </td>
               <td
                 className="max-w-56 truncate px-5 py-2.5 text-xs text-ink-3"

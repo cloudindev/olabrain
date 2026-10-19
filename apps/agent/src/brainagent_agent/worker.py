@@ -74,7 +74,11 @@ def build_session(cfg: LabConfig, proc: JobProcess) -> tuple[AgentSession, Agent
             # "vad" keeps barge-in local; the default "adaptive" mode streams audio to
             # LiveKit's cloud gateway.
             interruption={"enabled": True, "mode": "vad"},
-            preemptive_generation={"enabled": cfg.preemptive_generation},
+            endpointing={"min_delay": cfg.min_endpointing_delay},
+            preemptive_generation={
+                "enabled": cfg.preemptive_generation,
+                "preemptive_tts": cfg.preemptive_generation and cfg.preemptive_tts,
+            },
         ),
     )
     return session, Agent(instructions=LIA.instructions)

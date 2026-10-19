@@ -22,7 +22,12 @@ export const ONSET_GAP_MS = 300;
 
 type Onset = { at: number; userEndAt: number | null };
 
-export type MergedTurn = TurnMetricsInput & { server: ServerTurn; receivedAt: number };
+export type MergedTurn = TurnMetricsInput & {
+  server: ServerTurn;
+  receivedAt: number;
+  /** Diagnostic only: browser-side estimate, null when not measurable or impossible. */
+  browserFirstAudioMs: number | null;
+};
 
 export class LatencyTracker {
   private connMs: number | null = null;
@@ -77,10 +82,14 @@ export class LatencyTracker {
       this.onsets = this.onsets.slice(idx + 1);
     }
 
-    const firstAudioMs =
+    // The browser estimate can't be shorter than the end-of-turn wait; if it is, noise or
+    // echo was mistaken for the user's voice and the value is discarded.
+    const rawBrowser =
       onset && onset.userEndAt !== null
         ? Math.max(0, Math.round(onset.at - onset.userEndAt))
         : null;
+    const browserFirstAudioMs =
+      rawBrowser !== null && rawBrowser >= (server.eot_ms ?? 0) ? rawBrowser : null;
     const connMs = this.connReported ? null : this.connMs;
     this.connReported = true;
 
@@ -90,10 +99,16 @@ export class LatencyTracker {
       connMs,
       eotMs: server.eot_ms,
       firstTokenMs: server.first_token_ms,
-      firstAudioMs,
-      breakdown: { ...server, client_onset_ms: onset ? Math.round(onset.at) : null },
+      // Primary metric: measured in the worker (end of speech → first agent frame).
+      firstAudioMs: server.server_first_audio_ms,
+      breakdown: {
+        ...server,
+        browser_first_audio_ms: browserFirstAudioMs,
+        browser_first_audio_raw_ms: rawBrowser,
+      },
       server,
       receivedAt,
+      browserFirstAudioMs,
     };
   }
 }

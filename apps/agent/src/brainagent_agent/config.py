@@ -57,6 +57,10 @@ class LabConfig(BaseModel):
     realtime: RealtimeConfig = RealtimeConfig()
     max_session_seconds: int = Field(default=600, alias="maxSessionSeconds", ge=30, le=3600)
     preemptive_generation: bool = Field(default=True, alias="preemptiveGeneration")
+    # Also synthesize audio before the turn is confirmed (more TTS spend on false starts).
+    preemptive_tts: bool = Field(default=True, alias="preemptiveTts")
+    # Minimum silence before a turn can end (LiveKit default 0.5 s for this detector).
+    min_endpointing_delay: float = Field(default=0.3, alias="minEndpointingDelay", ge=0.1, le=2.0)
 
     model_config = {"populate_by_name": True}
 
@@ -91,6 +95,8 @@ def defaults_from_env() -> dict:
         },
         "max_session_seconds": _env("LAB_MAX_SESSION_SECONDS"),
         "preemptive_generation": _env("LAB_PREEMPTIVE_GENERATION"),
+        "preemptive_tts": _env("LAB_PREEMPTIVE_TTS"),
+        "min_endpointing_delay": _env("LAB_MIN_ENDPOINTING_DELAY"),
     }
     return _drop_none(raw)
 

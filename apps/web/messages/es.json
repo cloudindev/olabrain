@@ -100,12 +100,12 @@
       "conn": "Desde que pulsas Conectar hasta que el agente está en la sala.",
       "eot": "Desde que dejas de hablar hasta que el agente da tu turno por terminado.",
       "firstToken": "Tiempo hasta el primer token del LLM.",
-      "firstAudio": "Desde que dejas de hablar hasta que suena la primera muestra de la respuesta.",
-      "serverFirstAudio": "En el servidor: desde que dejas de hablar hasta que Lía empieza a sonar. Sin red ni reproducción."
+      "firstAudio": "En el servidor: desde que dejas de hablar hasta que Lía empieza a sonar.",
+      "browserFirstAudio": "Diagnóstico: estimación en el navegador, incluye red y reproducción. Se descarta si es imposible."
     },
     "p95": "p95",
     "samples": "{count, plural, =0 {sin turnos} one {# turno} other {# turnos}}",
     "agentError": "Error del agente: {message}",
-    "serverFirstAudio": "Primer audio servidor"
+    "browserFirstAudio": "Primer audio navegador"
   }
 }
