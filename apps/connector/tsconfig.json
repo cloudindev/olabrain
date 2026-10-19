@@ -1,1 +1,1 @@
-{ "extends": "@brainagent/config/tsconfig.lib.json", "include": ["src"] }
+{ "extends": "@brainagent/config/tsconfig.lib.json", "include": ["src", "test", "vitest.config.ts"] }
