@@ -32,6 +32,53 @@ Formato breve: contexto → decisión → consecuencias. Las más recientes, al 
 9. **pgvector**: se usa la imagen `pgvector/pgvector:pg16`, pero la extensión se crea en la Fase 1, cuando haga falta.
 10. **Spike sin persistencia de proveedor en BD.** La configuración del spike (STT/TTS/LLM, voz, modelo) viaja en la metadata de la sala; los valores por defecto están en `.env`. Las métricas sí se guardan en `turn_metrics`.
 
+---
+
+## ADR-003 — Detección de turno e interrupciones en local (2026-10-19)
+
+**Contexto.** En LiveKit Agents 1.8, el plugin `turn_detector` está obsoleto. Su sustituto, `inference.TurnDetector`, usa en modo dev el modelo cloud `v1` (LiveKit Inference). Además, las interrupciones usan por defecto el modo `adaptive`, que abre un websocket a `agent-gateway.livekit.cloud` con el audio del usuario. Con un LiveKit propio, los dos dan 401; con LiveKit Cloud, enviarían audio a un servicio que no hemos elegido. Lo descubrimos en la prueba de humo del worker contra un `livekit-server` local.
+
+**Decisión.** Fijar explícitamente `inference.TurnDetector(version="v1-mini")` (modelo local) e `interruption={"mode": "vad"}`. Ningún audio sale de nuestra infraestructura salvo hacia los proveedores STT/TTS/LLM configurados.
+
+**Consecuencias.** El detector local consume unos 250 MB de RAM por proceso de worker. Si el spike muestra que el modelo cloud mejora mucho el fin de turno, se valorará como opción por configuración, con su ADR de cumplimiento.
+
+---
+
+## ADR-004 — Auth: verificación, rate limit e IDs (2026-10-19)
+
+1. **Verificación de email obligatoria** (`AUTH_REQUIRE_EMAIL_VERIFICATION=true`). Los emails de verificación solo se envían cuando está activa. Fuera de producción, si no hay SMTP, el enlace se escribe en el log en lugar de romper el registro.
+2. **Rate limit de Better Auth activo** (3 intentos / 10 s por IP en login y registro). El almacenamiento es en memoria, por proceso: antes de tener varias instancias web hay que moverlo a Redis (`secondaryStorage`). Solo el e2e lo desactiva (`AUTH_RATE_LIMIT=false`).
+3. **Formularios de auth con `method="post"`**. Si el usuario envía antes de que React hidrate, la contraseña no acaba nunca en la URL.
+4. **La organización activa vive en la sesión** (`activeOrganizationId`). Al crear una sesión se elige la última membresía. `requireTenant()` vuelve a comprobar la membresía en BD en cada petición: nunca se fía solo de la sesión.
+
+---
+
+## ADR-005 — Medición de latencias en el navegador: límites conocidos (2026-10-19)
+
+- **Primer audio** se mide en el navegador: fin de habla (VAD por energía sobre el micrófono, umbral `MIC_VOICE_THRESHOLD`) → primera muestra audible del agente tras ≥ 300 ms de silencio. Incluye la red y el jitter buffer de WebRTC, que es lo que percibe el usuario.
+- El VAD del navegador ignora el micrófono mientras suena el agente, para no contar el eco como voz del usuario. Un barge-in muy temprano puede quedar sin medir (`—`).
+- Cada turno del servidor se empareja con el inicio de audio más reciente anterior a su llegada. El worker publica el turno cuando conoce el TTFB del TTS, que siempre es después de empezar a sonar.
+- El «estimado servidor» (fin de turno + TTFT + TTFB) sirve de control: si el primer audio del navegador supera en mucho al estimado, el tiempo se va en red o en el reproductor.
+- Validación pendiente: contrastar una sesión con una grabación de pantalla y audio medida a mano.
+
 ## Resultados del spike (Fase 0)
 
-_Pendiente: se rellena con las mediciones reales (p50/p95 por combinación de proveedores) cuando haya claves de proveedor en `.env`._
+_Pendiente de mediciones reales: necesitan claves de proveedor en `.env`._
+
+Procedimiento: al menos 20 turnos por combinación, frases cortas en español de España, misma red. Los datos salen de `turn_metrics` (`breakdown.labels` identifica los proveedores):
+
+```sql
+select breakdown->'labels' as providers,
+       count(*) as n,
+       percentile_disc(0.5)  within group (order by first_audio_ms) as first_audio_p50,
+       percentile_disc(0.95) within group (order by first_audio_ms) as first_audio_p95,
+       percentile_disc(0.5)  within group (order by eot_ms)         as eot_p50,
+       percentile_disc(0.5)  within group (order by first_token_ms) as ttft_p50
+from turn_metrics
+where first_audio_ms is not null
+group by 1 order by first_audio_p50;
+```
+
+| Combinación (STT · LLM · TTS) | Ruta | Preemptive | n | Primer audio p50 / p95 | Fin de turno p50 | TTFT p50 | TTFB TTS p50 |
+|---|---|---|---|---|---|---|---|
+| _pendiente_ | | | | | | | |
