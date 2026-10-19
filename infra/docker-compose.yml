@@ -1,0 +1,196 @@
+# BrainAgent — local infrastructure.
+#   pnpm infra:up      (= docker compose -f infra/docker-compose.yml --env-file .env up -d)
+# Default services: postgres, redis, minio, livekit, mailpit.
+# Optional profiles:  --profile observability (Langfuse)  --profile llm (LiteLLM)  --profile connectors (Nango)
+# Host ports avoid the defaults of Homebrew installs (Postgres 5433, Redis 6380).
+name: brainagent
+
+services:
+  postgres:
+    image: pgvector/pgvector:0.8.7-pg16-trixie
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-brainagent_owner}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-brainagent_owner_dev}
+      POSTGRES_DB: ${POSTGRES_DB:-brainagent}
+    ports:
+      - 127.0.0.1:5433:5432
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres/init.sql:/docker-entrypoint-initdb.d/10-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory-policy", "noeviction"]
+    ports:
+      - 127.0.0.1:6380:6379
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  minio:
+    image: cgr.dev/chainguard/minio:latest
+    restart: unless-stopped
+    entrypoint: sh
+    # Buckets are created as folders before the server starts (no mc needed).
+    command: -c 'mkdir -p /data/${S3_BUCKET:-brainagent} /data/langfuse && minio server --address ":9000" --console-address ":9001" /data'
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY_ID:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_ACCESS_KEY:-minioadmin}
+    ports:
+      - 127.0.0.1:9000:9000
+      - 127.0.0.1:9001:9001
+    volumes:
+      - minio_data:/data
+
+  livekit:
+    image: livekit/livekit-server:v1.13.10
+    restart: unless-stopped
+    # --dev: API key "devkey" / secret "secret", single UDP port 7882.
+    # --node-ip 127.0.0.1: advertise loopback so the browser and the worker on the host can
+    # reach the media ports through Docker Desktop/OrbStack port forwarding.
+    command: ["--dev", "--bind", "0.0.0.0", "--node-ip", "127.0.0.1"]
+    ports:
+      - 127.0.0.1:7880:7880
+      - 127.0.0.1:7881:7881
+      - 127.0.0.1:7882:7882/udp
+
+  mailpit:
+    image: axllent/mailpit:v1.31.6
+    restart: unless-stopped
+    ports:
+      - 127.0.0.1:1025:1025
+      - 127.0.0.1:8025:8025
+
+  # --- profile: llm --------------------------------------------------------------
+  litellm:
+    profiles: ["llm"]
+    image: ghcr.io/berriai/litellm:main-stable
+    restart: unless-stopped
+    command: ["--config", "/app/config.yaml", "--port", "4000"]
+    env_file: ../.env
+    volumes:
+      - ./litellm/config.yaml:/app/config.yaml:ro
+    ports:
+      - 127.0.0.1:4000:4000
+
+  # --- profile: observability (Langfuse v4, UI on http://localhost:3001) ---------
+  langfuse-worker:
+    profiles: ["observability"]
+    image: langfuse/langfuse-worker:4.64.0
+    restart: unless-stopped
+    depends_on:
+      postgres: { condition: service_healthy }
+      clickhouse: { condition: service_healthy }
+      langfuse-redis: { condition: service_healthy }
+      minio: { condition: service_started }
+    environment: &langfuse-env
+      DATABASE_URL: postgresql://${POSTGRES_USER:-brainagent_owner}:${POSTGRES_PASSWORD:-brainagent_owner_dev}@postgres:5432/langfuse
+      NEXTAUTH_URL: http://localhost:3001
+      SALT: ${LANGFUSE_SALT:-dev-salt-change-me}
+      ENCRYPTION_KEY: ${LANGFUSE_ENCRYPTION_KEY:-0000000000000000000000000000000000000000000000000000000000000000}
+      TELEMETRY_ENABLED: "false"
+      CLICKHOUSE_MIGRATION_URL: clickhouse://clickhouse:9000
+      CLICKHOUSE_URL: http://clickhouse:8123
+      CLICKHOUSE_USER: clickhouse
+      CLICKHOUSE_PASSWORD: clickhouse
+      CLICKHOUSE_CLUSTER_ENABLED: "false"
+      REDIS_HOST: langfuse-redis
+      REDIS_PORT: "6379"
+      REDIS_AUTH: langfuse-redis-dev
+      LANGFUSE_S3_EVENT_UPLOAD_BUCKET: langfuse
+      LANGFUSE_S3_EVENT_UPLOAD_REGION: auto
+      LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:-minioadmin}
+      LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:-minioadmin}
+      LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT: http://minio:9000
+      LANGFUSE_S3_EVENT_UPLOAD_FORCE_PATH_STYLE: "true"
+      LANGFUSE_S3_EVENT_UPLOAD_PREFIX: events/
+      LANGFUSE_S3_MEDIA_UPLOAD_BUCKET: langfuse
+      LANGFUSE_S3_MEDIA_UPLOAD_REGION: auto
+      LANGFUSE_S3_MEDIA_UPLOAD_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:-minioadmin}
+      LANGFUSE_S3_MEDIA_UPLOAD_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:-minioadmin}
+      LANGFUSE_S3_MEDIA_UPLOAD_ENDPOINT: http://minio:9000
+      LANGFUSE_S3_MEDIA_UPLOAD_FORCE_PATH_STYLE: "true"
+      LANGFUSE_S3_MEDIA_UPLOAD_PREFIX: media/
+
+  langfuse-web:
+    profiles: ["observability"]
+    image: langfuse/langfuse:4.64.0
+    restart: unless-stopped
+    depends_on:
+      postgres: { condition: service_healthy }
+      clickhouse: { condition: service_healthy }
+      langfuse-redis: { condition: service_healthy }
+      minio: { condition: service_started }
+    environment:
+      <<: *langfuse-env
+      NEXTAUTH_SECRET: ${LANGFUSE_NEXTAUTH_SECRET:-dev-nextauth-secret-change-me}
+    ports:
+      - 127.0.0.1:3001:3000
+
+  clickhouse:
+    profiles: ["observability"]
+    image: clickhouse/clickhouse-server:25.12
+    restart: unless-stopped
+    user: "101:101"
+    environment:
+      CLICKHOUSE_DB: default
+      CLICKHOUSE_USER: clickhouse
+      CLICKHOUSE_PASSWORD: clickhouse
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+    healthcheck:
+      test: wget --no-verbose --tries=1 --spider http://localhost:8123/ping || exit 1
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  langfuse-redis:
+    profiles: ["observability"]
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--requirepass", "langfuse-redis-dev", "--maxmemory-policy", "noeviction"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "langfuse-redis-dev", "ping"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  # --- profile: connectors (Nango, Phase 3; dashboard on http://localhost:3003) -----
+  nango-server:
+    profiles: ["connectors"]
+    image: nangohq/nango-server:hosted-0.71.13
+    platform: linux/amd64
+    restart: unless-stopped
+    depends_on:
+      postgres: { condition: service_healthy }
+    environment:
+      NANGO_ENCRYPTION_KEY: ${NANGO_ENCRYPTION_KEY:-}
+      NANGO_DB_HOST: postgres
+      NANGO_DB_USER: ${POSTGRES_USER:-brainagent_owner}
+      NANGO_DB_PASSWORD: ${POSTGRES_PASSWORD:-brainagent_owner_dev}
+      NANGO_DB_NAME: nango
+      RECORDS_DATABASE_URL: postgresql://${POSTGRES_USER:-brainagent_owner}:${POSTGRES_PASSWORD:-brainagent_owner_dev}@postgres:5432/nango
+      SERVER_PORT: "3003"
+      NANGO_SERVER_URL: http://localhost:3003
+      FLAG_AUTH_ENABLED: "false"
+      NANGO_LOGS_ENABLED: "false"
+    ports:
+      - 127.0.0.1:3003:3003
+      - 127.0.0.1:3009:3009
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
+  clickhouse_data:

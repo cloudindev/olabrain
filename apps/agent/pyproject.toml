@@ -1,0 +1,40 @@
+[project]
+name = "brainagent-agent"
+version = "0.1.0"
+description = "BrainAgent voice runtime (LiveKit Agents workers)"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "livekit-agents[deepgram,elevenlabs,cartesia,google,openai,anthropic,silero]~=1.8.8",
+  "pydantic>=2.8",
+  "pydantic-settings>=2.4",
+  "python-dotenv>=1.0",
+  "structlog>=24.4",
+  "httpx>=0.27",
+]
+
+[dependency-groups]
+dev = ["pytest>=8.3", "pytest-asyncio>=0.24", "ruff>=0.7", "mypy>=1.13"]
+
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/brainagent_agent"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.mypy]
+python_version = "3.12"
+mypy_path = "src"
+ignore_missing_imports = true
