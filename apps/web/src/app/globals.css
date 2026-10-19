@@ -1,0 +1,26 @@
+@import "tailwindcss";
+@import "@brainagent/ui/styles.css";
+
+@source "../../../../packages/ui/src";
+
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+/* LiveKit BarVisualizer in brand colours. */
+.lab-visualizer .lk-audio-bar-visualizer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  width: 100%;
+  gap: 6px;
+}
+.lab-visualizer .lk-audio-bar {
+  background-color: var(--line-strong);
+  width: 10px;
+  min-height: 10px;
+  border-radius: 999px;
+  transition: background-color 0.25s ease, height 0.1s ease;
+}
+.lab-visualizer .lk-audio-bar.lk-highlighted {
+  background-color: var(--signal);
+}
