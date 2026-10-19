@@ -1,0 +1,115 @@
+/*
+ * BrainAgent design tokens. Warm paper + deep ink, with a single "signal" accent
+ * (the colour of a live voice). Light and dark share names; components only use tokens.
+ * Theme: system by default; [data-theme] on <html> forces one.
+ */
+:root {
+  --paper: #f6f4ef;
+  --surface: #fffdf8;
+  --surface-2: #efece4;
+  --ink: #16181c;
+  --ink-2: #4a4d55;
+  --ink-3: #7b7e86;
+  --line: #e2ded3;
+  --line-strong: #cfc9bb;
+  --signal: #d9481f;
+  --signal-ink: #ffffff;
+  --signal-soft: #fbe5dc;
+  --ok: #1f7a4d;
+  --ok-soft: #dcefe4;
+  --warn: #a8620a;
+  --warn-soft: #f6e8d2;
+  --bad: #b42318;
+  --bad-soft: #f8dedb;
+  --focus: #2f5bd3;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #0f1113;
+    --surface: #16191c;
+    --surface-2: #1d2125;
+    --ink: #ecebe6;
+    --ink-2: #b4b5b0;
+    --ink-3: #82847f;
+    --line: #272b30;
+    --line-strong: #363b41;
+    --signal: #ff7a50;
+    --signal-ink: #1a0b05;
+    --signal-soft: #3a1d12;
+    --ok: #4cc38a;
+    --ok-soft: #12291d;
+    --warn: #f0a841;
+    --warn-soft: #30230f;
+    --bad: #f47067;
+    --bad-soft: #351513;
+    --focus: #7aa2ff;
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --paper: #0f1113;
+  --surface: #16191c;
+  --surface-2: #1d2125;
+  --ink: #ecebe6;
+  --ink-2: #b4b5b0;
+  --ink-3: #82847f;
+  --line: #272b30;
+  --line-strong: #363b41;
+  --signal: #ff7a50;
+  --signal-ink: #1a0b05;
+  --signal-soft: #3a1d12;
+  --ok: #4cc38a;
+  --ok-soft: #12291d;
+  --warn: #f0a841;
+  --warn-soft: #30230f;
+  --bad: #f47067;
+  --bad-soft: #351513;
+  --focus: #7aa2ff;
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-signal: var(--signal);
+  --color-signal-ink: var(--signal-ink);
+  --color-signal-soft: var(--signal-soft);
+  --color-ok: var(--ok);
+  --color-ok-soft: var(--ok-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-bad: var(--bad);
+  --color-bad-soft: var(--bad-soft);
+  --color-focus: var(--focus);
+  --font-sans: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-heading), var(--font-body), ui-sans-serif, sans-serif;
+  --font-mono: var(--font-numeric), ui-monospace, monospace;
+  --radius-control: 0.5rem;
+  --radius-panel: 0.875rem;
+}
+
+@layer base {
+  html {
+    background: var(--paper);
+    color: var(--ink);
+  }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  :focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+  }
+}
