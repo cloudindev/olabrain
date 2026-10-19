@@ -9,6 +9,8 @@ export const LAB_TTS_PROVIDERS = ["elevenlabs", "cartesia"] as const;
 export const LAB_LLM_PROVIDERS = ["google", "openai", "anthropic"] as const;
 
 export const labConfigSchema = z.object({
+  /** Run this agent (persona, instructions, model, tools) instead of the lab persona. */
+  agent_id: z.uuid().optional(),
   mode: z.enum(["pipeline", "realtime"]).optional(),
   stt: z
     .object({

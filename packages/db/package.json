@@ -15,7 +15,8 @@
     "seed": "tsx src/scripts/seed.ts",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "demo": "tsx src/scripts/demo-db.ts"
   },
   "dependencies": {
     "dotenv": "18.0.8",

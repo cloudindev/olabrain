@@ -10,6 +10,7 @@ __pycache__/
 
 # builds
 .next/
+.next-e2e/
 dist/
 build/
 out/
