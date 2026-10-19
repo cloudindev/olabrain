@@ -84,3 +84,17 @@ group by 1 order by first_audio_p50;
 | Combinación (STT · LLM · TTS) | Ruta | Preemptive | n | Primer audio p50 / p95 | Fin de turno p50 | TTFT p50 | TTFB TTS p50 |
 |---|---|---|---|---|---|---|---|
 | _pendiente_ | | | | | | | |
+
+---
+
+## ADR-006 — Claves de IA del cliente (BYOK) por defecto (2026-10-20)
+
+**Contexto.** No hay sistema de cobro por uso (Stripe llega en la Fase 4). Revender STT, TTS y LLM obligaría a medir, facturar y asumir el riesgo de consumo de cada cliente desde el primer día.
+
+**Decisión.** Cada organización conecta sus propias claves de proveedor (LLM, STT, TTS) en una sección «Proveedores de IA». Se guardan cifradas en el vault por tenant y el runtime las resuelve en cada sesión. Las variables `*_API_KEY` del `.env` quedan solo para el laboratorio interno y el desarrollo.
+
+**Consecuencias.**
+- BrainAgent no asume el coste variable de los modelos. Sí asume la infraestructura: LiveKit (Cloud o propio), hosting y base de datos.
+- Las métricas de uso (`usage_events`) se siguen registrando para mostrar al cliente su consumo y su coste estimado.
+- Fricción de alta: una pyme tiene que crear cuentas en varios proveedores. Mitigación: asistente con enlaces, botón «Probar clave» y mínimos claros (un LLM, y STT + TTS solo si usa voz).
+- El diseño admite añadir más adelante un modo «claves de BrainAgent» con cobro por uso, sin cambiar el runtime: la resolución de credenciales es la misma, solo cambia de quién es la clave.
