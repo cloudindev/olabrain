@@ -1,6 +1,6 @@
 "use client";
 
-import { LAB_METRICS_TOPIC, serverTurnSchema } from "@brainagent/core";
+import { LAB_METRICS_TOPIC, serverErrorSchema, serverTurnSchema } from "@brainagent/core";
 import { Badge, Card, CardHeader } from "@brainagent/ui";
 import {
   BarVisualizer,
@@ -33,10 +33,12 @@ function LiveBindings({
   tracker,
   onTurn,
   onTranscript,
+  onError,
 }: {
   tracker: LatencyTracker;
   onTurn: (turn: MergedTurn) => void;
   onTranscript: (lines: TranscriptLine[]) => void;
+  onError: (message: string) => void;
 }) {
   const { localParticipant, microphoneTrack } = useLocalParticipant();
   const { audioTrack } = useVoiceAssistant();
@@ -48,6 +50,11 @@ function LiveBindings({
     try {
       json = JSON.parse(decoder.decode(msg.payload));
     } catch {
+      return;
+    }
+    const failure = serverErrorSchema.safeParse(json);
+    if (failure.success) {
+      onError(failure.data.message);
       return;
     }
     const parsed = serverTurnSchema.safeParse(json);
@@ -123,7 +130,12 @@ export function LabSession({
   turns,
   transcript,
 }: {
-  live: { tracker: LatencyTracker; onTurn: (turn: MergedTurn) => void; onTranscript: (lines: TranscriptLine[]) => void } | null;
+  live: {
+    tracker: LatencyTracker;
+    onTurn: (turn: MergedTurn) => void;
+    onTranscript: (lines: TranscriptLine[]) => void;
+    onError: (message: string) => void;
+  } | null;
   turns: MergedTurn[];
   transcript: TranscriptLine[];
 }) {

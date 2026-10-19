@@ -24,6 +24,7 @@ export function LabClient() {
   const activeRef = useRef<Active | null>(null);
 
   const onTurn = useCallback((turn: MergedTurn) => setTurns((prev) => [...prev, turn]), []);
+  const onAgentError = useCallback((message: string) => setError(t("agentError", { message })), [t]);
 
   const disconnect = useCallback(async () => {
     const current = activeRef.current;
@@ -63,6 +64,9 @@ export function LabClient() {
         tracker.setConnected(performance.now() - startedAt);
       };
       room.on(RoomEvent.ParticipantConnected, markAgent);
+      room.on(RoomEvent.ParticipantDisconnected, (participant) => {
+        if (participant.kind === ParticipantKind.AGENT && activeRef.current?.room === room) void disconnect();
+      });
       room.on(RoomEvent.Disconnected, () => {
         if (activeRef.current?.room === room) void disconnect();
       });
@@ -125,7 +129,7 @@ export function LabClient() {
         <RoomContext.Provider value={active.room}>
           <RoomAudioRenderer />
           <LabSession
-            live={{ tracker: active.tracker, onTurn, onTranscript: setTranscript }}
+            live={{ tracker: active.tracker, onTurn, onTranscript: setTranscript, onError: onAgentError }}
             turns={turns}
             transcript={transcript}
           />

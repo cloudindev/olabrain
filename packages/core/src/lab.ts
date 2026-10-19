@@ -59,3 +59,10 @@ export const serverTurnSchema = z.object({
   labels: z.record(z.string(), z.string()),
 });
 export type ServerTurn = z.infer<typeof serverTurnSchema>;
+
+/** Published by the worker when it cannot start the session (e.g. a missing API key). */
+export const serverErrorSchema = z.object({
+  type: z.literal("error"),
+  message: z.string().max(2000),
+});
+export type ServerError = z.infer<typeof serverErrorSchema>;
