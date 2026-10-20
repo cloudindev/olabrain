@@ -58,6 +58,18 @@ def prewarm(proc: JobProcess) -> None:
 server = AgentServer(
     setup_fnc=prewarm,
     num_idle_processes=ServerEnvOption(dev_default=1, prod_default=8),
+    # Heavy SDKs imported on first use blocked the first call for seconds (the anthropic
+    # types alone took ~2 s). Import them while the idle process warms up instead.
+    preload_modules=[
+        "anthropic.types",
+        "httpcore",
+        "livekit.plugins.anthropic",
+        "livekit.plugins.deepgram",
+        "livekit.plugins.elevenlabs",
+        "livekit.plugins.cartesia",
+        "livekit.plugins.google",
+        "livekit.plugins.openai",
+    ],
 )
 
 
