@@ -18,7 +18,7 @@ cp .env.example .env
 
 pnpm infra:up      # docker compose: postgres, redis, minio, livekit, mailpit
 pnpm setup         # dependencias JS + Python, modelos locales del agente, migraciones y seed
-pnpm dev           # web (http://localhost:3000) + worker de voz, en paralelo
+pnpm dev           # web, conector, runtime de chat y worker de voz, en paralelo
 ```
 
 Después, el día a día es:
@@ -32,6 +32,8 @@ pnpm infra:up && pnpm dev
 | Servicio | URL / puerto | Notas |
 |---|---|---|
 | Panel (Next.js) | http://localhost:3000 | |
+| Conector (Tool Router) | http://127.0.0.1:4100 | Solo interno: token `CONNECTOR_SERVICE_TOKEN` |
+| Runtime de chat (Python) | http://127.0.0.1:4200 | Solo interno |
 | Postgres 16 + pgvector | `localhost:5433` | Dos roles: `brainagent_owner` (migraciones) y `brainagent_app` (app, sujeto a RLS) |
 | Redis | `localhost:6380` | Colas desde la Fase 1 |
 | MinIO | API http://localhost:9000 · consola http://localhost:9001 | `minioadmin` / `minioadmin` |
@@ -80,11 +82,31 @@ La tabla también muestra el TTFB del TTS y un estimado del servidor (fin de tur
 
 En el panel de configuración de `/lab` cambia el TTS, la voz, el LLM, la ruta (directa o LiteLLM), la generación anticipada o el modo realtime. Los campos vacíos usan los `LAB_*` del `.env`. Para la ruta LiteLLM levanta el profile `llm` y usa `LAB_LLM_MODEL` con el formato `proveedor/modelo`.
 
+## Agentes y conexiones (Fase 1)
+
+1. **Conexiones › Añadir ejemplo (BD de demo)** crea una conexión a `demo_ops` (`pnpm db:demo`) con `partes_hoy` y `horas_equipo`. Pulsa **Probar** en una herramienta para verla funcionar.
+2. **Agentes › Nuevo agente**: elige un personaje, añade instrucciones y, en **Herramientas**, marca las que puede usar.
+3. **Probar**: chat con streaming que muestra cada herramienta llamada y su tiempo. **Probar por voz** abre el laboratorio con ese agente.
+
+Tipos de conexión:
+
+| Tipo | Qué necesita |
+|---|---|
+| WHMCS | URL, identificador y secreto de API. La IP de salida de BrainAgent debe estar permitida en WHMCS |
+| Outlook 365 | `MICROSOFT_CLIENT_ID/SECRET` de la plataforma (ver `.env.example`); cada usuario inicia sesión con Microsoft |
+| Servidor MCP | URL; token o login OAuth si el servidor lo pide |
+| API OpenAPI | URL o JSON/YAML de la especificación, URL base y credenciales |
+| Base de datos | PostgreSQL, MySQL o SQL Server; mejor con un usuario de solo lectura |
+| API HTTP | URL base y credenciales; las llamadas se definen en Tool Studio |
+
+Las herramientas de escritura piden confirmación al usuario antes de ejecutarse, salvo que la marques como «Automática» en la conexión.
+
 ## Tests
 
 ```bash
 pnpm lint && pnpm typecheck && pnpm test   # incluye RLS contra Postgres real y pytest del worker
-pnpm test:e2e                              # Playwright: registro → organización → /lab → API
+pnpm test:e2e                              # Playwright: registro → organización → /lab → API → agente con herramientas
+E2E_LLM=1 pnpm test:e2e                    # además conversa con el agente (usa el LLM real)
 ```
 
 - Los tests de RLS usan la base `brainagent_test`, que crea `infra/postgres/init.sql`. Puedes cambiarla con `TEST_DATABASE_URL_ADMIN` y `TEST_DATABASE_URL`.
