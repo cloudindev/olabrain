@@ -46,6 +46,21 @@ export function LabClient({ agent = null }: { agent?: { id: string; name: string
 
   useEffect(() => () => void activeRef.current?.room.disconnect(), []);
 
+  // Hanging up (or the agent leaving) while it is still streaming a transcript makes
+  // livekit-client reject an internal text-stream reader with DataStreamError. That
+  // promise belongs to the LiveKit components and can't be awaited from here, so the
+  // expected rejection is swallowed; anything else still surfaces.
+  useEffect(() => {
+    const onRejection = (event: PromiseRejectionEvent) => {
+      if ((event.reason as { name?: string } | undefined)?.name === "DataStreamError") {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+      }
+    };
+    window.addEventListener("unhandledrejection", onRejection, { capture: true });
+    return () => window.removeEventListener("unhandledrejection", onRejection, { capture: true });
+  }, []);
+
   async function connect() {
     setStatus("connecting");
     setError(null);
