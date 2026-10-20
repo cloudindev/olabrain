@@ -26,7 +26,7 @@ export function SignInForm({ next }: { next?: string }) {
       setError(authError.status === 403 ? t("emailNotVerified") : t("invalidCredentials"));
       return;
     }
-    router.push(next && next.startsWith("/") && !next.startsWith("//") ? next : "/");
+    router.push(next && next.startsWith("/") && !next.startsWith("//") ? next : "/panel");
     router.refresh();
   }
 

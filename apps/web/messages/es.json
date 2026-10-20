@@ -310,5 +310,48 @@
     "clearConfirm": "¿Borrar todo lo que los agentes recuerdan de esta persona?",
     "erase": "Eliminar contacto y conversaciones",
     "eraseConfirm": "Se eliminarán el contacto, su memoria y todas sus conversaciones. No se puede deshacer. ¿Continuar?"
+  },
+  "home": {
+    "metaTitle": "OlaBrain — Empleados digitales con voz",
+    "brand": "OlaBrain",
+    "signIn": "Acceder",
+    "goToPanel": "Ir al panel",
+    "eyebrow": "Empleados digitales con voz",
+    "title": "Habla con Alba. Así atenderá tu empresa.",
+    "subtitle": "Alba contesta por voz y por chat, consulta tus sistemas (ERP, CRM, agenda…) y deja cada conversación registrada. Pruébala ahora: solo tienes que darle al botón.",
+    "start": "Hablar con Alba",
+    "connecting": "Conectando…",
+    "hangUp": "Colgar",
+    "state": {
+      "connecting": "Conectando…",
+      "initializing": "Preparándose…",
+      "listening": "Te escucha",
+      "thinking": "Pensando…",
+      "speaking": "Hablando"
+    },
+    "remaining": "Quedan {time}",
+    "aiNotice": "Alba es un agente de inteligencia artificial. La llamada usa tu micrófono y dura como máximo {minutes} minutos.",
+    "ended": "La llamada ha terminado. ¿Hablamos otra vez?",
+    "errors": {
+      "mic": "Necesitamos permiso para usar el micrófono. Actívalo en tu navegador y vuelve a intentarlo.",
+      "limit": "Has usado todas las demos de esta hora. Vuelve a intentarlo más tarde.",
+      "unavailable": "La demo no está disponible ahora mismo. Inténtalo en unos minutos.",
+      "generic": "No hemos podido iniciar la llamada. Inténtalo de nuevo."
+    },
+    "features": {
+      "voice": {
+        "title": "Voz natural",
+        "body": "Responde en menos de un segundo y puedes interrumpirla cuando quieras."
+      },
+      "tools": {
+        "title": "Conectada a tus sistemas",
+        "body": "MCP, APIs, bases de datos y apps como Outlook o WHMCS, sin código."
+      },
+      "control": {
+        "title": "Bajo control",
+        "body": "Confirma antes de modificar datos, guarda la memoria por contacto y cumple el RGPD."
+      }
+    },
+    "footer": "Datos alojados en la UE."
   }
 }

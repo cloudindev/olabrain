@@ -310,5 +310,48 @@
     "clearConfirm": "Delete everything agents remember about this person?",
     "erase": "Delete contact and conversations",
     "eraseConfirm": "The contact, their memory and all their conversations will be deleted. This cannot be undone. Continue?"
+  },
+  "home": {
+    "metaTitle": "OlaBrain — Digital employees with a voice",
+    "brand": "OlaBrain",
+    "signIn": "Sign in",
+    "goToPanel": "Go to dashboard",
+    "eyebrow": "Digital employees with a voice",
+    "title": "Talk to Alba. This is how your company will answer.",
+    "subtitle": "Alba answers by voice and chat, looks things up in your systems (ERP, CRM, calendar…) and logs every conversation. Try her now: just press the button.",
+    "start": "Talk to Alba",
+    "connecting": "Connecting…",
+    "hangUp": "Hang up",
+    "state": {
+      "connecting": "Connecting…",
+      "initializing": "Getting ready…",
+      "listening": "Listening",
+      "thinking": "Thinking…",
+      "speaking": "Speaking"
+    },
+    "remaining": "{time} left",
+    "aiNotice": "Alba is an artificial intelligence agent. The call uses your microphone and lasts at most {minutes} minutes.",
+    "ended": "The call has ended. Talk again?",
+    "errors": {
+      "mic": "We need permission to use your microphone. Allow it in your browser and try again.",
+      "limit": "You have used all the demos for this hour. Please try again later.",
+      "unavailable": "The demo is not available right now. Please try again in a few minutes.",
+      "generic": "We couldn't start the call. Please try again."
+    },
+    "features": {
+      "voice": {
+        "title": "Natural voice",
+        "body": "Answers in under a second and you can interrupt her at any time."
+      },
+      "tools": {
+        "title": "Connected to your systems",
+        "body": "MCP, APIs, databases and apps like Outlook or WHMCS, no code."
+      },
+      "control": {
+        "title": "Under control",
+        "body": "Confirms before changing data, keeps memory per contact and complies with GDPR."
+      }
+    },
+    "footer": "Data hosted in the EU."
   }
 }

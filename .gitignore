@@ -32,3 +32,6 @@ service-account*.json
 .idea/
 .vscode/*
 !.vscode/extensions.json
+
+# Source videos (optimized copies live in apps/web/public/alba)
+/*.mp4

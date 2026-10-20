@@ -17,7 +17,7 @@ export default async function LabPage({
   try {
     ctx = await requireTenant("builder");
   } catch (error) {
-    if (error instanceof AuthError) redirect("/");
+    if (error instanceof AuthError) redirect("/panel");
     throw error;
   }
   const t = await getTranslations("lab");

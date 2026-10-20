@@ -14,7 +14,7 @@ export function SocialButtons({ providers }: { providers: SocialProvider[] }) {
 
   async function signIn(provider: SocialProvider) {
     setPending(provider);
-    await authClient.signIn.social({ provider, callbackURL: "/" });
+    await authClient.signIn.social({ provider, callbackURL: "/panel" });
     setPending(null);
   }
 

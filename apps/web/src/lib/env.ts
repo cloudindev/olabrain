@@ -39,6 +39,13 @@ const schema = z.object({
   LIVEKIT_AGENT_NAME: z.string().min(1).default("brainagent-lab"),
   CONNECTOR_URL: z.string().default("http://127.0.0.1:4100"),
   CONNECTOR_SERVICE_TOKEN: z.string().default(""),
+  /** Public home agent (talks to anonymous visitors). Both empty = home without voice. */
+  HOME_AGENT_TENANT_ID: optional.pipe(z.uuid().optional()),
+  HOME_AGENT_ID: optional.pipe(z.uuid().optional()),
+  /** Cost guards for the public voice demo. */
+  HOME_VOICE_MAX_SECONDS: z.coerce.number().int().min(30).max(900).default(180),
+  HOME_VOICE_PER_IP_HOUR: z.coerce.number().int().min(1).default(5),
+  HOME_VOICE_DAILY_CAP: z.coerce.number().int().min(1).default(200),
   /** Dev-only demo database (pnpm db:demo); empty disables the "add demo" button. */
   DEMO_DB_PASSWORD: optional,
 });

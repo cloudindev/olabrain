@@ -172,3 +172,13 @@ group by 1 order by first_audio_p50;
 - **WHMCS** sin lista de IPs (Vercel no tiene IP fija): clave de acceso de API.
 
 **Motivo.** Cero servidores que mantener; precio fijo y previsible en la base de datos; todo en la UE.
+
+---
+
+## ADR-012 — Home pública con agente de voz (2026-10-21)
+
+**Decisión.**
+- `/` es la home pública: un agente (configurable con `HOME_AGENT_TENANT_ID` y `HOME_AGENT_ID`) con el que cualquiera puede hablar con un botón. Tras iniciar sesión se entra por `/panel`.
+- **Avatar ligero con vídeo**, no un avatar en tiempo real (ADR-001 sigue vigente): tres clips en bucle (en espera, hablando, saludando) superpuestos y fundidos según el estado del agente (`useVoiceAssistant`). No hay sincronía labial; coste cero y sin latencia añadida.
+- **Endpoint público** `POST /api/public/voice` sin sesión, protegido por: comprobación de origen, límite por visitante y hora (hash de la IP con sal; nunca se guarda la IP), tope diario global, duración máxima de la llamada que corta el worker (`max_session_seconds`) y token de 5 minutos. El cliente no elige nada.
+- La llamada se identifica como IA en pantalla (AI Act art. 50) y el agente también lo dice.
