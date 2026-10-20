@@ -23,11 +23,18 @@ from livekit.agents import function_tool, llm
 
 from .config import LLMConfig
 from .connector_client import ConnectorClient
+from .memory import memory_section
 from .providers import build_llm
 
 AI_DISCLOSURE = (
     "Eres un agente de inteligencia artificial. Si te preguntan si eres una persona, "
     "di con naturalidad que eres una IA."
+)
+
+MEMORY_TOOL_GUIDANCE = (
+    "Si la persona te pide que recuerdes algo, o te da un dato duradero importante "
+    "(cómo quiere que la llamen, cuándo prefiere que la contacten…), guárdalo con la "
+    "herramienta recordar_dato."
 )
 
 TOOL_GUIDANCE = (
@@ -80,6 +87,8 @@ class RuntimeAgent:
     voice_ref: str | None
     tools: list[dict[str, Any]]
     persona_slug: str | None = None
+    contact_id: str | None = None
+    memory: list[str] = field(default_factory=list)
     max_tool_steps: int = 4
 
     @classmethod
@@ -93,6 +102,11 @@ class RuntimeAgent:
             date_context(),
             TOOL_GUIDANCE if cfg.get("tools") else "",
         ]
+        memory_cfg = cfg.get("memory") or None
+        memory_items = list(memory_cfg.get("items") or []) if memory_cfg else []
+        parts.append(memory_section(memory_items))
+        if memory_cfg:
+            parts.append(MEMORY_TOOL_GUIDANCE)
         policy = agent.get("policy") or {}
         return cls(
             tenant_id=tenant_id,
@@ -105,6 +119,8 @@ class RuntimeAgent:
             voice_ref=persona.get("voiceRef"),
             tools=cfg.get("tools") or [],
             persona_slug=persona.get("slug"),
+            contact_id=memory_cfg.get("contactId") if memory_cfg else None,
+            memory=memory_items,
             max_tool_steps=int(policy.get("maxToolSteps") or 4),
         )
 
@@ -208,8 +224,46 @@ class ToolBridge:
 
 
 def build_function_tools(bridge: ToolBridge) -> list[llm.Tool]:
-    """One LiveKit raw function tool per connector tool (works in voice and text)."""
+    """One LiveKit raw function tool per connector tool (works in voice and text), plus
+    `recordar_dato` when the agent remembers the contact."""
     out: list[llm.Tool] = []
+    agent = bridge.agent
+    if agent.contact_id:
+        contact_id = agent.contact_id
+
+        async def remember(raw_arguments: dict[str, Any]) -> str:
+            fact = str((raw_arguments or {}).get("dato", "")).strip()
+            if not fact:
+                return "ERROR: falta el dato"
+            res = await bridge.client.add_memories(
+                agent.tenant_id,
+                contact_id,
+                [{"content": fact, "source": "explicit"}],
+                bridge.conversation_id,
+            )
+            agent.memory.append(fact)
+            return "Guardado." if res.get("added") else "Ya lo sabía."
+
+        out.append(
+            function_tool(
+                remember,
+                raw_schema={
+                    "name": "recordar_dato",
+                    "description": "Guarda un dato duradero sobre la persona para recordarlo en "
+                    "futuras conversaciones (preferencias, datos de contacto, compromisos).",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "dato": {
+                                "type": "string",
+                                "description": "Frase corta en tercera persona",
+                            }
+                        },
+                        "required": ["dato"],
+                    },
+                },
+            )
+        )
     for spec in bridge.agent.tools:
         name = spec["name"]
 

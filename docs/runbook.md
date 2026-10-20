@@ -101,6 +101,8 @@ Tipos de conexión:
 
 Las herramientas de escritura piden confirmación al usuario antes de ejecutarse, salvo que la marques como «Automática» en la conexión.
 
+**Memoria:** cada agente recuerda datos de cada persona entre conversaciones (se activa o desactiva en el agente). En **Contactos** se ve lo que sabe de cada uno, con opciones para olvidar un dato, borrar toda la memoria o eliminar el contacto con sus conversaciones (RGPD).
+
 ## Tests
 
 ```bash

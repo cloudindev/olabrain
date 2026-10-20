@@ -143,3 +143,18 @@ group by 1 order by first_audio_p50;
 - El chat de texto sigue con Claude Haiku mientras el nivel gratuito de Gemini esté saturado (503 / 20–47 s medidos). Con facturación activa en el proyecto de Google se reevalúa con `gemini-3.8-flash` o `gemini-3.5-flash-lite`.
 - Residencia UE: pendiente de verificar la disponibilidad de los modelos Live en Vertex `europe-west*`, con informes contradictorios en los foros. En desarrollo se usa la Gemini API (AI Studio).
 - Avatar: Google ofrece Live Avatar sobre Gemini 3.8 Live (Gemini Enterprise). Queda como prueba propuesta que reabriría el ADR-001.
+
+---
+
+## ADR-010 — Memoria por contacto (2026-10-20)
+
+**Decisión.**
+- Tablas `contacts` (por tenant; se identifican por usuario del panel, email o teléfono) y `contact_memories` (datos cortos con origen `auto | explicit | manual`), con RLS. Las conversaciones apuntan al contacto.
+- **Lectura:** el conector añade los últimos 30 recuerdos a la configuración del agente y el runtime los pone en las instrucciones.
+- **Escritura automática:** tras cada respuesta del chat (en segundo plano) y al colgar una llamada, un LLM extrae como máximo 3 datos nuevos y duraderos. Se descartan duplicados y datos sensibles (contraseñas, tarjetas, IBAN, salud).
+- **Escritura explícita:** herramienta `recordar_dato` cuando la persona pide que se recuerde algo.
+- Activable por agente (`policy.memoryEnabled`, activa por defecto).
+- **RGPD:** en Contactos se puede ver, añadir y olvidar cada recuerdo, borrar toda la memoria o eliminar el contacto con sus conversaciones (los `usage_events` se conservan desvinculados para la facturación). Cada borrado queda en `audit_log`.
+- El `contact_id` lo decide siempre el servidor; el que envíe el cliente se descarta.
+
+**Pendiente.** Retención configurable por organización (borrado automático tras N meses) e identificación de contactos en los canales públicos (widget, WhatsApp, teléfono).

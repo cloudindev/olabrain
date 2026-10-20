@@ -1,6 +1,7 @@
 import { agents, conversations, messages, usageEvents } from "@brainagent/db";
 import { and, asc, eq } from "drizzle-orm";
 import { z } from "zod";
+import { ensurePanelContact } from "@/lib/contacts";
 import { env } from "@/lib/env";
 import { authErrorResponse, requireTenant, tenantTx, type TenantContext } from "@/lib/tenant";
 
@@ -89,10 +90,17 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         .limit(1);
       if (!conv) conversationId = null;
     }
+    const contactId = await ensurePanelContact(tx, ctx);
     if (!conversationId) {
       const [conv] = await tx
         .insert(conversations)
-        .values({ tenantId: ctx.tenantId, agentId, channel: "chat", startedByUserId: ctx.user.id })
+        .values({
+          tenantId: ctx.tenantId,
+          agentId,
+          contactId,
+          channel: "chat",
+          startedByUserId: ctx.user.id,
+        })
         .returning({ id: conversations.id });
       conversationId = conv!.id;
     }
@@ -107,7 +115,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       .from(messages)
       .where(eq(messages.conversationId, conversationId))
       .orderBy(asc(messages.createdAt));
-    return { conversationId, history: history.slice(-40) };
+    return { conversationId, contactId, history: history.slice(-40) };
   });
   if (!setup) return Response.json({ error: "agent_not_found" }, { status: 404 });
 
@@ -124,6 +132,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         tenantId: ctx.tenantId,
         agentId,
         conversationId: setup.conversationId,
+        contactId: setup.contactId,
         messages: setup.history,
       }),
     });

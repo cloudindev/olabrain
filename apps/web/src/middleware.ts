@@ -2,7 +2,7 @@ import { getSessionCookie } from "better-auth/cookies";
 import { NextResponse, type NextRequest } from "next/server";
 
 // Cheap cookie presence check; real session + membership validation happens server-side.
-const PROTECTED = ["/lab", "/onboarding", "/agents", "/connections"];
+const PROTECTED = ["/lab", "/onboarding", "/agents", "/connections", "/contacts"];
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;

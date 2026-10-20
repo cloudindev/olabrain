@@ -9,7 +9,13 @@ import { microsoft365ConnectionSchema, whmcsConnectionSchema } from "@brainagent
 import { Hono, type Context } from "hono";
 import { z } from "zod";
 import type { ConnectorContext } from "./context";
-import { agentRuntimeConfig, callTool, listTools } from "./router";
+import {
+  addContactMemories,
+  agentRuntimeConfig,
+  callTool,
+  contactMemoryList,
+  listTools,
+} from "./router";
 import {
   ServiceError,
   completeOAuth,
@@ -83,10 +89,12 @@ export function createApp(ctx: ConnectorContext, serviceToken: string) {
 
   // --- Runtime ---------------------------------------------------------------
   app.get("/v1/agents/:agentId/config", async (c) => {
+    const contact = c.req.query("contactId");
     const config = await agentRuntimeConfig(
       ctx,
       c.var.tenantId,
       uuid.parse(c.req.param("agentId")),
+      contact ? uuid.parse(contact) : undefined,
     );
     return config ? c.json(config) : c.json({ error: "agent_not_found" }, 404);
   });
@@ -94,6 +102,34 @@ export function createApp(ctx: ConnectorContext, serviceToken: string) {
   app.get("/v1/agents/:agentId/tools", async (c) =>
     c.json({ tools: await listTools(ctx, c.var.tenantId, uuid.parse(c.req.param("agentId"))) }),
   );
+
+  app.get("/v1/contacts/:contactId/memories", async (c) =>
+    c.json({
+      items: await contactMemoryList(ctx, c.var.tenantId, uuid.parse(c.req.param("contactId"))),
+    }),
+  );
+  app.post("/v1/contacts/:contactId/memories", async (c) => {
+    const input = await body(
+      c,
+      z.object({
+        items: z
+          .array(
+            z.object({ content: z.string().min(1).max(500), source: z.enum(["auto", "explicit"]) }),
+          )
+          .max(10),
+        conversationId: uuid.nullable().default(null),
+      }),
+    );
+    return c.json(
+      await addContactMemories(
+        ctx,
+        c.var.tenantId,
+        uuid.parse(c.req.param("contactId")),
+        input.items,
+        input.conversationId,
+      ),
+    );
+  });
 
   app.post("/v1/tools/call", async (c) => {
     const input = await body(c, callSchema);

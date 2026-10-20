@@ -400,3 +400,60 @@ describe("OpenAPI import through the API", () => {
     expect(received.at(-1)).toMatchObject({ method: "GET", url: "/api/partes?estado=abierto" });
   });
 });
+
+describe("contact memory", () => {
+  it("stores deduplicated memories and returns them with the agent config", async () => {
+    const { contacts, agents: agentsTable } = await import("@brainagent/db");
+    const contactId = await withTenant(appDb.db, tenantA, async (tx) => {
+      const [c] = await tx
+        .insert(contacts)
+        .values({ tenantId: tenantA, displayName: "Luis" })
+        .returning();
+      return c!.id;
+    });
+    const items = [
+      { content: "Se llama Luis y es CEO de Cloudin", source: "auto" },
+      { content: "Prefiere que le llamen por la tarde", source: "explicit" },
+    ];
+    expect(
+      (
+        (await (
+          await req(`/v1/contacts/${contactId}/memories`, { body: { items } })
+        ).json()) as Json
+      ).added,
+    ).toBe(2);
+    // Same facts again (case/whitespace) are ignored.
+    const again = (await (
+      await req(`/v1/contacts/${contactId}/memories`, {
+        body: { items: [{ content: " se llama luis y es ceo de cloudin ", source: "auto" }] },
+      })
+    ).json()) as Json;
+    expect(again.added).toBe(0);
+
+    const config = (await (
+      await req(`/v1/agents/${agentA}/config?contactId=${contactId}`)
+    ).json()) as Json;
+    expect(config.memory.contactId).toBe(contactId);
+    // Same-statement inserts share a timestamp, so only the set is guaranteed.
+    expect([...config.memory.items].sort()).toEqual([
+      "Prefiere que le llamen por la tarde",
+      "Se llama Luis y es CEO de Cloudin",
+    ]);
+
+    await withTenant(appDb.db, tenantA, (tx) =>
+      tx
+        .update(agentsTable)
+        .set({ policy: { maxToolSteps: 4, memoryEnabled: false } })
+        .where(eq(agentsTable.id, agentA)),
+    );
+    const off = (await (
+      await req(`/v1/agents/${agentA}/config?contactId=${contactId}`)
+    ).json()) as Json;
+    expect(off.memory).toBeNull();
+
+    const other = (await (
+      await req(`/v1/contacts/${contactId}/memories`, { tenant: tenantB })
+    ).json()) as Json;
+    expect(other.items).toEqual([]);
+  });
+});

@@ -20,7 +20,11 @@ const [exists] = await server`select 1 from pg_database where datname = 'demo_op
 if (!exists) await server.unsafe("CREATE DATABASE demo_ops");
 const [role] = await server`select 1 from pg_roles where rolname = 'demo_reader'`;
 const pw = (await server`select format('%L', ${password}::text) as q`)[0]!.q as string;
-await server.unsafe(role ? `ALTER ROLE demo_reader WITH LOGIN PASSWORD ${pw}` : `CREATE ROLE demo_reader LOGIN PASSWORD ${pw}`);
+await server.unsafe(
+  role
+    ? `ALTER ROLE demo_reader WITH LOGIN PASSWORD ${pw}`
+    : `CREATE ROLE demo_reader LOGIN PASSWORD ${pw}`,
+);
 await server.end();
 
 const url = new URL(adminUrl);

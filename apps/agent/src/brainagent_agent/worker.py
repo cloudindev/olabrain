@@ -42,6 +42,7 @@ from .agent_runtime import (
 )
 from .config import InvalidLabConfig, LabConfig, load_lab_config
 from .connector_client import ConnectorClient
+from .memory import remember_after
 from .persona import LIA
 from .providers import build_llm, build_realtime, build_stt, build_tts, describe
 from .turn_metrics import TurnBreakdown, TurnMetricsCollector
@@ -138,7 +139,7 @@ async def load_runtime_agent(
     if not cfg.agent_id or not cfg.tenant_id:
         return None
     client = ConnectorClient()
-    agent_cfg = await client.agent_config(cfg.tenant_id, cfg.agent_id)
+    agent_cfg = await client.agent_config(cfg.tenant_id, cfg.agent_id, cfg.contact_id)
     runtime_agent = RuntimeAgent.from_config(cfg.tenant_id, agent_cfg)
     bridge = ToolBridge(
         client=client, agent=runtime_agent, conversation_id=cfg.conversation_id, channel="voice"
@@ -241,15 +242,41 @@ async def entrypoint(ctx: JobContext) -> None:
             if getattr(ev.item, "role", None) == "user":
                 bridge.user_message_received()
 
-        async def _close_client() -> None:
-            await client.aclose()
+        runtime_agent = runtime[0]
 
-        ctx.add_shutdown_callback(_close_client)
+        async def _remember_and_close() -> None:
+            # Learn from the call (memory per contact), then release the client.
+            try:
+                if runtime_agent.contact_id:
+                    turns = [
+                        {"role": item.role, "content": item.text_content or ""}
+                        for item in session.history.items
+                        if isinstance(item, llm.ChatMessage) and item.role in ("user", "assistant")
+                    ]
+                    await remember_after(
+                        client,
+                        build_llm(cfg.llm),
+                        runtime_agent.tenant_id,
+                        runtime_agent.contact_id,
+                        cfg.conversation_id,
+                        runtime_agent.memory,
+                        turns,
+                    )
+            finally:
+                await client.aclose()
+
+        ctx.add_shutdown_callback(_remember_and_close)
 
     await session.start(agent=agent, room=ctx.room)
 
     greeting = (runtime[0].greeting if runtime else None) or LIA.greeting
-    if cfg.mode == "realtime":
+    known = bool(runtime and runtime[0].memory)
+    if cfg.mode == "realtime" and known:
+        session.generate_reply(
+            instructions=f"Saluda en una frase, como en «{greeting}», pero si sabes cómo se "
+            "llama la persona, salúdala por su nombre. Sigue presentándote como IA."
+        )
+    elif cfg.mode == "realtime":
         session.generate_reply(instructions=f"Saluda diciendo exactamente: {greeting}")
     else:
         session.say(greeting)

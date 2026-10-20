@@ -3,6 +3,7 @@
  * Child rows reference their parent with a composite (id, tenant_id) foreign key: FK checks
  * bypass RLS, so this is what stops a tenant from pointing at another tenant's rows.
  */
+import { sql } from "drizzle-orm";
 import {
   boolean,
   foreignKey,
@@ -16,6 +17,7 @@ import {
   text,
   timestamp,
   unique,
+  uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
 import { tenants, users } from "./auth";
@@ -85,6 +87,7 @@ export const conversations = pgTable(
     id: uuid("id").primaryKey().defaultRandom(),
     tenantId: tenantId(),
     agentId: uuid("agent_id"),
+    contactId: uuid("contact_id"),
     channel: text("channel").notNull(),
     startedByUserId: uuid("started_by_user_id").references(() => users.id, {
       onDelete: "set null",
@@ -349,4 +352,58 @@ export const pendingConfirmations = pgTable(
     createdAt: createdAt(),
   },
   (t) => [index("pending_confirmations_tenant_idx").on(t.tenantId)],
+);
+
+// --- Memory per contact (CLAUDE.md §1 "memoria por contacto"; RGPD erasure) -------------
+
+export const memorySource = pgEnum("memory_source", ["auto", "explicit", "manual"]);
+
+/** A person the agents talk to. Identified per channel (panel user, email, phone…). */
+export const contacts = pgTable(
+  "contacts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: tenantId(),
+    displayName: text("display_name").notNull().default(""),
+    email: text("email"),
+    phone: text("phone"),
+    /** Panel user, when the contact is a member testing their own agents. */
+    userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique("contacts_id_tenant_uq").on(t.id, t.tenantId),
+    uniqueIndex("contacts_tenant_user_uq")
+      .on(t.tenantId, t.userId)
+      .where(sql`${t.userId} IS NOT NULL`),
+    uniqueIndex("contacts_tenant_email_uq")
+      .on(t.tenantId, t.email)
+      .where(sql`${t.email} IS NOT NULL`),
+    uniqueIndex("contacts_tenant_phone_uq")
+      .on(t.tenantId, t.phone)
+      .where(sql`${t.phone} IS NOT NULL`),
+  ],
+);
+
+/** Durable facts about a contact, injected at the start of new conversations. */
+export const contactMemories = pgTable(
+  "contact_memories",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: tenantId(),
+    contactId: uuid("contact_id").notNull(),
+    content: text("content").notNull(),
+    source: memorySource("source").notNull(),
+    conversationId: uuid("conversation_id"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index("contact_memories_contact_idx").on(t.contactId, t.createdAt),
+    foreignKey({
+      name: "contact_memories_contact_fk",
+      columns: [t.contactId, t.tenantId],
+      foreignColumns: [contacts.id, contacts.tenantId],
+    }).onDelete("cascade"),
+  ],
 );

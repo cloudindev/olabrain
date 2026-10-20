@@ -12,12 +12,8 @@ import {
   studioParamsToJsonSchema,
   type ApiAuth,
 } from "@brainagent/core";
-import type {
-  microsoft365ConnectionSchema,
-  whmcsConnectionSchema} from "@brainagent/core";
-import {
-  type NativeProvider,
-} from "@brainagent/core";
+import type { microsoft365ConnectionSchema, whmcsConnectionSchema } from "@brainagent/core";
+import { type NativeProvider } from "@brainagent/core";
 import { connections, tools, withTenant } from "@brainagent/db";
 import { and, eq, notInArray } from "drizzle-orm";
 import { z } from "zod";

@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, Card, Field, Input, Select, Textarea } from "@brainagent/ui";
+import { Button, Card, Checkbox, Field, Input, Select, Textarea } from "@brainagent/ui";
 import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import { updateAgent } from "@/app/(app)/agents/actions";
@@ -13,7 +13,7 @@ type AgentValues = {
   model: string | null;
   presenceMode: "text" | "voice";
   status: "draft" | "active" | "archived";
-  policy: { maxToolSteps?: number };
+  policy: { maxToolSteps?: number; memoryEnabled?: boolean };
 };
 
 export function AgentForm({
@@ -46,7 +46,10 @@ export function AgentForm({
             model: values.model,
             presenceMode: values.presenceMode,
             status: values.status,
-            policy: { maxToolSteps: values.policy.maxToolSteps ?? 4 },
+            policy: {
+              maxToolSteps: values.policy.maxToolSteps ?? 4,
+              memoryEnabled: values.policy.memoryEnabled !== false,
+            },
           });
           setMessage(res.ok ? { ok: true, text: t("saved") } : { ok: false, text: res.error });
         });
@@ -124,6 +127,14 @@ export function AgentForm({
             <option value="archived">{t("statusArchived")}</option>
           </Select>
         </Field>
+        <div className="flex flex-col gap-1">
+          <Checkbox
+            label={t("memory")}
+            checked={values.policy.memoryEnabled !== false}
+            onChange={(e) => set("policy", { ...values.policy, memoryEnabled: e.target.checked })}
+          />
+          <p className="text-xs text-ink-3">{t("memoryHint")}</p>
+        </div>
         <Button type="submit" disabled={pending}>
           {t("save")}
         </Button>

@@ -27,7 +27,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
             <Logo compact />
           </Link>
           <nav className="flex items-center gap-1 overflow-x-auto text-sm">
-            {(["agents", "connections", "lab"] as const).map((key) => (
+            {(["agents", "connections", "contacts", "lab"] as const).map((key) => (
               <Link
                 key={key}
                 href={`/${key}`}

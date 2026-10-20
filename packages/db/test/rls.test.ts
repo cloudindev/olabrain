@@ -5,6 +5,8 @@ import { createDb, withTenant, type Database } from "../src/client";
 import {
   agentTools,
   agents,
+  contactMemories,
+  contacts,
   auditLog,
   connections,
   conversations,
@@ -250,6 +252,50 @@ describe("connectors and tools", () => {
   });
 });
 
+describe("contacts and memory", () => {
+  it("memories are private to the tenant and cannot point at another tenant's contact", async () => {
+    const contactB = await withTenant(app.db, tenantB, async (tx) => {
+      const [c] = await tx
+        .insert(contacts)
+        .values({ tenantId: tenantB, displayName: "Cliente de B", email: "b@example.com" })
+        .returning();
+      await tx
+        .insert(contactMemories)
+        .values({
+          tenantId: tenantB,
+          contactId: c!.id,
+          content: "Prefiere llamadas por la tarde",
+          source: "auto",
+        });
+      return c!.id;
+    });
+    const seenByA = await withTenant(app.db, tenantA, (tx) => tx.select().from(contactMemories));
+    expect(seenByA).toHaveLength(0);
+    expect(
+      await pgError(
+        withTenant(app.db, tenantA, (tx) =>
+          tx
+            .insert(contactMemories)
+            .values({ tenantId: tenantA, contactId: contactB, content: "x", source: "manual" }),
+        ),
+      ),
+    ).toMatch(/foreign key/);
+  });
+
+  it("the same email can be a contact in two tenants, but only once per tenant", async () => {
+    await withTenant(app.db, tenantA, (tx) =>
+      tx.insert(contacts).values({ tenantId: tenantA, email: "b@example.com" }),
+    );
+    expect(
+      await pgError(
+        withTenant(app.db, tenantA, (tx) =>
+          tx.insert(contacts).values({ tenantId: tenantA, email: "b@example.com" }),
+        ),
+      ),
+    ).toMatch(/duplicate key/);
+  });
+});
+
 describe("schema guard", () => {
   it("every table with a tenant_id column has RLS enabled and forced", async () => {
     const rows = await admin.db.execute<{ table: string; enabled: boolean; forced: boolean }>(sql`
@@ -260,7 +306,7 @@ describe("schema guard", () => {
       where n.nspname = 'public' and c.relkind = 'r'
       order by c.relname
     `);
-    expect(rows.length).toBeGreaterThanOrEqual(14);
+    expect(rows.length).toBeGreaterThanOrEqual(16);
     const unprotected = rows.filter((r) => !r.enabled || !r.forced).map((r) => r.table);
     expect(unprotected).toEqual([]);
   });

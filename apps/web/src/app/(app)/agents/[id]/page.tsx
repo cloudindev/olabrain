@@ -94,7 +94,7 @@ export default async function AgentPage({
             model: agent.model,
             presenceMode: agent.presenceMode,
             status: agent.status,
-            policy: agent.policy as { maxToolSteps?: number },
+            policy: agent.policy as { maxToolSteps?: number; memoryEnabled?: boolean },
           }}
           personas={data.personaList}
           models={modelCatalog()}

@@ -14,6 +14,7 @@ import {
   agentTools,
   agents,
   connections,
+  contactMemories,
   messages,
   pendingConfirmations,
   personas,
@@ -23,7 +24,7 @@ import {
 } from "@brainagent/db";
 import Ajv from "ajv";
 import addFormats from "ajv-formats";
-import { and, eq, gt, isNull, lt, max } from "drizzle-orm";
+import { and, desc, eq, gt, isNull, lt, max } from "drizzle-orm";
 import type { ConnectorContext } from "./context";
 import { executeTool, limitsOf, type ConnectionRow, type ToolRow } from "./execute";
 
@@ -94,8 +95,66 @@ export async function listTools(
   }));
 }
 
+const MEMORY_LIMIT = 30;
+
+/** Latest memories of a contact, oldest first (what the agent reads at the start). */
+export async function contactMemoryList(
+  ctx: ConnectorContext,
+  tenantId: string,
+  contactId: string,
+) {
+  const rows = await withTenant(ctx.db, tenantId, (tx) =>
+    tx
+      .select({
+        id: contactMemories.id,
+        content: contactMemories.content,
+        createdAt: contactMemories.createdAt,
+      })
+      .from(contactMemories)
+      .where(eq(contactMemories.contactId, contactId))
+      .orderBy(desc(contactMemories.createdAt))
+      .limit(MEMORY_LIMIT),
+  );
+  return rows.reverse();
+}
+
+export async function addContactMemories(
+  ctx: ConnectorContext,
+  tenantId: string,
+  contactId: string,
+  items: { content: string; source: "auto" | "explicit" }[],
+  conversationId: string | null,
+) {
+  return withTenant(ctx.db, tenantId, async (tx) => {
+    const existing = await tx
+      .select({ content: contactMemories.content })
+      .from(contactMemories)
+      .where(eq(contactMemories.contactId, contactId));
+    const known = new Set(existing.map((m) => m.content.trim().toLowerCase()));
+    const fresh = items
+      .map((i) => ({ ...i, content: i.content.trim().slice(0, 500) }))
+      .filter((i) => i.content && !known.has(i.content.toLowerCase()));
+    if (fresh.length === 0) return { added: 0 };
+    await tx.insert(contactMemories).values(
+      fresh.map((i) => ({
+        tenantId,
+        contactId,
+        content: i.content,
+        source: i.source,
+        conversationId,
+      })),
+    );
+    return { added: fresh.length };
+  });
+}
+
 /** Everything the runtime needs to run an agent (no secrets). */
-export async function agentRuntimeConfig(ctx: ConnectorContext, tenantId: string, agentId: string) {
+export async function agentRuntimeConfig(
+  ctx: ConnectorContext,
+  tenantId: string,
+  agentId: string,
+  contactId?: string,
+) {
   const [row] = await withTenant(ctx.db, tenantId, (tx) =>
     tx
       .select({ agent: agents, persona: personas })
@@ -127,6 +186,13 @@ export async function agentRuntimeConfig(ctx: ConnectorContext, tenantId: string
         }
       : null,
     tools: await listTools(ctx, tenantId, agentId),
+    memory:
+      contactId && (row.agent.policy as { memoryEnabled?: boolean }).memoryEnabled !== false
+        ? {
+            contactId,
+            items: (await contactMemoryList(ctx, tenantId, contactId)).map((m) => m.content),
+          }
+        : null,
   };
 }
 

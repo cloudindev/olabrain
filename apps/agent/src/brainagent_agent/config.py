@@ -54,6 +54,8 @@ class LabConfig(BaseModel):
     # When set, the session runs this agent (persona, instructions, model, tools) instead
     # of the built-in lab persona.
     agent_id: str | None = Field(default=None, alias="agentId")
+    # Who the agent is talking to (memory per contact).
+    contact_id: str | None = Field(default=None, alias="contactId")
     tenant_id: str | None = Field(default=None, alias="tenantId")
     mode: Mode = "pipeline"
     stt: STTConfig = STTConfig()

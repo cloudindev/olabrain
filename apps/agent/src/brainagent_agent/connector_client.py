@@ -28,9 +28,13 @@ class ConnectorClient:
     def _headers(self, tenant_id: str) -> dict[str, str]:
         return {"authorization": f"Bearer {self._token}", "x-tenant-id": tenant_id}
 
-    async def agent_config(self, tenant_id: str, agent_id: str) -> dict[str, Any]:
+    async def agent_config(
+        self, tenant_id: str, agent_id: str, contact_id: str | None = None
+    ) -> dict[str, Any]:
         res = await self._http.get(
-            f"/v1/agents/{agent_id}/config", headers=self._headers(tenant_id)
+            f"/v1/agents/{agent_id}/config",
+            params={"contactId": contact_id} if contact_id else None,
+            headers=self._headers(tenant_id),
         )
         if res.status_code == 404:
             raise ConnectorError("agent not found")
@@ -66,6 +70,21 @@ class ConnectorClient:
                 "error": "El servicio de herramientas no está disponible.",
                 "durationMs": 0,
             }
+        res.raise_for_status()
+        return res.json()
+
+    async def add_memories(
+        self,
+        tenant_id: str,
+        contact_id: str,
+        items: list[dict[str, str]],
+        conversation_id: str | None,
+    ) -> dict[str, Any]:
+        res = await self._http.post(
+            f"/v1/contacts/{contact_id}/memories",
+            json={"items": items, "conversationId": conversation_id},
+            headers=self._headers(tenant_id),
+        )
         res.raise_for_status()
         return res.json()
 

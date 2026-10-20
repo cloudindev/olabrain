@@ -44,7 +44,8 @@
     "lab": "Laboratorio",
     "agents": "Agentes",
     "connections": "Conexiones",
-    "soon": "pronto"
+    "soon": "pronto",
+    "contacts": "Contactos"
   },
   "lab": {
     "title": "Laboratorio de voz",
@@ -146,7 +147,9 @@
     "noTools": "No hay herramientas todavía.",
     "addConnection": "Añadir una conexión",
     "testVoice": "Probar por voz",
-    "testVoiceHint": "Abre el laboratorio con este agente y mide las latencias."
+    "testVoiceHint": "Abre el laboratorio con este agente y mide las latencias.",
+    "memory": "Memoria por contacto",
+    "memoryHint": "Recuerda datos de cada persona entre conversaciones. Puedes verlos y borrarlos en Contactos."
   },
   "chat": {
     "placeholder": "Escribe un mensaje…",
@@ -282,5 +285,30 @@
     "save": "Guardar herramienta",
     "testArgs": "Valores de prueba (JSON)",
     "try": "Probar"
+  },
+  "contacts": {
+    "title": "Contactos",
+    "subtitle": "Personas que han hablado con tus agentes y lo que los agentes recuerdan de cada una.",
+    "empty": "Todavía no hay contactos. Aparecen cuando alguien habla con un agente.",
+    "unknown": "Sin nombre",
+    "memories": "{count, plural, =0 {sin memoria} one {# recuerdo} other {# recuerdos}}",
+    "conversations": "{count, plural, =0 {sin conversaciones} one {# conversación} other {# conversaciones}}",
+    "memoryTitle": "Memoria",
+    "memoryHint": "Los agentes leen esto al empezar cada conversación con esta persona. Se aprende solo al terminar cada conversación, o cuando se le pide al agente que recuerde algo.",
+    "memoryEmpty": "El agente aún no recuerda nada de esta persona.",
+    "source": {
+      "auto": "aprendido",
+      "explicit": "pedido",
+      "manual": "añadido"
+    },
+    "forget": "Olvidar",
+    "add": "Añadir",
+    "addPlaceholder": "Añadir un dato (p. ej. «Prefiere que le llamen por la tarde»)",
+    "privacy": "Privacidad (RGPD)",
+    "privacyHint": "Puedes borrar lo que los agentes recuerdan o eliminar a la persona por completo con sus conversaciones.",
+    "clear": "Borrar toda la memoria",
+    "clearConfirm": "¿Borrar todo lo que los agentes recuerdan de esta persona?",
+    "erase": "Eliminar contacto y conversaciones",
+    "eraseConfirm": "Se eliminarán el contacto, su memoria y todas sus conversaciones. No se puede deshacer. ¿Continuar?"
   }
 }

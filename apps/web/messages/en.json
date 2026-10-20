@@ -44,7 +44,8 @@
     "lab": "Lab",
     "agents": "Agents",
     "connections": "Connections",
-    "soon": "soon"
+    "soon": "soon",
+    "contacts": "Contacts"
   },
   "lab": {
     "title": "Voice lab",
@@ -146,7 +147,9 @@
     "noTools": "No tools yet.",
     "addConnection": "Add a connection",
     "testVoice": "Test by voice",
-    "testVoiceHint": "Opens the lab with this agent and measures latency."
+    "testVoiceHint": "Opens the lab with this agent and measures latency.",
+    "memory": "Memory per contact",
+    "memoryHint": "Remembers facts about each person across conversations. View and delete them in Contacts."
   },
   "chat": {
     "placeholder": "Type a message…",
@@ -282,5 +285,30 @@
     "save": "Save tool",
     "testArgs": "Test values (JSON)",
     "try": "Test"
+  },
+  "contacts": {
+    "title": "Contacts",
+    "subtitle": "People who talked to your agents and what the agents remember about each one.",
+    "empty": "No contacts yet. They appear when someone talks to an agent.",
+    "unknown": "No name",
+    "memories": "{count, plural, =0 {no memory} one {# memory} other {# memories}}",
+    "conversations": "{count, plural, =0 {no conversations} one {# conversation} other {# conversations}}",
+    "memoryTitle": "Memory",
+    "memoryHint": "Agents read this at the start of every conversation with this person. It is learned after each conversation, or when the agent is asked to remember something.",
+    "memoryEmpty": "The agent doesn't remember anything about this person yet.",
+    "source": {
+      "auto": "learned",
+      "explicit": "requested",
+      "manual": "added"
+    },
+    "forget": "Forget",
+    "add": "Add",
+    "addPlaceholder": "Add a fact (e.g. “Prefers calls in the afternoon”)",
+    "privacy": "Privacy (GDPR)",
+    "privacyHint": "You can delete what agents remember or remove the person entirely with their conversations.",
+    "clear": "Delete all memory",
+    "clearConfirm": "Delete everything agents remember about this person?",
+    "erase": "Delete contact and conversations",
+    "eraseConfirm": "The contact, their memory and all their conversations will be deleted. This cannot be undone. Continue?"
   }
 }

@@ -11,6 +11,8 @@ export const LAB_LLM_PROVIDERS = ["google", "openai", "anthropic"] as const;
 export const labConfigSchema = z.object({
   /** Run this agent (persona, instructions, model, tools) instead of the lab persona. */
   agent_id: z.uuid().optional(),
+  /** Set by the server (never by the client): who the agent talks to, for memory. */
+  contact_id: z.uuid().optional(),
   mode: z.enum(["pipeline", "realtime"]).optional(),
   stt: z
     .object({

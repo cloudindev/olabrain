@@ -2,6 +2,7 @@ import { labConfigSchema } from "@brainagent/core";
 import { agents, auditLog, conversations } from "@brainagent/db";
 import { eq } from "drizzle-orm";
 import { env } from "@/lib/env";
+import { ensurePanelContact } from "@/lib/contacts";
 import { createLabToken, labRoomName } from "@/lib/livekit";
 import { authErrorResponse, requireTenant, tenantTx } from "@/lib/tenant";
 
@@ -19,24 +20,29 @@ export async function POST(request: Request) {
         { status: 400 },
       );
     }
+    // contact_id is decided by the server (memory per contact); never trust the client's.
+    const { contact_id: _clientContact, ...config } = parsed.data;
 
-    const conversationId = await tenantTx(ctx, async (tx) => {
-      if (parsed.data.agent_id) {
+    const created = await tenantTx(ctx, async (tx) => {
+      let contactId: string | null = null;
+      if (config.agent_id) {
         const [agent] = await tx
           .select({ id: agents.id })
           .from(agents)
-          .where(eq(agents.id, parsed.data.agent_id))
+          .where(eq(agents.id, config.agent_id))
           .limit(1);
         if (!agent) return null;
+        contactId = await ensurePanelContact(tx, ctx);
       }
       const [conversation] = await tx
         .insert(conversations)
         .values({
           tenantId: ctx.tenantId,
           channel: "lab",
-          agentId: parsed.data.agent_id ?? null,
+          agentId: config.agent_id ?? null,
+          contactId,
           startedByUserId: ctx.user.id,
-          config: parsed.data,
+          config,
         })
         .returning({ id: conversations.id });
       await tx.insert(auditLog).values({
@@ -46,9 +52,10 @@ export async function POST(request: Request) {
         targetType: "conversation",
         targetId: conversation!.id,
       });
-      return conversation!.id;
+      return { id: conversation!.id, contactId };
     });
-    if (!conversationId) return Response.json({ error: "agent_not_found" }, { status: 404 });
+    if (!created) return Response.json({ error: "agent_not_found" }, { status: 404 });
+    const conversationId = created.id;
 
     const e = env();
     const token = await createLabToken({
@@ -59,7 +66,7 @@ export async function POST(request: Request) {
       name: ctx.user.name,
       tenantId: ctx.tenantId,
       conversationId,
-      config: parsed.data,
+      config: { ...config, ...(created.contactId ? { contact_id: created.contactId } : {}) },
     });
 
     return Response.json({

@@ -6,6 +6,7 @@ Run:  uv run python -m brainagent_agent.chat_server
 
 from __future__ import annotations
 
+import asyncio
 import contextlib
 import hmac
 import json
@@ -25,11 +26,13 @@ from starlette.routing import Route
 from .agent_runtime import RuntimeAgent, ToolBridge, build_agent_llm, build_function_tools
 from .config import load_lab_config
 from .connector_client import ConnectorClient, ConnectorError
+from .memory import remember_after
 
 load_dotenv(os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", ".env"))
 load_dotenv()
 
 logger = logging.getLogger("brainagent.chat")
+_background: set[asyncio.Task[int]] = set()
 MAX_HISTORY = 40
 
 
@@ -137,13 +140,14 @@ async def chat_endpoint(request: Request) -> StreamingResponse | JSONResponse:
     tenant_id = str(body.get("tenantId", ""))
     agent_id = str(body.get("agentId", ""))
     conversation_id = body.get("conversationId")
+    contact_id = body.get("contactId") or None
     history = body.get("messages") or []
     if not tenant_id or not agent_id or not isinstance(history, list) or not history:
         return JSONResponse({"error": "invalid_request"}, status_code=400)
 
     client: ConnectorClient = request.app.state.connector
     try:
-        cfg = await client.agent_config(tenant_id, agent_id)
+        cfg = await client.agent_config(tenant_id, agent_id, contact_id)
     except ConnectorError:
         return JSONResponse({"error": "agent_not_found"}, status_code=404)
 
@@ -154,8 +158,27 @@ async def chat_endpoint(request: Request) -> StreamingResponse | JSONResponse:
     async def events() -> AsyncIterator[bytes]:
         try:
             model = build_agent_llm(agent, fallback)
+            final_text = ""
             async for event in run_chat(agent, bridge, model, history):
+                if event.get("type") == "done":
+                    final_text = event.get("text", "")
                 yield _sse(event)
+            if agent.contact_id:
+                # Learn from this exchange without making the user wait.
+                turns = [*history, {"role": "assistant", "content": final_text}]
+                task = asyncio.create_task(
+                    remember_after(
+                        client,
+                        model,
+                        tenant_id,
+                        agent.contact_id,
+                        conversation_id,
+                        agent.memory,
+                        turns[-6:],
+                    )
+                )
+                _background.add(task)
+                task.add_done_callback(_background.discard)
         except Exception as exc:  # surfaced to the chat UI, details in logs
             logger.exception("chat failed")
             yield _sse({"type": "error", "message": str(exc)[:500]})
