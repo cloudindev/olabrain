@@ -158,3 +158,17 @@ group by 1 order by first_audio_p50;
 - El `contact_id` lo decide siempre el servidor; el que envíe el cliente se descarta.
 
 **Pendiente.** Retención configurable por organización (borrado automático tras N meses) e identificación de contactos en los canales públicos (widget, WhatsApp, teléfono).
+
+---
+
+## ADR-011 — Despliegue: Vercel + Supabase + LiveKit Cloud (2026-10-20)
+
+**Decisión.**
+- **Vercel:** panel (`app.olabrain.com`), conector y chat de texto como funciones; región `dub1` (Dublín), junto a la base de datos. Web comercial en `olabrain.com`.
+- **Supabase** (`eu-west-1`, Irlanda) solo como Postgres (y más adelante Storage S3 para el conocimiento). No usamos su Auth ni su Data API: seguimos con Better Auth y nuestro RLS.
+  - La app entra como `brainagent_app` por el *transaction pooler* (puerto 6543, IPv4); las migraciones como `postgres` por el *session pooler* (5432). La conexión directa es solo IPv6 y Vercel no la soporta.
+  - Migración 0006: se revocan todos los permisos de `anon` y `authenticated` (actuales y futuros), porque la Data API expone el esquema `public` y las tablas de auth no tienen RLS. Recomendado además desactivar la Data API en el panel de Supabase.
+- **LiveKit Cloud** (UE, Frankfurt) para el transporte WebRTC y para alojar el worker de voz. *Agent observability* desactivado: no guardamos audio de clientes en terceros.
+- **WHMCS** sin lista de IPs (Vercel no tiene IP fija): clave de acceso de API.
+
+**Motivo.** Cero servidores que mantener; precio fijo y previsible en la base de datos; todo en la UE.
