@@ -155,7 +155,7 @@ livekit-server --dev --bind 127.0.0.1
 | Panel | Vercel, Root Directory `apps/web`, Framework Next.js, región `dub1` | `app.olabrain.com`. Cada push a `main` despliega. |
 | Conector + chat | Mismo proyecto de Vercel, ruta `/connector/*` | `CONNECTOR_URL=https://app.olabrain.com/connector`. Lo usan la web y el worker de voz con `CONNECTOR_SERVICE_TOKEN`. |
 | Base de datos | Supabase `eu-west-1` | App por *transaction pooler* (6543) con `brainagent_app`; migraciones por *session pooler* (5432). |
-| Voz | LiveKit Cloud (UE) | Sala WebRTC y worker Python alojado. |
+| Voz | LiveKit Cloud, región `eu-central` | Sala WebRTC y worker Python alojado (agente `CA_2vqG82oVPjBE`, `infra/deploy/agent/livekit.toml`). |
 
 Migraciones contra producción (valores en `.env.production`, ignorado por git):
 
@@ -163,3 +163,16 @@ Migraciones contra producción (valores en `.env.production`, ignorado por git):
 set -a; . ./.env.production; set +a
 pnpm --filter @brainagent/db migrate && pnpm --filter @brainagent/db seed
 ```
+
+Worker de voz (LiveKit Cloud). Secretos en `.env.agent` (ignorado por git: claves de los
+modelos, `LAB_*`, `CONNECTOR_URL=https://app.olabrain.com/connector` y el mismo
+`CONNECTOR_SERVICE_TOKEN` que Vercel):
+
+```bash
+set -a; . ./.env.production; set +a
+infra/deploy/agent.sh deploy    # nueva versión del worker
+infra/deploy/agent.sh secrets   # tras cambiar .env.agent
+```
+
+Home pública: en Vercel, `HOME_AGENT_TENANT_ID` y `HOME_AGENT_ID` con la organización y el
+agente que atienden la demo (límites: `HOME_VOICE_*`).
