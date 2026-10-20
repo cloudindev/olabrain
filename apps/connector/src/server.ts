@@ -14,6 +14,14 @@ const ctx = createContext({
   allowedPrivateHosts: e.EGRESS_ALLOWED_PRIVATE_HOSTS,
   appUrl: e.APP_URL,
   logLevel: e.LOG_LEVEL,
+  microsoft:
+    e.MICROSOFT_CLIENT_ID && e.MICROSOFT_CLIENT_SECRET
+      ? {
+          clientId: e.MICROSOFT_CLIENT_ID,
+          clientSecret: e.MICROSOFT_CLIENT_SECRET,
+          tenant: e.MICROSOFT_TENANT_ID ?? "common",
+        }
+      : null,
 });
 
 const app = createApp(ctx, e.CONNECTOR_SERVICE_TOKEN);

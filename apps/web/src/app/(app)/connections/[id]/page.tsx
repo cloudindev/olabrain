@@ -48,7 +48,11 @@ export default async function ConnectionPage({
         title={conn.name}
         subtitle={
           <span className="flex flex-wrap items-center gap-2">
-            <Badge>{t(`kinds.${conn.kind}`)}</Badge>
+            <Badge>
+              {conn.kind === "native" && typeof config.provider === "string"
+                ? t(`providers.${config.provider as "whmcs" | "microsoft365"}.name`)
+                : t(`kinds.${conn.kind}`)}
+            </Badge>
             <Badge
               tone={conn.status === "active" ? "ok" : conn.status === "needs_auth" ? "warn" : "bad"}
             >

@@ -115,3 +115,16 @@ group by 1 order by first_audio_p50;
 - Desde la Fase 1 cada conversación registra `usage_events` (cantidades por proveedor); el precio se aplica al construir el monedero.
 - La Fase 4 implementa el monedero, Stripe (recargas y recarga automática), los avisos y el bloqueo por saldo.
 - Los planes de suscripción de la especificación se sustituyen por recargas prepago. Si hay cuota fija de plataforma, se decide en la Fase 4.
+
+---
+
+## ADR-008 — Conectores nativos: WHMCS y Outlook 365 (2026-10-20)
+
+**Contexto.** Para las apps más pedidas (empezando por WHMCS y Outlook 365), el cliente no debería escribir herramientas: basta con pegar credenciales o iniciar sesión. Nango (CLAUDE.md, Fase 3) añade un servicio más y no cubre WHMCS.
+
+**Decisión.** Conexiones `kind = native` con `config.provider`. Cada proveedor tiene en `apps/connector/src/adapters/native/` un **catálogo curado de herramientas** (nombre, descripción en español, esquema y modo) y su ejecución. Las herramientas se sincronizan como filas `tools`, así que el Tool Router, las confirmaciones, el registro y la asignación a agentes funcionan igual que en el resto de conexiones.
+
+- **WHMCS** (API oficial `includes/api.php`, credenciales `identifier`/`secret`): buscar clientes, ficha, servicios, facturas, factura, tickets, ticket, departamentos; escrituras con confirmación: abrir ticket y responder ticket. Las credenciales se validan al conectar. WHMCS restringe la API por IP: el cliente debe permitir la IP de salida de BrainAgent (en producción, una IP fija de egress).
+- **Outlook 365** (Microsoft Graph, OAuth 2.0 + PKCE, permisos delegados): buscar y leer correos, agenda; escrituras con confirmación: enviar correo y crear evento. Los tokens van al vault y se refrescan solos. Usa la app de Entra de la plataforma (`MICROSOFT_CLIENT_ID/SECRET`).
+
+**Consecuencias.** Añadir una app nativa = un fichero con su catálogo + tests contra un mock. Nango sigue siendo una opción para escalar a decenas de apps OAuth en la Fase 3. Las fechas del calendario se calculan con la zona Europe/Madrid (con horario de verano).

@@ -8,6 +8,7 @@ import { withTenant } from "@brainagent/db";
 import type { ConnectorContext } from "./context";
 import { executeHttp, renderJsonBody, renderTemplate, type ApiSecret } from "./adapters/http";
 import { McpOAuthProvider, callMcpTool, connectMcp, type McpAuthState } from "./adapters/mcp";
+import { executeNativeTool } from "./adapters/native";
 import { requestFromArgs, type OperationMapping } from "./adapters/openapi";
 import { runReadOnlyQuery } from "./adapters/sql";
 
@@ -57,6 +58,17 @@ export function mcpAuthStore(ctx: ConnectorContext, conn: ConnectionRow) {
         ctx.vault.update(tx, conn.tenantId, credentialId, state),
       );
     },
+  };
+}
+
+/** Persists a native connector's secret (e.g. refreshed OAuth tokens). */
+export function nativeSecretStore(ctx: ConnectorContext, conn: ConnectionRow) {
+  return async (secret: Record<string, unknown>) => {
+    if (!conn.credentialId) return;
+    const credentialId = conn.credentialId;
+    await withTenant(ctx.db, conn.tenantId, (tx) =>
+      ctx.vault.update(tx, conn.tenantId, credentialId, secret),
+    );
   };
 }
 
@@ -176,6 +188,25 @@ export async function executeTool(
       } finally {
         await session.close().catch(() => undefined);
       }
+    }
+
+    case "native": {
+      const secret = await loadSecret<Record<string, unknown>>(ctx, conn);
+      const store = nativeSecretStore(ctx, conn);
+      return executeNativeTool(
+        String(conn.config.provider),
+        ctx.microsoft,
+        {
+          config: conn.config,
+          secret,
+          saveSecret: store,
+          fetcher: ctx.fetcher,
+          timeoutMs: limits.timeoutMs,
+          maxBytes: limits.maxBytes,
+        },
+        tool.sourceRef,
+        args,
+      );
     }
 
     default:

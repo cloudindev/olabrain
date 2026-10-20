@@ -5,13 +5,16 @@
  *   X-Tenant-Id:   <uuid>   (all data access is RLS-scoped to it)
  */
 import { timingSafeEqual } from "node:crypto";
+import { microsoft365ConnectionSchema, whmcsConnectionSchema } from "@brainagent/core";
 import { Hono, type Context } from "hono";
 import { z } from "zod";
 import type { ConnectorContext } from "./context";
 import { agentRuntimeConfig, callTool, listTools } from "./router";
 import {
   ServiceError,
-  completeMcpOAuth,
+  completeOAuth,
+  createMicrosoft365Connection,
+  createWhmcsConnection,
   createHttpConnection,
   createHttpSchema,
   createMcpConnection,
@@ -109,8 +112,20 @@ export function createApp(ctx: ConnectorContext, serviceToken: string) {
       c,
       z.object({ state: z.string().max(200), code: z.string().max(4_000) }),
     );
-    return c.json(await completeMcpOAuth(ctx, c.var.tenantId, state, code));
+    return c.json(await completeOAuth(ctx, c.var.tenantId, state, code));
   });
+  app.post("/v1/connections/native/whmcs", async (c) =>
+    c.json(await createWhmcsConnection(ctx, c.var.tenantId, await body(c, whmcsConnectionSchema))),
+  );
+  app.post("/v1/connections/native/microsoft365", async (c) =>
+    c.json(
+      await createMicrosoft365Connection(
+        ctx,
+        c.var.tenantId,
+        await body(c, microsoft365ConnectionSchema),
+      ),
+    ),
+  );
   app.post("/v1/openapi/preview", async (c) =>
     c.json(await previewOpenApi(ctx, await body(c, openapiSourceSchema))),
   );

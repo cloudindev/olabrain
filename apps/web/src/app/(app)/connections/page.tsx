@@ -19,6 +19,7 @@ export default async function ConnectionsPage() {
         id: connections.id,
         name: connections.name,
         kind: connections.kind,
+        config: connections.config,
         status: connections.status,
         tools: count(tools.id),
       })
@@ -58,7 +59,11 @@ export default async function ConnectionsPage() {
                 >
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-medium">{c.name}</p>
-                    <p className="text-sm text-ink-2">{t(`kinds.${c.kind}`)}</p>
+                    <p className="text-sm text-ink-2">
+                      {c.kind === "native" && typeof c.config.provider === "string"
+                        ? t(`providers.${c.config.provider as "whmcs" | "microsoft365"}.name`)
+                        : t(`kinds.${c.kind}`)}
+                    </p>
                   </div>
                   <Badge>{c.tools} tools</Badge>
                   <Badge

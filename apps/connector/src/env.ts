@@ -34,6 +34,10 @@ const schema = z.object({
   /** Private hosts/IPs outgoing calls may reach (dev demo DB, on-prem allowlist). */
   EGRESS_ALLOWED_PRIVATE_HOSTS: csv,
   APP_URL: z.string().default("http://localhost:3000"),
+  /** Platform Entra app for the Outlook 365 connector (delegated Graph permissions). */
+  MICROSOFT_CLIENT_ID: emptyAsUndefined(z.string().optional()),
+  MICROSOFT_CLIENT_SECRET: emptyAsUndefined(z.string().optional()),
+  MICROSOFT_TENANT_ID: emptyAsUndefined(z.string().default("common")),
   LOG_LEVEL: z.string().default("info"),
 });
 

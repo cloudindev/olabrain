@@ -173,7 +173,7 @@
       "openapi": "API (OpenAPI)",
       "sql": "Base de datos",
       "http": "API HTTP",
-      "native": "Nativa"
+      "native": "Aplicación"
     },
     "kindHints": {
       "mcp": "Pega la URL de un servidor MCP. Si necesita login, te llevaremos a autorizarlo.",
@@ -238,7 +238,27 @@
     "newTool": "Nueva herramienta",
     "editTool": "Editar",
     "oauthDone": "Autorización completada.",
-    "oauthError": "No se pudo completar la autorización: {message}"
+    "oauthError": "No se pudo completar la autorización: {message}",
+    "apps": "Aplicaciones",
+    "custom": "Conexión a medida",
+    "providers": {
+      "whmcs": {
+        "name": "WHMCS",
+        "hint": "Clientes, servicios, facturas y tickets de soporte de tu WHMCS.",
+        "url": "URL de tu WHMCS",
+        "identifier": "Identificador de API",
+        "secret": "Secreto de API",
+        "help": "En WHMCS: Configuración › Personal › Gestionar credenciales de API (usuario con «API Access»). Añade la IP de BrainAgent en Configuración › General › Seguridad › Restricción de IP de la API."
+      },
+      "microsoft365": {
+        "name": "Outlook 365",
+        "hint": "Correo y calendario de Outlook / Microsoft 365 de una cuenta.",
+        "connect": "Conectar con Microsoft",
+        "help": "Te llevaremos a Microsoft para iniciar sesión y aceptar los permisos: leer y enviar correo y gestionar el calendario.",
+        "account": "Cuenta: {account}"
+      }
+    },
+    "reauthorize": "Volver a autorizar"
   },
   "studio": {
     "title": "Tool Studio",

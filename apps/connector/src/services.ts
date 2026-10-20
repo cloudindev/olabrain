@@ -12,17 +12,33 @@ import {
   studioParamsToJsonSchema,
   type ApiAuth,
 } from "@brainagent/core";
+import type {
+  microsoft365ConnectionSchema,
+  whmcsConnectionSchema} from "@brainagent/core";
+import {
+  type NativeProvider,
+} from "@brainagent/core";
 import { connections, tools, withTenant } from "@brainagent/db";
 import { and, eq, notInArray } from "drizzle-orm";
 import { z } from "zod";
 import type { ConnectorContext } from "./context";
 import {
   executeTool,
+  loadSecret,
   mcpAuthStore,
+  nativeSecretStore,
   oauthRedirectUrl,
   type ConnectionRow,
   type ToolRow,
 } from "./execute";
+import { NATIVE_TOOLS } from "./adapters/native";
+import {
+  beginMicrosoftAuth,
+  completeMicrosoftAuth,
+  microsoftAccount,
+  type MicrosoftSecret,
+} from "./adapters/native/microsoft365";
+import { checkWhmcs } from "./adapters/native/whmcs";
 import type { ApiSecret } from "./adapters/http";
 import {
   McpOAuthProvider,
@@ -132,6 +148,15 @@ export async function syncMcpConnection(
   connectionId: string,
 ) {
   const conn = await getConnection(ctx, tenantId, connectionId);
+  if (conn.kind === "native") {
+    // Native: refresh the tool catalog; OAuth apps without tokens get a new login link.
+    const native = conn.config.provider as NativeProvider;
+    if (native === "microsoft365" && !(await loadSecret<MicrosoftSecret>(ctx, conn)).refreshToken) {
+      return reauthorizeNative(ctx, conn);
+    }
+    await syncNativeTools(ctx, conn, native);
+    return { connectionId: conn.id, status: "active" as const };
+  }
   const cfg = conn.config as { url: string; auth: "none" | "bearer" | "oauth" };
   const store = mcpAuthStore(ctx, conn);
   const state = await store.load();
@@ -195,7 +220,8 @@ export async function syncMcpConnection(
   }
 }
 
-export async function completeMcpOAuth(
+/** OAuth callback for any connection kind (MCP servers and native OAuth apps). */
+export async function completeOAuth(
   ctx: ConnectorContext,
   tenantId: string,
   state: string,
@@ -204,6 +230,7 @@ export async function completeMcpOAuth(
   const connectionId = state.split(".")[0] ?? "";
   if (!/^[0-9a-f-]{36}$/i.test(connectionId)) throw new ServiceError("estado OAuth no válido");
   const conn = await getConnection(ctx, tenantId, connectionId);
+  if (conn.kind === "native") return completeNativeOAuth(ctx, conn, state, code);
   const store = mcpAuthStore(ctx, conn);
   const authState = await store.load();
   if (!authState.oauthState || authState.oauthState !== state)
@@ -488,4 +515,141 @@ async function upsertTools(ctx: ConnectorContext, conn: ConnectionRow, list: Too
           : eq(tools.connectionId, conn.id),
       );
   });
+}
+
+// --- Native connectors (WHMCS, Outlook 365) ---------------------------------------------
+
+function nativeCallContext(
+  ctx: ConnectorContext,
+  conn: ConnectionRow,
+  secret: Record<string, unknown>,
+) {
+  return {
+    config: conn.config,
+    secret,
+    saveSecret: nativeSecretStore(ctx, conn),
+    fetcher: ctx.fetcher,
+    timeoutMs: 15_000,
+    maxBytes: 200_000,
+  };
+}
+
+async function syncNativeTools(
+  ctx: ConnectorContext,
+  conn: ConnectionRow,
+  provider: NativeProvider,
+) {
+  await upsertTools(
+    ctx,
+    conn,
+    NATIVE_TOOLS[provider].map((t) => ({
+      name: t.name,
+      sourceRef: t.name,
+      description: t.description,
+      inputSchema: t.inputSchema,
+      mode: t.mode,
+      // Curated catalog: writes are enabled but always ask the user first (confirmation: required).
+      enabled: true,
+      config: {},
+    })),
+  );
+}
+
+export async function createWhmcsConnection(
+  ctx: ConnectorContext,
+  tenantId: string,
+  input: z.infer<typeof whmcsConnectionSchema>,
+) {
+  const url = input.url.endsWith("/") ? input.url : `${input.url}/`;
+  const secret = { identifier: input.identifier, secret: input.secret };
+  try {
+    await checkWhmcs({
+      config: { url },
+      secret,
+      saveSecret: async () => undefined,
+      fetcher: ctx.fetcher,
+      timeoutMs: 15_000,
+      maxBytes: 200_000,
+    });
+  } catch (e) {
+    throw new ServiceError((e as Error).message);
+  }
+  const conn = await createConnection(ctx, tenantId, {
+    kind: "native",
+    name: input.name,
+    config: { provider: "whmcs", url },
+    secret,
+  });
+  await syncNativeTools(ctx, conn, "whmcs");
+  return { connectionId: conn.id, status: "active" as const };
+}
+
+export async function createMicrosoft365Connection(
+  ctx: ConnectorContext,
+  tenantId: string,
+  input: z.infer<typeof microsoft365ConnectionSchema>,
+) {
+  if (!ctx.microsoft) {
+    throw new ServiceError(
+      "Outlook 365 no está configurado: faltan MICROSOFT_CLIENT_ID y MICROSOFT_CLIENT_SECRET en la plataforma",
+    );
+  }
+  const conn = await createConnection(ctx, tenantId, {
+    kind: "native",
+    name: input.name,
+    config: { provider: "microsoft365" },
+    secret: {},
+  });
+  const { authorizationUrl, secret } = beginMicrosoftAuth(
+    ctx.microsoft,
+    conn.id,
+    oauthRedirectUrl(ctx),
+  );
+  await nativeSecretStore(ctx, conn)(secret);
+  await setStatus(ctx, conn, "needs_auth");
+  return { connectionId: conn.id, status: "needs_auth" as const, authorizationUrl };
+}
+
+/** Re-authorization for an existing Outlook 365 connection (expired or revoked). */
+export async function reauthorizeNative(ctx: ConnectorContext, conn: ConnectionRow) {
+  if (conn.config.provider !== "microsoft365" || !ctx.microsoft)
+    throw new ServiceError("esta conexión no usa OAuth");
+  const { authorizationUrl, secret } = beginMicrosoftAuth(
+    ctx.microsoft,
+    conn.id,
+    oauthRedirectUrl(ctx),
+  );
+  await nativeSecretStore(ctx, conn)(secret);
+  return { connectionId: conn.id, status: "needs_auth" as const, authorizationUrl };
+}
+
+async function completeNativeOAuth(
+  ctx: ConnectorContext,
+  conn: ConnectionRow,
+  state: string,
+  code: string,
+) {
+  if (conn.config.provider !== "microsoft365" || !ctx.microsoft)
+    throw new ServiceError("esta conexión no usa OAuth");
+  const secret = await loadSecret<MicrosoftSecret>(ctx, conn);
+  if (!secret.oauthState || secret.oauthState !== state)
+    throw new ServiceError("estado OAuth no válido");
+  let tokens: MicrosoftSecret;
+  try {
+    tokens = await completeMicrosoftAuth(ctx.microsoft, ctx, secret, code, oauthRedirectUrl(ctx));
+  } catch (e) {
+    throw new ServiceError((e as Error).message);
+  }
+  await nativeSecretStore(ctx, conn)(tokens);
+  const account = await microsoftAccount(ctx.microsoft, nativeCallContext(ctx, conn, tokens)).catch(
+    () => null,
+  );
+  await withTenant(ctx.db, conn.tenantId, (tx) =>
+    tx
+      .update(connections)
+      .set({ config: { ...conn.config, account }, status: "active", lastError: null })
+      .where(eq(connections.id, conn.id)),
+  );
+  await syncNativeTools(ctx, conn, "microsoft365");
+  return { connectionId: conn.id, status: "active" as const };
 }

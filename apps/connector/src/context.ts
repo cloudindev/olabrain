@@ -1,5 +1,6 @@
 import type { Database } from "@brainagent/db";
 import pino, { type Logger } from "pino";
+import type { MicrosoftApp } from "./adapters/native/microsoft365";
 import { createSafeFetch, type EgressPolicy, type SafeFetcher } from "./egress";
 import { Vault, parseMasterKey } from "./vault";
 
@@ -12,6 +13,8 @@ export type ConnectorContext = {
   log: Logger;
   /** Public URL of the web app (OAuth redirect target). */
   appUrl: string;
+  /** Platform app for Outlook 365; null when not configured. */
+  microsoft: MicrosoftApp | null;
 };
 
 export function createLogger(level = "info"): Logger {
@@ -44,6 +47,7 @@ export function createContext(opts: {
   allowedPrivateHosts: string[];
   appUrl: string;
   logLevel?: string;
+  microsoft?: MicrosoftApp | null;
 }): ConnectorContext {
   const policy = { allowedPrivateHosts: opts.allowedPrivateHosts };
   return {
@@ -59,5 +63,6 @@ export function createContext(opts: {
     policy,
     log: createLogger(opts.logLevel),
     appUrl: opts.appUrl,
+    microsoft: opts.microsoft ?? null,
   };
 }

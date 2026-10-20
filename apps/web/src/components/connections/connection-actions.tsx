@@ -14,7 +14,7 @@ export function ConnectionActions({ connectionId, kind }: { connectionId: string
   return (
     <div className="flex flex-col items-end gap-1">
       <div className="flex gap-2">
-        {kind === "mcp" ? (
+        {kind === "mcp" || kind === "native" ? (
           <Button
             variant="secondary"
             disabled={pending}

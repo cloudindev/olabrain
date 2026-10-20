@@ -258,14 +258,12 @@ describe("HTTP connection + Tool Studio + router", () => {
         .insert(conversations)
         .values({ tenantId: tenantA, agentId: agentA, channel: "chat" })
         .returning();
-      await tx
-        .insert(messages)
-        .values({
-          tenantId: tenantA,
-          conversationId: c!.id,
-          role: "user",
-          content: "Cierra el parte 11",
-        });
+      await tx.insert(messages).values({
+        tenantId: tenantA,
+        conversationId: c!.id,
+        role: "user",
+        content: "Cierra el parte 11",
+      });
       return c!.id;
     });
     const args = { id: 11, motivo: "hecho" };

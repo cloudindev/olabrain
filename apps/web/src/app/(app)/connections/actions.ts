@@ -37,6 +37,18 @@ export async function createMcpConnection(input: unknown) {
   );
 }
 
+export async function createWhmcsConnection(input: unknown) {
+  return run((tenantId) =>
+    connectorFetch<CreateResult>(tenantId, "/v1/connections/native/whmcs", { body: input }),
+  );
+}
+
+export async function createMicrosoft365Connection(input: unknown) {
+  return run((tenantId) =>
+    connectorFetch<CreateResult>(tenantId, "/v1/connections/native/microsoft365", { body: input }),
+  );
+}
+
 export async function previewOpenApi(input: unknown) {
   return run((tenantId) =>
     connectorFetch<{

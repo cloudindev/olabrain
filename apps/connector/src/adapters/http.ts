@@ -73,6 +73,8 @@ export type HttpRequestSpec = {
   query?: Record<string, unknown>;
   headers?: Record<string, string>;
   body?: unknown;
+  /** application/x-www-form-urlencoded body (takes precedence over `body`). */
+  form?: Record<string, string>;
   auth: ApiAuth;
   secret: ApiSecret;
   timeoutMs: number;
@@ -107,7 +109,10 @@ export async function executeHttp(
   const headers = new Headers({ accept: "application/json", ...(spec.headers ?? {}) });
   applyAuth(url, headers, spec.auth, spec.secret);
   let body: string | undefined;
-  if (spec.body !== undefined && spec.method !== "GET") {
+  if (spec.form) {
+    headers.set("content-type", "application/x-www-form-urlencoded");
+    body = new URLSearchParams(spec.form).toString();
+  } else if (spec.body !== undefined && spec.method !== "GET") {
     headers.set("content-type", "application/json");
     body = JSON.stringify(spec.body);
   }

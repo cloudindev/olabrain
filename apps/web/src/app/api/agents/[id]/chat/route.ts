@@ -96,14 +96,12 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         .returning({ id: conversations.id });
       conversationId = conv!.id;
     }
-    await tx
-      .insert(messages)
-      .values({
-        tenantId: ctx.tenantId,
-        conversationId,
-        role: "user",
-        content: parsed.data.message,
-      });
+    await tx.insert(messages).values({
+      tenantId: ctx.tenantId,
+      conversationId,
+      role: "user",
+      content: parsed.data.message,
+    });
     const history = await tx
       .select({ role: messages.role, content: messages.content })
       .from(messages)

@@ -7,12 +7,14 @@ import { useState, useTransition, type FormEvent, type ReactNode } from "react";
 import {
   createHttpConnection,
   createMcpConnection,
+  createMicrosoft365Connection,
+  createWhmcsConnection,
   createOpenApiConnection,
   createSqlConnection,
   previewOpenApi,
 } from "@/app/(app)/connections/actions";
 
-type Kind = "mcp" | "openapi" | "sql" | "http";
+export type NewConnectionKind = "mcp" | "openapi" | "sql" | "http" | "whmcs" | "microsoft365";
 type ApiAuthType = "none" | "bearer" | "api_key_header" | "api_key_query" | "basic";
 type Secret = { token?: string; apiKey?: string; username?: string; password?: string };
 
@@ -517,7 +519,84 @@ function HttpForm() {
   );
 }
 
-export function NewConnectionForm({ kind }: { kind: Kind }) {
+function WhmcsForm() {
+  const t = useTranslations("connections");
+  const { error, pending, submit } = useSubmit();
+  const [v, setV] = useState({ name: "WHMCS", url: "", identifier: "", secret: "" });
+  const set = (k: keyof typeof v, value: string) => setV((prev) => ({ ...prev, [k]: value }));
+  return (
+    <FormCard
+      error={error}
+      onSubmit={(e) => {
+        e.preventDefault();
+        submit(() => createWhmcsConnection(v));
+      }}
+    >
+      <p className="text-sm text-ink-2">{t("providers.whmcs.help")}</p>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label={t("name")} htmlFor="w-name">
+          <Input id="w-name" value={v.name} onChange={(e) => set("name", e.target.value)} />
+        </Field>
+        <Field label={t("providers.whmcs.url")} htmlFor="w-url">
+          <Input
+            id="w-url"
+            type="url"
+            placeholder="https://clientes.miempresa.com/"
+            value={v.url}
+            onChange={(e) => set("url", e.target.value)}
+          />
+        </Field>
+        <Field label={t("providers.whmcs.identifier")} htmlFor="w-id">
+          <Input
+            id="w-id"
+            autoComplete="off"
+            value={v.identifier}
+            onChange={(e) => set("identifier", e.target.value)}
+          />
+        </Field>
+        <Field label={t("providers.whmcs.secret")} htmlFor="w-secret" hint={t("secretHint")}>
+          <Input
+            id="w-secret"
+            type="password"
+            autoComplete="off"
+            value={v.secret}
+            onChange={(e) => set("secret", e.target.value)}
+          />
+        </Field>
+      </div>
+      <Button type="submit" disabled={pending || !v.name || !v.url || !v.identifier || !v.secret}>
+        {t("connect")}
+      </Button>
+    </FormCard>
+  );
+}
+
+function Microsoft365Form() {
+  const t = useTranslations("connections");
+  const { error, pending, submit } = useSubmit();
+  const [name, setName] = useState("Outlook 365");
+  return (
+    <FormCard
+      error={error}
+      onSubmit={(e) => {
+        e.preventDefault();
+        submit(() => createMicrosoft365Connection({ name }));
+      }}
+    >
+      <p className="text-sm text-ink-2">{t("providers.microsoft365.help")}</p>
+      <Field label={t("name")} htmlFor="m-name">
+        <Input id="m-name" value={name} onChange={(e) => setName(e.target.value)} />
+      </Field>
+      <Button type="submit" disabled={pending || !name}>
+        {t("providers.microsoft365.connect")}
+      </Button>
+    </FormCard>
+  );
+}
+
+export function NewConnectionForm({ kind }: { kind: NewConnectionKind }) {
+  if (kind === "whmcs") return <WhmcsForm />;
+  if (kind === "microsoft365") return <Microsoft365Form />;
   if (kind === "mcp") return <McpForm />;
   if (kind === "openapi") return <OpenApiForm />;
   if (kind === "sql") return <SqlForm />;
