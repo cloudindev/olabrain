@@ -1,8 +1,5 @@
 from typing import Any
 
-import pytest
-from starlette.testclient import TestClient
-
 from brainagent_agent.agent_runtime import (
     AI_DISCLOSURE,
     RuntimeAgent,
@@ -11,7 +8,6 @@ from brainagent_agent.agent_runtime import (
     date_context,
     llm_config_for,
 )
-from brainagent_agent.chat_server import create_app
 from brainagent_agent.config import LLMConfig
 
 CONFIG = {
@@ -119,19 +115,6 @@ def test_function_tools_use_the_connector_schema() -> None:
     info = tools[0].info  # type: ignore[union-attr]
     assert info.name == "cerrar_parte"
     assert info.raw_schema["parameters"]["properties"]["id"]["type"] == "integer"
-
-
-@pytest.fixture
-def chat_client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
-    monkeypatch.setenv("CONNECTOR_SERVICE_TOKEN", "t" * 64)
-    return TestClient(create_app(connector=FakeConnector([])))  # type: ignore[arg-type]
-
-
-def test_chat_endpoint_requires_the_service_token(chat_client: TestClient) -> None:
-    with chat_client as client:
-        assert client.post("/v1/chat", json={}).status_code == 401
-        bad = client.post("/v1/chat", json={}, headers={"authorization": "Bearer " + "t" * 64})
-        assert bad.status_code == 400
 
 
 def test_date_context_is_spanish_and_in_the_agent_timezone() -> None:

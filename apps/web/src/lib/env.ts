@@ -39,7 +39,6 @@ const schema = z.object({
   LIVEKIT_AGENT_NAME: z.string().min(1).default("brainagent-lab"),
   CONNECTOR_URL: z.string().default("http://127.0.0.1:4100"),
   CONNECTOR_SERVICE_TOKEN: z.string().default(""),
-  AGENT_CHAT_URL: z.string().default("http://127.0.0.1:4200"),
   /** Dev-only demo database (pnpm db:demo); empty disables the "add demo" button. */
   DEMO_DB_PASSWORD: optional,
 });

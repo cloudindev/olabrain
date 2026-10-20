@@ -32,8 +32,7 @@ pnpm infra:up && pnpm dev
 | Servicio | URL / puerto | Notas |
 |---|---|---|
 | Panel (Next.js) | http://localhost:3000 | |
-| Conector (Tool Router) | http://127.0.0.1:4100 | Solo interno: token `CONNECTOR_SERVICE_TOKEN` |
-| Runtime de chat (Python) | http://127.0.0.1:4200 | Solo interno |
+| Conector (Tool Router + chat de texto `/v1/chat`) | http://127.0.0.1:4100 | Solo interno: token `CONNECTOR_SERVICE_TOKEN` |
 | Postgres 16 + pgvector | `localhost:5433` | Dos roles: `brainagent_owner` (migraciones) y `brainagent_app` (app, sujeto a RLS) |
 | Redis | `localhost:6380` | Colas desde la Fase 1 |
 | MinIO | API http://localhost:9000 · consola http://localhost:9001 | `minioadmin` / `minioadmin` |
@@ -147,4 +146,20 @@ brew install postgresql@16 redis livekit
 # Postgres en el puerto 5433 con el usuario brainagent_owner, o ajusta DATABASE_URL*/TEST_* en .env.
 createdb brainagent && createdb brainagent_test
 livekit-server --dev --bind 127.0.0.1
+```
+
+## Producción (ADR-011)
+
+| Pieza | Dónde | Notas |
+|---|---|---|
+| Panel | Vercel, proyecto `olabrain-web`, Root Directory `apps/web`, región `dub1` | `app.olabrain.com`. Cada push a `main` despliega. |
+| Conector + chat | Vercel, proyecto aparte, Root Directory `apps/connector` | Lo usan la web y el worker de voz con `CONNECTOR_SERVICE_TOKEN`. |
+| Base de datos | Supabase `eu-west-1` | App por *transaction pooler* (6543) con `brainagent_app`; migraciones por *session pooler* (5432). |
+| Voz | LiveKit Cloud (UE) | Sala WebRTC y worker Python alojado. |
+
+Migraciones contra producción (valores en `.env.production`, ignorado por git):
+
+```bash
+set -a; . ./.env.production; set +a
+pnpm --filter @brainagent/db migrate && pnpm --filter @brainagent/db seed
 ```

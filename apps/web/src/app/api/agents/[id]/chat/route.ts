@@ -122,14 +122,15 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const e = env();
   let upstream: Response;
   try {
-    upstream = await fetch(`${e.AGENT_CHAT_URL}/v1/chat`, {
+    // The text chat runtime lives in apps/connector (ADR-011).
+    upstream = await fetch(`${e.CONNECTOR_URL}/v1/chat`, {
       method: "POST",
       headers: {
         authorization: `Bearer ${e.CONNECTOR_SERVICE_TOKEN}`,
+        "x-tenant-id": ctx.tenantId,
         "content-type": "application/json",
       },
       body: JSON.stringify({
-        tenantId: ctx.tenantId,
         agentId,
         conversationId: setup.conversationId,
         contactId: setup.contactId,

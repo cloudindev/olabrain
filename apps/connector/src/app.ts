@@ -6,8 +6,11 @@
  */
 import { timingSafeEqual } from "node:crypto";
 import { microsoft365ConnectionSchema, whmcsConnectionSchema } from "@brainagent/core";
+import { waitUntil } from "@vercel/functions";
 import { Hono, type Context } from "hono";
 import { z } from "zod";
+import { MAX_HISTORY, rememberAfter, runChat } from "./chat/chat";
+import { buildChatModel, type ChatModel } from "./chat/llm";
 import type { ConnectorContext } from "./context";
 import {
   addContactMemories,
@@ -61,7 +64,28 @@ const argsBody = z.object({
   allowWrite: z.boolean().default(false),
 });
 
-export function createApp(ctx: ConnectorContext, serviceToken: string) {
+const chatSchema = z.object({
+  agentId: uuid,
+  conversationId: uuid.nullable().default(null),
+  contactId: uuid.nullable().default(null),
+  messages: z
+    .array(z.object({ role: z.enum(["user", "assistant"]), content: z.string().max(20_000) }))
+    .min(1)
+    .max(MAX_HISTORY * 5),
+});
+
+export type AppOptions = {
+  /** Tests inject a fake model; production builds the agent's configured one. */
+  chatModel?: (modelId: string | null) => ChatModel;
+  /** Keeps post-response work (memory extraction) alive on serverless platforms. */
+  background?: (task: Promise<unknown>) => void;
+};
+
+const sse = (event: unknown) => `data: ${JSON.stringify(event)}\n\n`;
+
+export function createApp(ctx: ConnectorContext, serviceToken: string, opts: AppOptions = {}) {
+  const makeModel = opts.chatModel ?? buildChatModel;
+  const background = opts.background ?? waitUntil;
   const app = new Hono<Env>();
 
   app.get("/health", (c) => c.json({ ok: true }));
@@ -134,6 +158,45 @@ export function createApp(ctx: ConnectorContext, serviceToken: string) {
   app.post("/v1/tools/call", async (c) => {
     const input = await body(c, callSchema);
     return c.json(await callTool(ctx, { ...input, tenantId: c.var.tenantId }));
+  });
+
+  // Text chat (SSE). apps/web stores the user message before calling and the reply after.
+  app.post("/v1/chat", async (c) => {
+    const input = await body(c, chatSchema);
+    const tenantId = c.var.tenantId;
+    const cfg = await agentRuntimeConfig(
+      ctx,
+      tenantId,
+      input.agentId,
+      input.contactId ?? undefined,
+    );
+    if (!cfg) return c.json({ error: "agent_not_found" }, 404);
+    const req = { tenantId, conversationId: input.conversationId, messages: input.messages };
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream<Uint8Array>({
+      async start(controller) {
+        try {
+          const model = makeModel(cfg.agent.model);
+          let reply = "";
+          for await (const event of runChat(ctx, cfg, req, model)) {
+            if (event.type === "done") reply = event.text;
+            controller.enqueue(encoder.encode(sse(event)));
+          }
+          // Learn from this exchange without making the user wait.
+          if (cfg.memory) background(rememberAfter(ctx, cfg, req, model, reply));
+        } catch (e) {
+          ctx.log.error({ err: (e as Error).message }, "chat failed");
+          controller.enqueue(
+            encoder.encode(sse({ type: "error", message: (e as Error).message.slice(0, 500) })),
+          );
+        } finally {
+          controller.close();
+        }
+      },
+    });
+    return new Response(stream, {
+      headers: { "content-type": "text/event-stream", "cache-control": "no-cache" },
+    });
   });
 
   // --- Admin: connections ----------------------------------------------------------
