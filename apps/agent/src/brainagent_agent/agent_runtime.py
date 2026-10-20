@@ -79,6 +79,7 @@ class RuntimeAgent:
     voice_provider: str | None
     voice_ref: str | None
     tools: list[dict[str, Any]]
+    persona_slug: str | None = None
     max_tool_steps: int = 4
 
     @classmethod
@@ -103,8 +104,25 @@ class RuntimeAgent:
             voice_provider=persona.get("voiceProvider"),
             voice_ref=persona.get("voiceRef"),
             tools=cfg.get("tools") or [],
+            persona_slug=persona.get("slug"),
             max_tool_steps=int(policy.get("maxToolSteps") or 4),
         )
+
+
+def catalog_voice(provider: str, persona_slug: str | None) -> str | None:
+    """Default voice of a catalog persona for a provider (config/catalog-voices.json)."""
+    if not persona_slug:
+        return None
+    path = os.path.join(
+        os.path.dirname(__file__), "..", "..", "..", "..", "config", "catalog-voices.json"
+    )
+    try:
+        with open(path, encoding="utf-8") as f:
+            voices = json.load(f).get(provider, {})
+    except (OSError, ValueError):
+        return None
+    voice = voices.get(persona_slug) if isinstance(voices, dict) else None
+    return voice if isinstance(voice, str) else None
 
 
 def llm_config_for(model_id: str | None, fallback: LLMConfig) -> LLMConfig:

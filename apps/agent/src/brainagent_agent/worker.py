@@ -25,6 +25,7 @@ from livekit.agents import (
     JobProcess,
     MetricsCollectedEvent,
     TurnHandlingOptions,
+    UserStateChangedEvent,
     cli,
     inference,
     llm,
@@ -32,7 +33,13 @@ from livekit.agents import (
 from livekit.agents.worker import ServerEnvOption
 from livekit.plugins import silero
 
-from .agent_runtime import RuntimeAgent, ToolBridge, build_agent_llm, build_function_tools
+from .agent_runtime import (
+    RuntimeAgent,
+    ToolBridge,
+    build_agent_llm,
+    build_function_tools,
+    catalog_voice,
+)
 from .config import InvalidLabConfig, LabConfig, load_lab_config
 from .connector_client import ConnectorClient
 from .persona import LIA
@@ -83,7 +90,13 @@ def build_session(
     agent = Agent(instructions=instructions, tools=list[llm.Tool | llm.Toolset](tools or []))
 
     if cfg.mode == "realtime":
-        model = build_realtime(cfg.realtime, instructions)
+        realtime_cfg = cfg.realtime
+        persona_voice = (
+            catalog_voice("google", runtime_agent.persona_slug) if runtime_agent else None
+        )
+        if persona_voice and not cfg.realtime.voice_overridden:
+            realtime_cfg = cfg.realtime.model_copy(update={"voice": persona_voice})
+        model = build_realtime(realtime_cfg, instructions)
         return AgentSession(llm=model), agent
 
     tts_cfg = cfg.tts
@@ -199,6 +212,13 @@ async def entrypoint(ctx: JobContext) -> None:
     def _on_agent_state(ev: AgentStateChangedEvent) -> None:
         if ev.new_state == "speaking":
             collector.agent_started_speaking(ev.created_at)
+
+    @session.on("user_state_changed")
+    def _on_user_state(ev: UserStateChangedEvent) -> None:
+        # Realtime models detect turns server-side (no EOU metric): use the moment the
+        # user stopped speaking as the start of the turn for first-audio timing.
+        if ev.old_state == "speaking" and ev.new_state != "speaking":
+            collector.user_stopped_speaking(ev.created_at)
 
     @session.on("error")
     def _on_error(ev: ErrorEvent) -> None:

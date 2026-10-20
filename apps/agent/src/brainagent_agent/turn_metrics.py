@@ -63,11 +63,16 @@ class TurnMetricsCollector:
         self._emitted: set[str] = set()
         self._last_user_end_at: float | None = None
         self._last_speaking_at: float | None = None
+        self._last_user_stop_at: float | None = None
 
     def _turn(self, speech_id: str) -> TurnBreakdown:
         if speech_id not in self._pending:
             self._pending[speech_id] = TurnBreakdown(speech_id=speech_id)
         return self._pending[speech_id]
+
+    def user_stopped_speaking(self, at: float) -> None:
+        """Wall-clock end of user speech (used for realtime models, which have no EOU)."""
+        self._last_user_stop_at = at
 
     def agent_started_speaking(self, at: float) -> None:
         """Wall-clock time (time.time()) of the agent's first audio frame of a reply."""
@@ -75,15 +80,26 @@ class TurnMetricsCollector:
 
     def collect(self, m: metrics.AgentMetrics) -> None:
         if isinstance(m, metrics.RealtimeModelMetrics):
-            self._on_turn(
-                TurnBreakdown(
-                    speech_id=m.request_id,
-                    first_token_ms=_ms(m.ttft) if m.ttft >= 0 else None,
-                    prompt_tokens=m.input_tokens,
-                    completion_tokens=m.output_tokens,
-                    labels={"model": m.label},
-                )
+            # The session handshake reports an empty metric with no request: not a turn.
+            if not m.request_id and m.output_tokens == 0:
+                return
+            turn = TurnBreakdown(
+                speech_id=m.request_id,
+                first_token_ms=_ms(m.ttft) if m.ttft >= 0 else None,
+                prompt_tokens=m.input_tokens,
+                completion_tokens=m.output_tokens,
+                labels={"model": m.label},
             )
+            # First audio = user stopped speaking → agent's first frame, when both are known
+            # and in that order (the greeting has no preceding user speech).
+            if (
+                self._last_user_stop_at is not None
+                and self._last_speaking_at is not None
+                and self._last_speaking_at > self._last_user_stop_at
+            ):
+                turn.server_first_audio_ms = _ms(self._last_speaking_at - self._last_user_stop_at)
+                self._last_user_stop_at = None
+            self._on_turn(turn)
             return
 
         speech_id = getattr(m, "speech_id", None)

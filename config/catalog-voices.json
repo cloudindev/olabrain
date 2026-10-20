@@ -1,5 +1,5 @@
 {
-  "$comment": "Voz por defecto de cada personaje del catálogo, por proveedor de TTS. Son voces 'premade' de ElevenLabs (las únicas usables por API en el plan gratuito). Cámbialas por voces con acento de España cuando haya plan de pago.",
+  "$comment": "Voz por defecto de cada personaje del catálogo, por proveedor. 'google' = voces nativas de Gemini Live (modo speech-to-speech, por defecto). 'elevenlabs' = voces premade (modo pipeline).",
   "elevenlabs": {
     "lia": "EXAVITQu4vr4xnSDxMaL",
     "mateo": "cjVigY5qzO86Huf0OWal",
@@ -13,5 +13,19 @@
     "leo": "bIHbv24MWmeRgasZH58o",
     "sara": "pFZP5JQG7iQjIQuC4Bku",
     "max": "TX3LPaxmHKxFdv7VOQHJ"
+  },
+  "google": {
+    "lia": "Kore",
+    "mateo": "Charon",
+    "nora": "Aoede",
+    "hugo": "Orus",
+    "vega": "Leda",
+    "teo": "Iapetus",
+    "iris": "Zephyr",
+    "bruno": "Puck",
+    "alba": "Despina",
+    "leo": "Fenrir",
+    "sara": "Callirrhoe",
+    "max": "Algenib"
   }
 }

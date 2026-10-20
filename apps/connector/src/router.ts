@@ -117,6 +117,7 @@ export async function agentRuntimeConfig(ctx: ConnectorContext, tenantId: string
     },
     persona: row.persona
       ? {
+          slug: row.persona.slug,
           name: row.persona.name,
           greeting: row.persona.greeting,
           basePrompt: row.persona.basePrompt,

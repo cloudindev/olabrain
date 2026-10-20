@@ -134,3 +134,37 @@ def test_speaking_before_user_end_is_ignored() -> None:
     collector.collect(llm_m("s1"))
     collector.collect(tts_m("s1"))
     assert out[0].server_first_audio_ms is None
+
+
+def test_realtime_first_audio_from_user_stop_to_speaking() -> None:
+    out: list[TurnBreakdown] = []
+    collector = TurnMetricsCollector(out.append)
+    collector.user_stopped_speaking(100.0)
+    collector.agent_started_speaking(100.75)
+    collector.collect(
+        metrics.RealtimeModelMetrics(
+            label="google.realtime",
+            request_id="r1",
+            timestamp=time.time(),
+            duration=1.0,
+            session_duration=5.0,
+            ttft=0.4,
+            cancelled=False,
+            input_tokens=10,
+            output_tokens=20,
+            total_tokens=30,
+            tokens_per_second=20.0,
+            input_token_details=metrics.RealtimeModelMetrics.InputTokenDetails(
+                audio_tokens=0,
+                text_tokens=0,
+                image_tokens=0,
+                cached_tokens=0,
+                cached_tokens_details=None,
+            ),
+            output_token_details=metrics.RealtimeModelMetrics.OutputTokenDetails(
+                text_tokens=0, audio_tokens=0, image_tokens=0
+            ),
+        )
+    )
+    assert out[0].server_first_audio_ms == 750
+    assert out[0].first_token_ms == 400

@@ -43,6 +43,8 @@ class RealtimeConfig(BaseModel):
     model: str | None = None
     voice: str | None = None
     language: str = "es-ES"
+    # True when the room metadata chose the voice (it then wins over the persona's).
+    voice_overridden: bool = False
 
 
 class LabConfig(BaseModel):
@@ -146,6 +148,14 @@ def load_lab_config(room_metadata: str | None) -> LabConfig:
     try:
         cfg = LabConfig.model_validate(_deep_merge(defaults_from_env(), override))
         voice_set = isinstance(override.get("tts"), dict) and bool(override["tts"].get("voice_id"))
-        return cfg.model_copy(update={"voice_overridden": voice_set})
+        rt_voice_set = isinstance(override.get("realtime"), dict) and bool(
+            override["realtime"].get("voice")
+        )
+        return cfg.model_copy(
+            update={
+                "voice_overridden": voice_set,
+                "realtime": cfg.realtime.model_copy(update={"voice_overridden": rt_voice_set}),
+            }
+        )
     except ValidationError as exc:
         raise InvalidLabConfig(str(exc)) from exc
