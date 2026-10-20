@@ -128,3 +128,18 @@ group by 1 order by first_audio_p50;
 - **Outlook 365** (Microsoft Graph, OAuth 2.0 + PKCE, permisos delegados): buscar y leer correos, agenda; escrituras con confirmación: enviar correo y crear evento. Los tokens van al vault y se refrescan solos. Usa la app de Entra de la plataforma (`MICROSOFT_CLIENT_ID/SECRET`).
 
 **Consecuencias.** Añadir una app nativa = un fichero con su catálogo + tests contra un mock. Nango sigue siendo una opción para escalar a decenas de apps OAuth en la Fase 3. Las fechas del calendario se calculan con la zona Europe/Madrid (con horario de verano).
+
+---
+
+## ADR-009 — Voz por defecto con Gemini 3.8 Live (2026-10-20)
+
+**Contexto.** El pipeline STT → LLM → TTS (Deepgram + Claude + ElevenLabs) suma tres proveedores y dos saltos de red, y en la Fase 0 medimos 1,5–2,3 s hasta el primer audio. Google ofrece `gemini-3.8-live` (estable), un modelo speech-to-speech con audio nativo, function calling y transcripciones.
+
+**Decisión.** El modo de voz por defecto es `realtime` con `gemini-3.8-live`. Cada personaje del catálogo tiene una voz nativa de Gemini en `config/catalog-voices.json`. El pipeline clásico sigue disponible por configuración (`LAB_MODE=pipeline`) y sus adaptadores no se eliminan.
+
+**Consecuencias.**
+- La detección de turno la hace Gemini (no hay métrica de fin de turno). El primer audio se mide desde que el usuario deja de hablar hasta el primer frame del agente.
+- Con Gemini Live, las herramientas son síncronas: el modelo espera la respuesta antes de seguir hablando.
+- El chat de texto sigue con Claude Haiku mientras el nivel gratuito de Gemini esté saturado (503 / 20–47 s medidos). Con facturación activa en el proyecto de Google se reevalúa con `gemini-3.8-flash` o `gemini-3.5-flash-lite`.
+- Residencia UE: pendiente de verificar la disponibilidad de los modelos Live en Vertex `europe-west*`, con informes contradictorios en los foros. En desarrollo se usa la Gemini API (AI Studio).
+- Avatar: Google ofrece Live Avatar sobre Gemini 3.8 Live (Gemini Enterprise). Queda como prueba propuesta que reabriría el ADR-001.
