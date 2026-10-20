@@ -13,6 +13,7 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
+    "@brainagent/connector": "workspace:*",
     "@brainagent/core": "workspace:*",
     "@brainagent/db": "workspace:*",
     "@brainagent/ui": "workspace:*",
@@ -22,9 +23,12 @@
     "drizzle-orm": "0.45.4",
     "livekit-client": "2.23.0",
     "livekit-server-sdk": "2.19.1",
+    "mssql": "12.7.10",
+    "mysql2": "3.24.6",
     "next": "15.5.28",
     "next-intl": "4.14.9",
     "nodemailer": "10.1.7",
+    "pino": "10.4.0",
     "react": "19.3.1",
     "react-dom": "19.3.1",
     "server-only": "0.0.1",

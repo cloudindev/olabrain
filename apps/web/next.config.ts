@@ -9,8 +9,14 @@ config({ path: path.resolve(process.cwd(), "../../.env"), quiet: true });
 const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 
 const nextConfig: NextConfig = {
-  transpilePackages: ["@brainagent/core", "@brainagent/db", "@brainagent/ui"],
-  serverExternalPackages: ["postgres"],
+  transpilePackages: [
+    "@brainagent/connector",
+    "@brainagent/core",
+    "@brainagent/db",
+    "@brainagent/ui",
+  ],
+  // Native/driver-heavy server deps stay as plain Node modules (connector SQL drivers).
+  serverExternalPackages: ["postgres", "mssql", "mysql2", "pino"],
   poweredByHeader: false,
   // Lets the e2e server (port 3100) run next to `pnpm dev` without sharing build output.
   distDir: process.env.NEXT_DIST_DIR || ".next",

@@ -152,8 +152,8 @@ livekit-server --dev --bind 127.0.0.1
 
 | Pieza | Dónde | Notas |
 |---|---|---|
-| Panel | Vercel, proyecto `olabrain-web`, Root Directory `apps/web`, región `dub1` | `app.olabrain.com`. Cada push a `main` despliega. |
-| Conector + chat | Vercel, proyecto aparte, Root Directory `apps/connector` | Lo usan la web y el worker de voz con `CONNECTOR_SERVICE_TOKEN`. |
+| Panel | Vercel, Root Directory `apps/web`, Framework Next.js, región `dub1` | `app.olabrain.com`. Cada push a `main` despliega. |
+| Conector + chat | Mismo proyecto de Vercel, ruta `/connector/*` | `CONNECTOR_URL=https://app.olabrain.com/connector`. Lo usan la web y el worker de voz con `CONNECTOR_SERVICE_TOKEN`. |
 | Base de datos | Supabase `eu-west-1` | App por *transaction pooler* (6543) con `brainagent_app`; migraciones por *session pooler* (5432). |
 | Voz | LiveKit Cloud (UE) | Sala WebRTC y worker Python alojado. |
 

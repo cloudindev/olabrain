@@ -164,7 +164,7 @@ group by 1 order by first_audio_p50;
 ## ADR-011 — Despliegue: Vercel + Supabase + LiveKit Cloud (2026-10-20)
 
 **Decisión.**
-- **Vercel:** panel (`app.olabrain.com`), conector y chat de texto como funciones; región `dub1` (Dublín), junto a la base de datos. Web comercial en `olabrain.com`.
+- **Vercel:** un solo proyecto (`apps/web`): panel en `app.olabrain.com` y el conector (con el chat de texto, portado a TypeScript) montado en `/connector/*` como ruta de Next.js; región `dub1` (Dublín), junto a la base de datos. Web comercial en `olabrain.com`.
 - **Supabase** (`eu-west-1`, Irlanda) solo como Postgres (y más adelante Storage S3 para el conocimiento). No usamos su Auth ni su Data API: seguimos con Better Auth y nuestro RLS.
   - La app entra como `brainagent_app` por el *transaction pooler* (puerto 6543, IPv4); las migraciones como `postgres` por el *session pooler* (5432). La conexión directa es solo IPv6 y Vercel no la soporta.
   - Migración 0006: se revocan todos los permisos de `anon` y `authenticated` (actuales y futuros), porque la Data API expone el esquema `public` y las tablas de auth no tienen RLS. Recomendado además desactivar la Data API en el panel de Supabase.
