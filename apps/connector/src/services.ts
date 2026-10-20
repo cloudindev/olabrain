@@ -14,8 +14,8 @@ import {
 } from "@brainagent/core";
 import type { microsoft365ConnectionSchema, whmcsConnectionSchema } from "@brainagent/core";
 import { type NativeProvider } from "@brainagent/core";
-import { connections, tools, withTenant } from "@brainagent/db";
-import { and, eq, notInArray } from "drizzle-orm";
+import { agentTools, agents, connections, tools, withTenant, type Tx } from "@brainagent/db";
+import { and, eq, inArray, notInArray } from "drizzle-orm";
 import { z } from "zod";
 import type { ConnectorContext } from "./context";
 import {
@@ -419,6 +419,7 @@ export async function saveStudioTool(
       .insert(tools)
       .values({ ...values, tenantId, connectionId, sourceRef: "studio", enabled: true })
       .returning({ id: tools.id });
+    await assignToAllAgents(tx, tenantId, [row!.id]);
     return { toolId: row!.id };
   });
 }
@@ -485,8 +486,25 @@ type ToolUpsert = {
 
 /** Inserts new tools, refreshes descriptions/schemas of existing ones (keeping admin
  *  choices: enabled, confirmation), and removes tools the source no longer offers. */
+/** New tools are available to every agent of the organization by default; each agent can
+ *  then opt out. Only called for tools that didn't exist before, so opt-outs survive syncs. */
+async function assignToAllAgents(tx: Tx, tenantId: string, toolIds: string[]) {
+  if (toolIds.length === 0) return;
+  const all = await tx.select({ id: agents.id }).from(agents);
+  if (all.length === 0) return;
+  await tx
+    .insert(agentTools)
+    .values(all.flatMap((a) => toolIds.map((toolId) => ({ tenantId, agentId: a.id, toolId }))))
+    .onConflictDoNothing();
+}
+
 async function upsertTools(ctx: ConnectorContext, conn: ConnectionRow, list: ToolUpsert[]) {
   await withTenant(ctx.db, conn.tenantId, async (tx) => {
+    const before = new Set(
+      (
+        await tx.select({ name: tools.name }).from(tools).where(eq(tools.connectionId, conn.id))
+      ).map((r) => r.name),
+    );
     for (const t of list) {
       await tx
         .insert(tools)
@@ -510,6 +528,18 @@ async function upsertTools(ctx: ConnectorContext, conn: ConnectionRow, list: Too
           ? and(eq(tools.connectionId, conn.id), notInArray(tools.name, names))
           : eq(tools.connectionId, conn.id),
       );
+    const added = list.filter((t) => t.enabled && !before.has(t.name)).map((t) => t.name);
+    if (added.length) {
+      const rows = await tx
+        .select({ id: tools.id })
+        .from(tools)
+        .where(and(eq(tools.connectionId, conn.id), inArray(tools.name, added)));
+      await assignToAllAgents(
+        tx,
+        conn.tenantId,
+        rows.map((r) => r.id),
+      );
+    }
   });
 }
 

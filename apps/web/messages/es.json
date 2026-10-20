@@ -143,7 +143,7 @@
     "saved": "Guardado",
     "delete": "Eliminar agente",
     "deleteConfirm": "¿Seguro? Se borrará el agente y sus conversaciones.",
-    "toolsIntro": "Elige qué herramientas puede usar este agente. Las de escritura piden confirmación al usuario salvo que las marques como automáticas en la conexión.",
+    "toolsIntro": "Elige qué herramientas puede usar este agente. Las herramientas nuevas se asignan a todos los agentes; desmarca las que no quieras aquí. Las de escritura piden confirmación al usuario salvo que las marques como automáticas en la conexión.",
     "noTools": "No hay herramientas todavía.",
     "addConnection": "Añadir una conexión",
     "testVoice": "Probar por voz",

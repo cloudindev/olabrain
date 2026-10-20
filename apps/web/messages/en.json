@@ -143,7 +143,7 @@
     "saved": "Saved",
     "delete": "Delete agent",
     "deleteConfirm": "Are you sure? The agent and its conversations will be deleted.",
-    "toolsIntro": "Choose which tools this agent can use. Write tools ask the user for confirmation unless marked automatic in the connection.",
+    "toolsIntro": "Choose which tools this agent can use. New tools are assigned to every agent; uncheck the ones you don't want here. Write tools ask the user for confirmation unless marked automatic in the connection.",
     "noTools": "No tools yet.",
     "addConnection": "Add a connection",
     "testVoice": "Test by voice",

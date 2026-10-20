@@ -39,6 +39,13 @@ export async function createAgent(input: z.infer<typeof createSchema>): Promise<
         presenceMode: "voice",
       })
       .returning({ id: agents.id });
+    // New agents start with every enabled tool of the organization; uncheck what you don't want.
+    const available = await tx.select({ id: tools.id }).from(tools).where(eq(tools.enabled, true));
+    if (available.length) {
+      await tx
+        .insert(agentTools)
+        .values(available.map((t) => ({ tenantId: ctx.tenantId, agentId: row!.id, toolId: t.id })));
+    }
     return row!.id;
   });
   if (!id) return { ok: false, error: "Personaje no encontrado" };

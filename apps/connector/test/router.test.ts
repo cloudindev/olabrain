@@ -84,7 +84,10 @@ afterAll(async () => {
 
 async function assign(toolId: string) {
   await withTenant(appDb.db, tenantA, (tx) =>
-    tx.insert(agentTools).values({ tenantId: tenantA, agentId: agentA, toolId }),
+    tx
+      .insert(agentTools)
+      .values({ tenantId: tenantA, agentId: agentA, toolId })
+      .onConflictDoNothing(),
   );
 }
 
@@ -455,5 +458,37 @@ describe("contact memory", () => {
       await req(`/v1/contacts/${contactId}/memories`, { tenant: tenantB })
     ).json()) as Json;
     expect(other.items).toEqual([]);
+  });
+});
+
+describe("default tool assignment", () => {
+  it("new tools of a connection are assigned to every existing agent", async () => {
+    const otherAgent = await withTenant(appDb.db, tenantA, async (tx) => {
+      const [a] = await tx.insert(agents).values({ tenantId: tenantA, name: "Mateo" }).returning();
+      return a!.id;
+    });
+    const { connectionId } = (await (
+      await req("/v1/connections/http", {
+        body: { name: "CRM", baseUrl, auth: { type: "none" }, secret: {} },
+      })
+    ).json()) as Json;
+    const { toolId } = (await (
+      await req(`/v1/connections/${connectionId}/tools`, {
+        body: {
+          kind: "http",
+          definition: {
+            name: "crm_buscar",
+            description: "Busca en el CRM",
+            method: "GET",
+            path: "/crm",
+            params: [],
+          },
+        },
+      })
+    ).json()) as Json;
+    const rows = await withTenant(appDb.db, tenantA, (tx) =>
+      tx.select().from(agentTools).where(eq(agentTools.toolId, toolId)),
+    );
+    expect(rows.map((r) => r.agentId).sort()).toEqual([agentA, otherAgent].sort());
   });
 });
