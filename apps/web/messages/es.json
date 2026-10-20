@@ -248,7 +248,7 @@
         "url": "URL de tu WHMCS",
         "identifier": "Identificador de API",
         "secret": "Secreto de API",
-        "help": "En WHMCS: Configuración › Personal › Gestionar credenciales de API (usuario con «API Access»). Añade la IP de BrainAgent en Configuración › General › Seguridad › Restricción de IP de la API."
+        "help": "En WHMCS: Configuración › Ajustes del sistema › Credenciales de API (un administrador con permiso «API Access»). Permite además la IP de BrainAgent en Ajustes generales › Seguridad › Restricción de acceso IP a la API."
       },
       "microsoft365": {
         "name": "Outlook 365",
