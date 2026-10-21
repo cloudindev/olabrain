@@ -1,9 +1,11 @@
 /**
  * WHMCS (https://developers.whmcs.com/api/): POST {url}/includes/api.php, form-encoded,
  * authenticated with an API credential pair (identifier + secret) of an admin user that
- * has "API Access". WHMCS also restricts API calls by source IP: the customer must allow
- * BrainAgent's egress IP in Setup > General Settings > Security.
+ * has "API Access". WHMCS also restricts API calls by source IP; as our servers have no
+ * fixed egress IP, the connection can store the API access key ($api_access_key in
+ * configuration.php), sent as `accesskey` to bypass that allowlist.
  */
+import { randomBytes } from "node:crypto";
 import { executeHttp } from "../http";
 import {
   NativeToolError,
@@ -160,6 +162,48 @@ const TOOLS: ToolSpec[] = [
       name: a.nombre,
       email: a.email,
       priority: a.prioridad,
+    }),
+  },
+  {
+    name: "whmcs_crear_cliente",
+    description:
+      "Da de alta un cliente nuevo en WHMCS. Pide al menos nombre, apellidos y email; el resto es opcional. Comprueba antes con whmcs_buscar_clientes que no exista ya. WHMCS le envía el email de bienvenida y el cliente podrá fijar su contraseña.",
+    inputSchema: schema(
+      {
+        nombre: str("Nombre"),
+        apellidos: str("Apellidos"),
+        email: str("Email"),
+        empresa: str("Empresa"),
+        telefono: str("Teléfono"),
+        direccion: str("Dirección"),
+        ciudad: str("Ciudad"),
+        provincia: str("Provincia o estado"),
+        codigo_postal: str("Código postal"),
+        pais: str("País, código ISO de 2 letras (por defecto ES)"),
+        nif: str("NIF/CIF"),
+        notas: str("Notas internas sobre el cliente"),
+      },
+      ["nombre", "apellidos", "email"],
+    ),
+    mode: "write",
+    action: "AddClient",
+    params: (a) => ({
+      firstname: a.nombre,
+      lastname: a.apellidos,
+      email: a.email,
+      companyname: a.empresa,
+      phonenumber: a.telefono,
+      address1: a.direccion,
+      city: a.ciudad,
+      state: a.provincia,
+      postcode: a.codigo_postal,
+      country: typeof a.pais === "string" && a.pais ? a.pais.toUpperCase() : "ES",
+      tax_id: a.nif,
+      notes: a.notas,
+      // A voice call rarely has the full address: only email and password are enforced.
+      skipvalidation: true,
+      // Required by WHMCS when no owner user is given; the client resets it by email.
+      password2: randomBytes(18).toString("base64url"),
     }),
   },
   {

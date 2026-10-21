@@ -169,6 +169,26 @@ describe("WHMCS", () => {
     expect(req.form.has("accesskey")).toBe(false);
   });
 
+  it("creates a client with AddClient, a random password and relaxed validation", async () => {
+    const { ctx } = nativeCtx({ url: `${base}/whmcs/` }, { identifier: "id-ok", secret: "sec-ok" });
+    await executeWhmcsTool(ctx, "whmcs_crear_cliente", {
+      nombre: "Daniel",
+      apellidos: "Garcés Ferrás",
+      email: "daniel@example.com",
+      pais: "es",
+    });
+    const form = Object.fromEntries(seen.at(-1)!.form);
+    expect(form).toMatchObject({
+      action: "AddClient",
+      firstname: "Daniel",
+      lastname: "Garcés Ferrás",
+      email: "daniel@example.com",
+      country: "ES",
+      skipvalidation: "true",
+    });
+    expect(form.password2).toMatch(/^[A-Za-z0-9_-]{20,}$/);
+  });
+
   it("sends the API access key when configured (bypasses the WHMCS IP allowlist)", async () => {
     const { ctx } = nativeCtx(
       { url: `${base}/whmcs/` },
