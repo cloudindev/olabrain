@@ -156,7 +156,6 @@ export default async function AgentPage({
             name: agent.name,
             role: persona?.role ?? null,
             status: agent.status,
-            orgName: ctx.tenantName,
           }}
         />
       ) : null}
