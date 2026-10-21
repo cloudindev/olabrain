@@ -4,6 +4,7 @@
  * calls it asked for. Model ids come from config/models.json ("<provider>:<model>").
  */
 import Anthropic from "@anthropic-ai/sdk";
+import { isImageAttachment, isTextAttachment, type Attachment } from "@brainagent/core";
 import { GoogleGenAI, type Content, type Part } from "@google/genai";
 import OpenAI from "openai";
 import modelsConfig from "../../../../config/models.json" with { type: "json" };
@@ -12,7 +13,7 @@ export type ToolSpec = { name: string; description: string; parameters: Record<s
 export type ToolCall = { id: string; name: string; args: Record<string, unknown> };
 
 export type ChatTurn =
-  | { role: "user"; content: string }
+  | { role: "user"; content: string; attachments?: Attachment[] }
   /** `raw` keeps the provider's own assistant content (tool blocks, thought signatures). */
   | { role: "assistant"; content: string; toolCalls?: ToolCall[]; raw?: unknown }
   | { role: "tool"; callId: string; name: string; output: string; isError: boolean };
@@ -42,6 +43,12 @@ function requireEnv(name: string): string {
   return value;
 }
 
+/** Text files go to every model as plain text, labelled with their name. */
+function attachmentText(a: Attachment): string {
+  const text = Buffer.from(a.data, "base64").toString("utf8").slice(0, 100_000);
+  return `Archivo adjunto «${a.name}»:\n${text}`;
+}
+
 const asArgs = (v: unknown): Record<string, unknown> =>
   v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : {};
 
@@ -57,8 +64,31 @@ class AnthropicModel implements ChatModel {
   private messages(turns: ChatTurn[]): Anthropic.MessageParam[] {
     const out: Anthropic.MessageParam[] = [];
     for (const t of turns) {
-      if (t.role === "user") out.push({ role: "user", content: t.content });
-      else if (t.role === "assistant") {
+      if (t.role === "user") {
+        if (!t.attachments?.length) out.push({ role: "user", content: t.content });
+        else {
+          const blocks: Anthropic.ContentBlockParam[] = t.attachments.map((a) =>
+            isTextAttachment(a.mediaType)
+              ? { type: "text", text: attachmentText(a) }
+              : isImageAttachment(a.mediaType)
+                ? {
+                    type: "image",
+                    source: {
+                      type: "base64",
+                      media_type: a.mediaType as Anthropic.Base64ImageSource["media_type"],
+                      data: a.data,
+                    },
+                  }
+                : {
+                    type: "document",
+                    title: a.name,
+                    source: { type: "base64", media_type: "application/pdf", data: a.data },
+                  },
+          );
+          if (t.content) blocks.push({ type: "text", text: t.content });
+          out.push({ role: "user", content: blocks });
+        }
+      } else if (t.role === "assistant") {
         if (t.raw) out.push({ role: "assistant", content: t.raw as Anthropic.ContentBlockParam[] });
         else if (t.content) out.push({ role: "assistant", content: t.content });
       } else {
@@ -143,8 +173,15 @@ class GoogleModel implements ChatModel {
   private contents(turns: ChatTurn[]): Content[] {
     const out: Content[] = [];
     for (const t of turns) {
-      if (t.role === "user") out.push({ role: "user", parts: [{ text: t.content }] });
-      else if (t.role === "assistant") {
+      if (t.role === "user") {
+        const parts: Part[] = (t.attachments ?? []).map((a) =>
+          isTextAttachment(a.mediaType)
+            ? { text: attachmentText(a) }
+            : { inlineData: { mimeType: a.mediaType, data: a.data } },
+        );
+        if (t.content || !parts.length) parts.push({ text: t.content });
+        out.push({ role: "user", parts });
+      } else if (t.role === "assistant") {
         // Raw parts carry Gemini's thought signatures, required to continue a tool turn.
         if (t.raw) out.push({ role: "model", parts: t.raw as Part[] });
         else if (t.content) out.push({ role: "model", parts: [{ text: t.content }] });
@@ -226,8 +263,23 @@ class OpenAIModel implements ChatModel {
   private messages(system: string, turns: ChatTurn[]): OpenAI.ChatCompletionMessageParam[] {
     const out: OpenAI.ChatCompletionMessageParam[] = [{ role: "system", content: system }];
     for (const t of turns) {
-      if (t.role === "user") out.push({ role: "user", content: t.content });
-      else if (t.role === "assistant") {
+      if (t.role === "user") {
+        if (!t.attachments?.length) out.push({ role: "user", content: t.content });
+        else {
+          const parts: OpenAI.ChatCompletionContentPart[] = t.attachments.map((a) =>
+            isTextAttachment(a.mediaType)
+              ? { type: "text", text: attachmentText(a) }
+              : isImageAttachment(a.mediaType)
+                ? { type: "image_url", image_url: { url: `data:${a.mediaType};base64,${a.data}` } }
+                : {
+                    type: "file",
+                    file: { filename: a.name, file_data: `data:${a.mediaType};base64,${a.data}` },
+                  },
+          );
+          if (t.content) parts.push({ type: "text", text: t.content });
+          out.push({ role: "user", content: parts });
+        }
+      } else if (t.role === "assistant") {
         if (t.toolCalls?.length) {
           out.push({
             role: "assistant",

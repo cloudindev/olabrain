@@ -7,6 +7,7 @@
  * `confirm: true` and the router accepts it only if a user message was stored after the
  * confirmation was requested (see router.callTool). The LLM can't confirm on its own.
  */
+import type { Attachment } from "@brainagent/core";
 import type { ConnectorContext } from "../context";
 import { addContactMemories, callTool } from "../router";
 import { buildChatModel, type ChatModel, type ChatTurn, type ToolSpec } from "./llm";
@@ -34,7 +35,7 @@ export type ChatEvent =
 export type ChatRequest = {
   tenantId: string;
   conversationId: string | null;
-  messages: { role: string; content: string }[];
+  messages: { role: string; content: string; attachments?: Attachment[] }[];
 };
 
 function toolSpecs(cfg: RuntimeConfig): ToolSpec[] {
@@ -129,13 +130,15 @@ export async function* runChat(
   const system = buildInstructions(cfg, now);
   const tools = toolSpecs(cfg);
   const maxSteps = Number((cfg.agent.policy as { maxToolSteps?: number }).maxToolSteps) || 4;
-  const turns: ChatTurn[] = req.messages
-    .slice(-MAX_HISTORY)
-    .map((m) =>
-      m.role === "assistant"
-        ? { role: "assistant", content: String(m.content).slice(0, 20_000) }
-        : { role: "user", content: String(m.content).slice(0, 20_000) },
-    );
+  const turns: ChatTurn[] = req.messages.slice(-MAX_HISTORY).map((m) =>
+    m.role === "assistant"
+      ? { role: "assistant", content: String(m.content).slice(0, 20_000) }
+      : {
+          role: "user",
+          content: String(m.content).slice(0, 20_000),
+          ...(m.attachments?.length ? { attachments: m.attachments } : {}),
+        },
+  );
 
   const started = performance.now();
   let firstTokenMs: number | null = null;

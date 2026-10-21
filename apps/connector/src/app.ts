@@ -5,7 +5,11 @@
  *   X-Tenant-Id:   <uuid>   (all data access is RLS-scoped to it)
  */
 import { timingSafeEqual } from "node:crypto";
-import { microsoft365ConnectionSchema, whmcsConnectionSchema } from "@brainagent/core";
+import {
+  attachmentsSchema,
+  microsoft365ConnectionSchema,
+  whmcsConnectionSchema,
+} from "@brainagent/core";
 import { waitUntil } from "@vercel/functions";
 import { Hono, type Context } from "hono";
 import { z } from "zod";
@@ -69,7 +73,13 @@ const chatSchema = z.object({
   conversationId: uuid.nullable().default(null),
   contactId: uuid.nullable().default(null),
   messages: z
-    .array(z.object({ role: z.enum(["user", "assistant"]), content: z.string().max(20_000) }))
+    .array(
+      z.object({
+        role: z.enum(["user", "assistant"]),
+        content: z.string().max(20_000),
+        attachments: attachmentsSchema.optional(),
+      }),
+    )
     .min(1)
     .max(MAX_HISTORY * 5),
 });

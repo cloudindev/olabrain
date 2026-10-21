@@ -1,16 +1,27 @@
 import { agents, conversations, messages, usageEvents } from "@brainagent/db";
 import { and, asc, eq } from "drizzle-orm";
 import { z } from "zod";
+import { attachmentsSchema } from "@brainagent/core";
 import { ensurePanelContact } from "@/lib/contacts";
 import { env } from "@/lib/env";
 import { authErrorResponse, requireTenant, tenantTx, type TenantContext } from "@/lib/tenant";
 
 export const runtime = "nodejs";
 
-const bodySchema = z.object({
-  conversationId: z.uuid().nullable().optional(),
-  message: z.string().trim().min(1).max(8_000),
-});
+const bodySchema = z
+  .object({
+    conversationId: z.uuid().nullable().optional(),
+    message: z.string().trim().max(8_000).default(""),
+    attachments: attachmentsSchema.default([]),
+  })
+  .refine((b) => b.message.length > 0 || b.attachments.length > 0, { message: "empty_message" });
+
+/** What is stored for a message with files (the files themselves are not kept, ADR-013). */
+function storedContent(message: string, attachments: { name: string }[]): string {
+  if (!attachments.length) return message;
+  const note = `📎 ${attachments.map((a) => a.name).join(", ")}`;
+  return message ? `${message}\n\n${note}` : note;
+}
 
 type DoneEvent = {
   type: "done";
@@ -108,7 +119,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       tenantId: ctx.tenantId,
       conversationId,
       role: "user",
-      content: parsed.data.message,
+      content: storedContent(parsed.data.message, parsed.data.attachments),
     });
     const history = await tx
       .select({ role: messages.role, content: messages.content })
@@ -134,7 +145,12 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         agentId,
         conversationId: setup.conversationId,
         contactId: setup.contactId,
-        messages: setup.history,
+        // The files go with the message just sent (the last one); earlier ones were not kept.
+        messages: setup.history.map((m, i, all) =>
+          i === all.length - 1 && parsed.data.attachments.length
+            ? { ...m, content: parsed.data.message, attachments: parsed.data.attachments }
+            : m,
+        ),
       }),
     });
   } catch {

@@ -157,6 +157,42 @@ describe("text chat runtime", () => {
     expect(model.requests[1]!.turns.at(-1)).toMatchObject({ role: "tool", isError: true });
   });
 
+  it("passes the attachments of a message to the model and rejects unsupported files", async () => {
+    const model = new FakeModel([
+      { text: "Veo una factura.", toolCalls: [], usage: { input: 1, output: 1 } },
+    ]);
+    const png = Buffer.from("fake-png").toString("base64");
+    const res = await chat(model, {
+      agentId,
+      messages: [
+        {
+          role: "user",
+          content: "¿Qué es esto?",
+          attachments: [{ name: "factura.png", mediaType: "image/png", data: png }],
+        },
+      ],
+    });
+    expect(res.status).toBe(200);
+    await events(res);
+    expect(model.requests[0]!.turns[0]).toMatchObject({
+      role: "user",
+      content: "¿Qué es esto?",
+      attachments: [{ name: "factura.png", mediaType: "image/png", data: png }],
+    });
+
+    const bad = await chat(new FakeModel([]), {
+      agentId,
+      messages: [
+        {
+          role: "user",
+          content: "toma",
+          attachments: [{ name: "x.exe", mediaType: "application/x-msdownload", data: png }],
+        },
+      ],
+    });
+    expect(bad.status).toBe(400);
+  });
+
   it("rejects unknown agents and other tenants' agents", async () => {
     const other = await createTenant(admin.db);
     try {
@@ -193,6 +229,33 @@ describe("chat helpers", () => {
       "Tiene 3 servidores",
     ]);
     expect(parseFacts("{roto", [])).toEqual([]);
+  });
+
+  it("uses the agent's own name over its persona's", () => {
+    const system = buildInstructions({
+      agent: {
+        id: "a",
+        name: "Claudia",
+        instructions: "",
+        model: null,
+        presenceMode: "voice",
+        policy: {},
+        status: "active",
+      },
+      persona: {
+        slug: "alba",
+        name: "Alba",
+        basePrompt: "Eres Alba, la agenda de la empresa.",
+        greeting: null,
+        language: "es-ES",
+        voiceProvider: null,
+        voiceRef: null,
+      },
+      tools: [],
+      memory: null,
+    } as never);
+    expect(system).toContain("Te llamas Claudia");
+    expect(system).toContain("nunca como Alba");
   });
 
   it("includes known memory in the instructions", () => {
