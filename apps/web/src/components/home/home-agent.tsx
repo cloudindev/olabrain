@@ -21,17 +21,22 @@ export function HomeAgent({ maxMinutes }: { maxMinutes: number }) {
   const call = useVoiceCall();
   const [agentState, setAgentState] = useState<VoiceState>("disconnected");
   const live = call.status === "live";
-  const { clip, onGreetingEnd } = useAvatarClip(live, agentState);
+  const { clip, greet, stopGreeting, greetingRef, onGreetingEnd } = useAvatarClip(agentState);
   const elapsed = useElapsed(call.startedAt);
   const remaining =
     elapsed !== null && call.session?.maxSeconds ? call.session.maxSeconds - elapsed : null;
 
   function start() {
+    // Inside the click: the greeting video plays with its own voice while we connect.
+    const greeted = greet();
     void call.start(async () => {
       const res = await fetch("/api/public/voice", { method: "POST" });
-      if (!res.ok) throw new CallStartError(callErrorFor(res.status));
+      if (!res.ok) {
+        stopGreeting();
+        throw new CallStartError(callErrorFor(res.status));
+      }
       return res.json();
-    });
+    }, greeted);
   }
 
   const stateLabel =
@@ -46,6 +51,7 @@ export function HomeAgent({ maxMinutes }: { maxMinutes: number }) {
       <AvatarStage
         clip={clip}
         onGreetingEnd={onGreetingEnd}
+        greetingRef={greetingRef}
         className={cn(
           "relative aspect-video w-full rounded-[28px] border border-line",
           "shadow-[0_30px_80px_-40px_rgba(22,24,28,0.45)] transition-[box-shadow] duration-500",
@@ -79,7 +85,10 @@ export function HomeAgent({ maxMinutes }: { maxMinutes: number }) {
         <Button
           variant="danger"
           size="lg"
-          onClick={() => void call.hangUp()}
+          onClick={() => {
+            stopGreeting();
+            void call.hangUp();
+          }}
           data-testid="home-hangup"
         >
           {t("hangUp")}

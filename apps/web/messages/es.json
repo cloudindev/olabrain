@@ -406,7 +406,8 @@
       "fileType": "{name}: tipo de archivo no admitido.",
       "fileSize": "Los archivos superan {mb} MB en total.",
       "fileCount": "Máximo {count} archivos por mensaje."
-    }
+    },
+    "opening": "Hola. ¿En qué te puedo ayudar?"
   },
   "customize": {
     "identity": "Identidad",

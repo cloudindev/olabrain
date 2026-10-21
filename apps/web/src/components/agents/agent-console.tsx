@@ -136,7 +136,7 @@ export function AgentConsole({
   const call = useVoiceCall();
   const [agentState, setAgentState] = useState<VoiceState>("disconnected");
   const live = call.status === "live";
-  const { clip, onGreetingEnd } = useAvatarClip(live, agentState);
+  const { clip, greet, stopGreeting, greetingRef, onGreetingEnd } = useAvatarClip(agentState);
   const elapsed = useElapsed(call.startedAt);
 
   const [messages, setMessages] = useState<Message[]>([]);
@@ -297,19 +297,31 @@ export function AgentConsole({
 
   function startVoice() {
     setError(null);
+    // Inside the click: the greeting video plays with its own voice while we connect,
+    // and the agent is told not to greet (ADR-014).
+    const greeted = greet();
+    // The greeting's words come from the video, not from the transcript: show them.
+    setMessages((prev) => [
+      ...prev,
+      { id: nextId(), role: "assistant", text: t("opening"), source: "voice", tools: [] },
+    ]);
     void call.start(async () => {
       const res = await fetch("/api/lab/token", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ config: { agent_id: agent.id } }),
+        body: JSON.stringify({ config: { agent_id: agent.id, client_greeting: true } }),
       });
-      if (!res.ok) throw new CallStartError(callErrorFor(res.status));
+      if (!res.ok) {
+        stopGreeting();
+        throw new CallStartError(callErrorFor(res.status));
+      }
       return res.json();
-    });
+    }, greeted);
   }
 
   async function hangUp() {
     const duration = lastElapsed.current;
+    stopGreeting();
     await call.hangUp();
     setMessages((prev) => [
       ...prev,
@@ -370,6 +382,7 @@ export function AgentConsole({
       <AvatarStage
         clip={clip}
         onGreetingEnd={onGreetingEnd}
+        greetingRef={greetingRef}
         className={cn(
           "absolute inset-0",
           "lg:relative lg:inset-auto lg:aspect-[9/16] lg:h-full lg:rounded-[28px] lg:border lg:border-line",

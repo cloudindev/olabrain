@@ -193,3 +193,11 @@ group by 1 order by first_audio_p50;
 - **Adjuntos** (imágenes, PDF y texto; máx. 3 archivos y 3 MB por mensaje, por el límite de 4,5 MB de Vercel) van al modelo **solo con ese mensaje**: no se guardan todavía (falta el almacenamiento S3/Supabase Storage); en el historial queda «📎 nombre». Adaptadores: imagen y documento nativos en Anthropic, `inlineData` en Gemini, `image_url`/`file` en OpenAI; el texto va como texto.
 - Las respuestas del agente se muestran con Markdown mínimo y seguro (sin HTML).
 - Si el agente se llama distinto de su personaje, ambos runtimes le indican su nombre y el saludo de voz lo usa.
+
+---
+
+## ADR-014 — El saludo lo pone el vídeo, con su propia voz (2026-10-21)
+
+**Decisión.** En la home y en la conversación del panel, al pulsar «Hablar» se reproduce el clip de saludo **con su audio** («Hola. ¿En qué te puedo ayudar?») dentro del mismo clic (los navegadores solo permiten sonido iniciado por un gesto). La sesión se pide con `client_greeting: true` y el agente **no saluda**: se le indica que ya ha saludado y espera a que la persona hable. El micrófono se abre al acabar la frase del vídeo (4 s) para que el agente no la oiga. El laboratorio y los canales sin vídeo (teléfono, WhatsApp) siguen con el saludo hablado por el agente.
+
+**Motivo.** Sincronía perfecta entre labios y voz, y el saludo tapa el tiempo de conexión.

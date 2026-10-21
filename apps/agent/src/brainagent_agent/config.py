@@ -63,6 +63,9 @@ class LabConfig(BaseModel):
     llm: LLMConfig = LLMConfig()
     realtime: RealtimeConfig = RealtimeConfig()
     max_session_seconds: int = Field(default=600, alias="maxSessionSeconds", ge=30, le=3600)
+    # The client plays the greeting (video with its own voice), so the agent stays silent
+    # until the person speaks (ADR-014).
+    client_greeting: bool = False
     preemptive_generation: bool = Field(default=True, alias="preemptiveGeneration")
     # True when the room metadata chose a TTS voice (it then wins over the persona's voice).
     voice_overridden: bool = False

@@ -90,6 +90,11 @@ def build_session(
     tools: list[llm.Tool] | None = None,
 ) -> tuple[AgentSession, Agent]:
     instructions = runtime_agent.instructions if runtime_agent else LIA.instructions
+    if cfg.client_greeting:
+        instructions += (
+            f"\n\nLa llamada ya ha empezado con tu saludo «{OPENING_LINE}». No vuelvas a "
+            "saludar: espera a que la persona hable y respóndele directamente."
+        )
     agent = Agent(instructions=instructions, tools=list[llm.Tool | llm.Toolset](tools or []))
 
     if cfg.mode == "realtime":
@@ -273,10 +278,12 @@ async def entrypoint(ctx: JobContext) -> None:
 
     # Every call opens with the same short line (product decision); the AI disclosure is
     # on screen in every channel that shows one, and the agent says it is an AI if asked.
-    if cfg.mode == "realtime":
-        session.generate_reply(instructions=f"Saluda diciendo exactamente: {OPENING_LINE}")
-    else:
-        session.say(OPENING_LINE)
+    # With client_greeting the web plays it (greeting video with its own voice).
+    if not cfg.client_greeting:
+        if cfg.mode == "realtime":
+            session.generate_reply(instructions=f"Saluda diciendo exactamente: {OPENING_LINE}")
+        else:
+            session.say(OPENING_LINE)
 
     async def enforce_max_duration() -> None:
         await asyncio.sleep(cfg.max_session_seconds)

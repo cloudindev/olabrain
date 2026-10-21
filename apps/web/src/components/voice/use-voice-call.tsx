@@ -65,7 +65,11 @@ export function useVoiceCall() {
   }, []);
 
   const start = useCallback(
-    async (fetchSession: () => Promise<CallSession>) => {
+    async (
+      fetchSession: () => Promise<CallSession>,
+      /** Resolves when the microphone may open (e.g. after a greeting with sound). */
+      beforeMic?: Promise<void>,
+    ) => {
       setError(null);
       setStatus("connecting");
       setMicOn(true);
@@ -85,6 +89,9 @@ export function useVoiceCall() {
         setStartedAt(Date.now());
         setStatus("live");
         try {
+          // The greeting video speaks first; the agent must not hear it.
+          if (beforeMic) await beforeMic;
+          if (roomRef.current !== next) return;
           await next.localParticipant.setMicrophoneEnabled(true, {
             echoCancellation: true,
             noiseSuppression: true,

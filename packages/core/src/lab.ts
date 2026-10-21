@@ -42,6 +42,8 @@ export const labConfigSchema = z.object({
     })
     .optional(),
   preemptive_generation: z.boolean().optional(),
+  /** The client plays the greeting (video with its own audio): the agent doesn't greet. */
+  client_greeting: z.boolean().optional(),
   /** Hard limit of the call; the worker hangs up when reached. */
   max_session_seconds: z.number().int().min(30).max(3600).optional(),
 });

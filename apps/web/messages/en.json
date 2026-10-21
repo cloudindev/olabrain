@@ -406,7 +406,8 @@
       "fileType": "{name}: file type not supported.",
       "fileSize": "Files exceed {mb} MB in total.",
       "fileCount": "Up to {count} files per message."
-    }
+    },
+    "opening": "Hi. How can I help you?"
   },
   "customize": {
     "identity": "Identity",

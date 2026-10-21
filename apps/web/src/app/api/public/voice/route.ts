@@ -26,7 +26,12 @@ export async function POST(request: Request) {
   const tenantId = e.HOME_AGENT_TENANT_ID;
   const agentId = e.HOME_AGENT_ID;
   const visitor = visitorKey(clientIp(request.headers), e.BETTER_AUTH_SECRET);
-  const config: LabConfig = { agent_id: agentId, max_session_seconds: e.HOME_VOICE_MAX_SECONDS };
+  const config: LabConfig = {
+    agent_id: agentId,
+    max_session_seconds: e.HOME_VOICE_MAX_SECONDS,
+    // The home plays the greeting video with its own voice (ADR-014).
+    client_greeting: true,
+  };
 
   const started = await withTenant(db(), tenantId, async (tx) => {
     const [agent] = await tx

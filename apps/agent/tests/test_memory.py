@@ -103,3 +103,12 @@ def test_agent_name_wins_over_persona_name() -> None:
     assert agent.greeting == "Hola, soy Claudia, ¿en qué puedo ayudarte?"
     same = RuntimeAgent.from_config("t-1", CONFIG)
     assert "Te llamas" not in same.instructions
+
+
+def test_client_greeting_is_parsed_from_room_metadata() -> None:
+    import json
+
+    from brainagent_agent.config import load_lab_config
+
+    assert load_lab_config(json.dumps({"client_greeting": True})).client_greeting is True
+    assert load_lab_config(None).client_greeting is False
