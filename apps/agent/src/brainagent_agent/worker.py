@@ -53,6 +53,8 @@ load_dotenv()
 
 logger = logging.getLogger("brainagent.agent")
 
+OPENING_LINE = "Hola. ¿En qué te puedo ayudar?"
+
 METRICS_TOPIC = "lab.metrics"
 DEFAULT_AGENT_NAME = "brainagent-lab"
 
@@ -269,17 +271,12 @@ async def entrypoint(ctx: JobContext) -> None:
 
     await session.start(agent=agent, room=ctx.room)
 
-    greeting = (runtime[0].greeting if runtime else None) or LIA.greeting
-    known = bool(runtime and runtime[0].memory)
-    if cfg.mode == "realtime" and known:
-        session.generate_reply(
-            instructions=f"Saluda en una frase, como en «{greeting}», pero si sabes cómo se "
-            "llama la persona, salúdala por su nombre. Sigue presentándote como IA."
-        )
-    elif cfg.mode == "realtime":
-        session.generate_reply(instructions=f"Saluda diciendo exactamente: {greeting}")
+    # Every call opens with the same short line (product decision); the AI disclosure is
+    # on screen in every channel that shows one, and the agent says it is an AI if asked.
+    if cfg.mode == "realtime":
+        session.generate_reply(instructions=f"Saluda diciendo exactamente: {OPENING_LINE}")
     else:
-        session.say(greeting)
+        session.say(OPENING_LINE)
 
     async def enforce_max_duration() -> None:
         await asyncio.sleep(cfg.max_session_seconds)

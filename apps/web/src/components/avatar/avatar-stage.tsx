@@ -18,6 +18,12 @@ export type VoiceState =
 const CLIPS: AvatarClip[] = ["idle", "talking", "greeting"];
 
 /**
+ * The greeting clip stands still for ~1.25 s before she opens her mouth and waves; it is
+ * started there so the gesture lands with the agent's first word. Tune here.
+ */
+export const GREETING_START_SECONDS = 1.25;
+
+/**
  * Which clip to show for a call: the greeting waves once, when the agent's first words
  * actually play (not on click: connecting takes seconds); then talking while it speaks.
  */
@@ -65,7 +71,7 @@ export function AvatarStage({
     if (clip !== "greeting") return;
     const video = videos.current.greeting;
     if (!video) return;
-    video.currentTime = 0;
+    video.currentTime = GREETING_START_SECONDS;
     void video.play().catch(onGreetingEnd);
   }, [clip]); // eslint-disable-line react-hooks/exhaustive-deps
 
