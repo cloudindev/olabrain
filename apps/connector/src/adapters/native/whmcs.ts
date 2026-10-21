@@ -21,6 +21,19 @@ type ToolSpec = NativeToolDef & {
   action: string;
   /** Maps tool args to WHMCS parameters (default: same names). */
   params?: (args: Record<string, unknown>) => Record<string, unknown>;
+  /** Trims a successful response to what the model needs (default: as is). */
+  shape?: (data: Record<string, unknown>, args: Record<string, unknown>) => unknown;
+};
+
+const CYCLES = ["monthly", "quarterly", "semiannually", "annually", "biennially", "triennially"];
+
+type WhmcsProduct = {
+  pid?: number;
+  gid?: number;
+  name?: string;
+  type?: string;
+  paytype?: string;
+  pricing?: Record<string, Record<string, string>>;
 };
 
 const limit = int("Máximo de resultados (por defecto 25, máximo 100)", {
@@ -207,6 +220,145 @@ const TOOLS: ToolSpec[] = [
     }),
   },
   {
+    name: "whmcs_productos",
+    description:
+      "Catálogo de productos y servicios de WHMCS con su id (pid), grupo, tipo y precio por ciclo de facturación. Úsalo antes de crear un pedido.",
+    inputSchema: schema({
+      gid: int("ID del grupo de productos"),
+      buscar: str("Texto a buscar en el nombre del producto"),
+    }),
+    mode: "read",
+    action: "GetProducts",
+    params: (a) => ({ gid: a.gid }),
+    shape: (data, args) => {
+      // The API has no name filter: search here.
+      const q = typeof args.buscar === "string" ? args.buscar.trim().toLowerCase() : "";
+      const list = (data.products as { product?: WhmcsProduct[] } | undefined)?.product ?? [];
+      return list
+        .filter(
+          (p) =>
+            !q ||
+            String(p.name ?? "")
+              .toLowerCase()
+              .includes(q),
+        )
+        .map((p) => {
+          const [currency, prices] = Object.entries(p.pricing ?? {})[0] ?? [];
+          const price = Object.fromEntries(
+            CYCLES.filter((c) => prices && Number(prices[c]) >= 0).map(
+              (c) => [c, prices![c]],
+            ),
+          );
+          return {
+            pid: p.pid,
+            gid: p.gid,
+            nombre: p.name,
+            tipo: p.type,
+            pago: p.paytype,
+            moneda: currency,
+            precios: price,
+          };
+        });
+    },
+  },
+  {
+    name: "whmcs_metodos_pago",
+    description:
+      "Métodos de pago activos en WHMCS (el campo module es el que piden los pedidos y las facturas).",
+    inputSchema: schema({}),
+    mode: "read",
+    action: "GetPaymentMethods",
+  },
+  {
+    name: "whmcs_crear_pedido",
+    description:
+      "Crea un pedido en WHMCS para un cliente: un producto (pid de whmcs_productos) con su ciclo de facturación y, si es hosting, el dominio. Genera la factura del pedido salvo que se indique lo contrario. Necesita el método de pago (module de whmcs_metodos_pago).",
+    inputSchema: schema(
+      {
+        clientid: int("ID del cliente"),
+        pid: int("ID del producto"),
+        metodo_pago: str("Módulo del método de pago, p. ej. banktransfer o stripe"),
+        ciclo: str("Ciclo de facturación", { enum: CYCLES }),
+        dominio: str("Dominio asociado al producto (hosting)"),
+        cantidad: int("Cantidad (por defecto 1)", { minimum: 1, maximum: 100 }),
+        codigo_promocional: str("Código promocional"),
+        precio: { type: "number", description: "Precio especial para este pedido" },
+        sin_factura: { type: "boolean", description: "No generar factura del pedido" },
+        sin_email: { type: "boolean", description: "No enviar el email de confirmación" },
+      },
+      ["clientid", "pid", "metodo_pago"],
+    ),
+    mode: "write",
+    action: "AddOrder",
+    // AddOrder takes per-item arrays (pid[0], billingcycle[0]…): one item per order here.
+    params: (a) => ({
+      clientid: a.clientid,
+      paymentmethod: a.metodo_pago,
+      "pid[0]": a.pid,
+      "billingcycle[0]": a.ciclo,
+      "domain[0]": a.dominio,
+      "qty[0]": a.cantidad,
+      "priceoverride[0]": a.precio,
+      promocode: a.codigo_promocional,
+      noinvoice: a.sin_factura,
+      noemail: a.sin_email,
+    }),
+  },
+  {
+    name: "whmcs_crear_factura",
+    description:
+      "Crea una factura manual en WHMCS para un cliente con una o varias líneas (descripción e importe). Por defecto queda pendiente de pago y se envía al cliente.",
+    inputSchema: schema(
+      {
+        clientid: int("ID del cliente"),
+        lineas: {
+          type: "array",
+          minItems: 1,
+          maxItems: 20,
+          description: "Líneas de la factura",
+          items: {
+            type: "object",
+            additionalProperties: false,
+            required: ["descripcion", "importe"],
+            properties: {
+              descripcion: { type: "string", description: "Concepto" },
+              importe: { type: "number", description: "Importe sin impuestos" },
+              con_impuestos: { type: "boolean", description: "Aplicar impuestos a esta línea" },
+            },
+          },
+        },
+        metodo_pago: str("Módulo del método de pago"),
+        vencimiento: str("Fecha de vencimiento AAAA-MM-DD"),
+        borrador: { type: "boolean", description: "Crear como borrador sin enviar" },
+        enviar: { type: "boolean", description: "Enviar la factura por email (por defecto sí)" },
+        notas: str("Notas que verá el cliente en la factura"),
+      },
+      ["clientid", "lineas"],
+    ),
+    mode: "write",
+    action: "CreateInvoice",
+    params: (a) => {
+      const lines =
+        (a.lineas as { descripcion: string; importe: number; con_impuestos?: boolean }[]) ?? [];
+      const items: Record<string, unknown> = {};
+      lines.forEach((l, i) => {
+        items[`itemdescription${i + 1}`] = l.descripcion;
+        items[`itemamount${i + 1}`] = l.importe;
+        items[`itemtaxed${i + 1}`] = l.con_impuestos ?? false;
+      });
+      return {
+        userid: a.clientid,
+        status: a.borrador ? "Draft" : "Unpaid",
+        draft: a.borrador,
+        sendinvoice: a.borrador ? false : (a.enviar ?? true),
+        paymentmethod: a.metodo_pago,
+        duedate: a.vencimiento,
+        notes: a.notas,
+        ...items,
+      };
+    },
+  },
+  {
     name: "whmcs_responder_ticket",
     description: "Añade una respuesta a un ticket de soporte de WHMCS.",
     inputSchema: schema(
@@ -297,7 +449,10 @@ export async function executeWhmcsTool(
 ): Promise<NativeResult> {
   const tool = TOOLS.find((t) => t.name === toolName);
   if (!tool) throw new NativeToolError(`herramienta de WHMCS desconocida: ${toolName}`);
-  return callWhmcs(ctx, tool.action, tool.params ? tool.params(args) : args);
+  const res = await callWhmcs(ctx, tool.action, tool.params ? tool.params(args) : args);
+  return res.ok && tool.shape
+    ? { ...res, data: tool.shape(res.data as Record<string, unknown>, args) }
+    : res;
 }
 
 /** Cheap authenticated call used to validate credentials when connecting. */

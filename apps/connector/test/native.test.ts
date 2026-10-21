@@ -70,6 +70,28 @@ beforeAll(async () => {
           );
         if (action === "OpenTicket")
           return res.end(JSON.stringify({ result: "success", id: 99, tid: "ABC-123" }));
+        if (action === "GetProducts")
+          return res.end(
+            JSON.stringify({
+              result: "success",
+              products: {
+                product: [
+                  {
+                    pid: 3,
+                    gid: 1,
+                    name: "Hosting Pro",
+                    type: "hostingaccount",
+                    paytype: "recurring",
+                    description: "<p>mucho html</p>",
+                    pricing: { EUR: { monthly: "9.90", annually: "99.00", biennially: "-1.00" } },
+                  },
+                  { pid: 4, gid: 2, name: "Dominio .es", type: "other", pricing: {} },
+                ],
+              },
+            }),
+          );
+        if (action === "AddOrder" || action === "CreateInvoice" || action === "AddClient")
+          return res.end(JSON.stringify({ result: "success", orderid: 55, invoiceid: 77 }));
         return res.end(JSON.stringify({ result: "error", message: `unknown ${action}` }));
       }
       // --- Microsoft identity platform mock
@@ -187,6 +209,65 @@ describe("WHMCS", () => {
       skipvalidation: "true",
     });
     expect(form.password2).toMatch(/^[A-Za-z0-9_-]{20,}$/);
+  });
+
+  it("lists products trimmed to id, name and real prices, filtered by name", async () => {
+    const { ctx } = nativeCtx({ url: `${base}/whmcs/` }, { identifier: "id-ok", secret: "sec-ok" });
+    const res = await executeWhmcsTool(ctx, "whmcs_productos", { buscar: "hosting" });
+    expect(res.data).toEqual([
+      {
+        pid: 3,
+        gid: 1,
+        nombre: "Hosting Pro",
+        tipo: "hostingaccount",
+        pago: "recurring",
+        moneda: "EUR",
+        precios: { monthly: "9.90", annually: "99.00" },
+      },
+    ]);
+  });
+
+  it("creates an order with WHMCS's per-item arrays", async () => {
+    const { ctx } = nativeCtx({ url: `${base}/whmcs/` }, { identifier: "id-ok", secret: "sec-ok" });
+    const res = await executeWhmcsTool(ctx, "whmcs_crear_pedido", {
+      clientid: 7,
+      pid: 3,
+      metodo_pago: "banktransfer",
+      ciclo: "annually",
+      dominio: "acme.es",
+    });
+    expect(res.ok).toBe(true);
+    expect(Object.fromEntries(seen.at(-1)!.form)).toMatchObject({
+      action: "AddOrder",
+      clientid: "7",
+      paymentmethod: "banktransfer",
+      "pid[0]": "3",
+      "billingcycle[0]": "annually",
+      "domain[0]": "acme.es",
+    });
+  });
+
+  it("creates an invoice with numbered lines, unpaid and sent by default", async () => {
+    const { ctx } = nativeCtx({ url: `${base}/whmcs/` }, { identifier: "id-ok", secret: "sec-ok" });
+    await executeWhmcsTool(ctx, "whmcs_crear_factura", {
+      clientid: 7,
+      lineas: [
+        { descripcion: "Soporte marzo", importe: 120, con_impuestos: true },
+        { descripcion: "Migración", importe: 80 },
+      ],
+    });
+    expect(Object.fromEntries(seen.at(-1)!.form)).toMatchObject({
+      action: "CreateInvoice",
+      userid: "7",
+      status: "Unpaid",
+      sendinvoice: "true",
+      itemdescription1: "Soporte marzo",
+      itemamount1: "120",
+      itemtaxed1: "true",
+      itemdescription2: "Migración",
+      itemamount2: "80",
+      itemtaxed2: "false",
+    });
   });
 
   it("sends the API access key when configured (bypasses the WHMCS IP allowlist)", async () => {
