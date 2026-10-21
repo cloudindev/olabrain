@@ -144,10 +144,22 @@ LLM_PROVIDERS: dict[str, Callable[[LLMConfig], llm.LLM]] = {
 
 
 def _gemini_live(cfg: RealtimeConfig, instructions: str) -> llm.RealtimeModel:
+    from google.genai import types
     from livekit.plugins import google
 
+    detection = types.AutomaticActivityDetection(
+        start_of_speech_sensitivity=types.StartSensitivity.START_SENSITIVITY_HIGH
+        if cfg.start_sensitivity == "high"
+        else types.StartSensitivity.START_SENSITIVITY_LOW,
+        end_of_speech_sensitivity=types.EndSensitivity.END_SENSITIVITY_HIGH
+        if cfg.end_sensitivity == "high"
+        else types.EndSensitivity.END_SENSITIVITY_LOW,
+        silence_duration_ms=cfg.silence_ms,
+        prefix_padding_ms=cfg.prefix_padding_ms,
+    )
     return google.realtime.RealtimeModel(
         instructions=instructions,
+        realtime_input_config=types.RealtimeInputConfig(automatic_activity_detection=detection),
         **_opt(model=cfg.model, voice=cfg.voice, language=cfg.language),
         **_google_kwargs(),
     )

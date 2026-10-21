@@ -112,3 +112,14 @@ def test_client_greeting_is_parsed_from_room_metadata() -> None:
 
     assert load_lab_config(json.dumps({"client_greeting": True})).client_greeting is True
     assert load_lab_config(None).client_greeting is False
+
+
+def test_realtime_turn_detection_is_eager_by_default_and_tunable(monkeypatch) -> None:  # noqa: ANN001
+    from brainagent_agent.config import load_lab_config
+
+    cfg = load_lab_config(None).realtime
+    assert (cfg.start_sensitivity, cfg.end_sensitivity, cfg.silence_ms) == ("high", "high", 500)
+    monkeypatch.setenv("LAB_REALTIME_SILENCE_MS", "800")
+    monkeypatch.setenv("LAB_REALTIME_END_SENSITIVITY", "low")
+    tuned = load_lab_config(None).realtime
+    assert (tuned.silence_ms, tuned.end_sensitivity) == (800, "low")

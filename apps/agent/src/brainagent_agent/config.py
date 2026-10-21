@@ -43,6 +43,12 @@ class RealtimeConfig(BaseModel):
     model: str | None = None
     voice: str | None = None
     language: str = "es-ES"
+    # Gemini's server-side turn detection. Its defaults miss short replies ("sí",
+    # "continúa") and wait too long after the person stops: be more eager.
+    start_sensitivity: Literal["high", "low"] = "high"
+    end_sensitivity: Literal["high", "low"] = "high"
+    silence_ms: int = Field(default=500, ge=100, le=3000)
+    prefix_padding_ms: int = Field(default=200, ge=0, le=1000)
     # True when the room metadata chose the voice (it then wins over the persona's).
     voice_overridden: bool = False
 
@@ -104,6 +110,10 @@ def defaults_from_env() -> dict:
         "realtime": {
             "model": _env("LAB_REALTIME_MODEL"),
             "voice": _env("LAB_REALTIME_VOICE"),
+            "start_sensitivity": _env("LAB_REALTIME_START_SENSITIVITY"),
+            "end_sensitivity": _env("LAB_REALTIME_END_SENSITIVITY"),
+            "silence_ms": _env("LAB_REALTIME_SILENCE_MS"),
+            "prefix_padding_ms": _env("LAB_REALTIME_PREFIX_PADDING_MS"),
         },
         "max_session_seconds": _env("LAB_MAX_SESSION_SECONDS"),
         "preemptive_generation": _env("LAB_PREEMPTIVE_GENERATION"),
