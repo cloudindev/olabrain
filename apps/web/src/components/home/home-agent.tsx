@@ -42,6 +42,8 @@ export function HomeAgent({ maxMinutes }: { maxMinutes: number }) {
   const [remaining, setRemaining] = useState<number | null>(null);
   const videos = useRef<Partial<Record<Clip, HTMLVideoElement | null>>>({});
   const roomRef = useRef<Room | null>(null);
+  // The greeting clip waves once per call, when the agent's first words actually play.
+  const greetedRef = useRef(false);
 
   const clip: Clip = greeting ? "greeting" : agentState === "speaking" ? "talking" : "idle";
 
@@ -50,6 +52,7 @@ export function HomeAgent({ maxMinutes }: { maxMinutes: number }) {
     roomRef.current = null;
     setRoom(null);
     setAgentState("disconnected");
+    setGreeting(false);
     setRemaining(null);
     setStatus(next);
     await current?.disconnect();
@@ -75,18 +78,23 @@ export function HomeAgent({ maxMinutes }: { maxMinutes: number }) {
     return () => clearInterval(id);
   }, [status, remaining === null]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  function playGreeting() {
+  // Start the wave with the voice, not with the click: connecting and the agent's first
+  // audio take a few seconds, and a wave before any sound looks out of sync.
+  useEffect(() => {
+    if (status !== "live" || agentState !== "speaking" || greetedRef.current) return;
+    greetedRef.current = true;
     const video = videos.current.greeting;
     if (!video) return;
     video.currentTime = 0;
     setGreeting(true);
     void video.play().catch(() => setGreeting(false));
-  }
+  }, [status, agentState]);
 
   async function start() {
     setError(null);
     setStatus("connecting");
-    playGreeting();
+    setGreeting(false);
+    greetedRef.current = false;
     try {
       const res = await fetch("/api/public/voice", { method: "POST" });
       if (!res.ok) {
@@ -111,7 +119,7 @@ export function HomeAgent({ maxMinutes }: { maxMinutes: number }) {
       setRoom(next);
       setRemaining(session.maxSeconds);
       setStatus("live");
-      // The agent greets meanwhile; without a microphone the call makes no sense.
+      // The agent starts greeting meanwhile; without a microphone the call makes no sense.
       try {
         await next.localParticipant.setMicrophoneEnabled(true, {
           echoCancellation: true,
