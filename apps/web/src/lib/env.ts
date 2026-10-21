@@ -6,6 +6,17 @@ const optional = z
   .optional()
   .transform((v) => (v && v.trim() !== "" ? v.trim() : undefined));
 
+/**
+ * Optional feature switch: an invalid value disables the feature (with a warning) instead
+ * of failing the whole environment, which would take every page down.
+ */
+const optionalUuid = (name: string) =>
+  optional.transform((v) => {
+    if (v === undefined || z.uuid().safeParse(v).success) return v;
+    console.warn(`${name} is not a valid UUID; the feature that uses it is disabled`);
+    return undefined;
+  });
+
 const schema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   APP_URL: z.url().default("http://localhost:3000"),
@@ -40,8 +51,8 @@ const schema = z.object({
   CONNECTOR_URL: z.string().default("http://127.0.0.1:4100"),
   CONNECTOR_SERVICE_TOKEN: z.string().default(""),
   /** Public home agent (talks to anonymous visitors). Both empty = home without voice. */
-  HOME_AGENT_TENANT_ID: optional.pipe(z.uuid().optional()),
-  HOME_AGENT_ID: optional.pipe(z.uuid().optional()),
+  HOME_AGENT_TENANT_ID: optionalUuid("HOME_AGENT_TENANT_ID"),
+  HOME_AGENT_ID: optionalUuid("HOME_AGENT_ID"),
   /** Cost guards for the public voice demo. */
   HOME_VOICE_MAX_SECONDS: z.coerce.number().int().min(30).max(900).default(180),
   HOME_VOICE_PER_IP_HOUR: z.coerce.number().int().min(1).default(5),
