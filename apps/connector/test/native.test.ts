@@ -71,6 +71,35 @@ beforeAll(async () => {
           );
         if (action === "OpenTicket")
           return res.end(JSON.stringify({ result: "success", id: 99, tid: "ABC-123" }));
+        if (action === "GetInvoices") {
+          // 250 invoices newest first: 3 today, 150 yesterday, the rest older.
+          const all = Array.from({ length: 250 }, (_, i) => ({
+            id: 1000 - i,
+            invoicenum: `F-${1000 - i}`,
+            userid: 7,
+            firstname: "Ana",
+            lastname: "López",
+            companyname: "Acme",
+            date: i < 3 ? "2026-10-21" : i < 153 ? "2026-10-20" : "2026-09-01",
+            duedate: "2026-11-21",
+            datepaid: "0000-00-00 00:00:00",
+            total: "10.50",
+            currencycode: "EUR",
+            status: "Unpaid",
+            paymentmethod: "banktransfer",
+          }));
+          const start = Number(form.get("limitstart") ?? 0);
+          const num = Number(form.get("limitnum") ?? 25);
+          const page = all.slice(start, start + num);
+          return res.end(
+            JSON.stringify({
+              result: "success",
+              totalresults: all.length,
+              numreturned: page.length,
+              invoices: { invoice: page },
+            }),
+          );
+        }
         if (action === "GetClientsDomains")
           return res.end(
             JSON.stringify({
@@ -346,6 +375,42 @@ describe("WHMCS", () => {
     });
     expect(taken.data).toMatchObject({ dominio: "acme.es", disponible: false });
     expect(String((taken.data as { whois: string }).whois).length).toBeLessThanOrEqual(800);
+  });
+
+  it("finds today's invoices by date, with a summary, stopping as soon as it passes the range", async () => {
+    const { ctx } = nativeCtx({ url: `${base}/whmcs/` }, { identifier: "id-ok", secret: "sec-ok" });
+    const before = seen.length;
+    const today = await executeWhmcsTool(ctx, "whmcs_facturas", {
+      desde: "2026-10-21",
+      hasta: "2026-10-21",
+    });
+    const data = today.data as {
+      resumen: { facturas: number; importe_total: Record<string, number> };
+      facturas: { numero: string; cliente: string; emision: string; pagada?: string }[];
+    };
+    expect(data.resumen).toEqual({ facturas: 3, importe_total: { EUR: 31.5 } });
+    expect(data.facturas[0]).toMatchObject({
+      numero: "F-1000",
+      cliente: "Ana López",
+      emision: "2026-10-21",
+    });
+    expect(data.facturas[0]!.pagada).toBeUndefined();
+    expect(seen.length - before).toBe(1); // first page already reaches older invoices
+    const form = seen.at(-1)!.form;
+    expect([form.get("orderby"), form.get("order"), form.get("limitnum")]).toEqual([
+      "date",
+      "desc",
+      "100",
+    ]);
+
+    const twoDays = await executeWhmcsTool(ctx, "whmcs_facturas", {
+      desde: "2026-10-20",
+      hasta: "2026-10-21",
+      limite: 10,
+    });
+    const range = twoDays.data as { resumen: { facturas: number }; facturas: unknown[] };
+    expect(range.resumen.facturas).toBe(153); // counted across two pages
+    expect(range.facturas).toHaveLength(10); // list capped by `limite`
   });
 
   it("sends the API access key when configured (bypasses the WHMCS IP allowlist)", async () => {

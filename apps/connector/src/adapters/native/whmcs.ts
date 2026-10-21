@@ -21,6 +21,11 @@ type ToolSpec = NativeToolDef & {
   action: string;
   /** Maps tool args to WHMCS parameters (default: same names). */
   params?: (args: Record<string, unknown>) => Record<string, unknown>;
+  /** Custom execution when one WHMCS call isn't enough (paging, local filters). */
+  run?: (
+    call: (action: string, params: Record<string, unknown>) => Promise<NativeResult>,
+    args: Record<string, unknown>,
+  ) => Promise<NativeResult>;
   /** Trims a successful response to what the model needs (default: as is). */
   shape?: (data: Record<string, unknown>, args: Record<string, unknown>) => unknown;
 };
@@ -37,6 +42,12 @@ export function normalizeDomain(value: unknown): string | undefined {
 }
 
 type WhmcsDomain = Record<string, unknown>;
+type WhmcsInvoice = Record<string, string | number | undefined>;
+
+const DATE_RE = "^\\d{4}-\\d{2}-\\d{2}$";
+const INVOICE_PAGE_SIZE = 100;
+/** Up to 2,000 invoices scanned per question. */
+const INVOICE_PAGES = 20;
 
 const CYCLES = ["monthly", "quarterly", "semiannually", "annually", "biennially", "triennially"];
 
@@ -95,21 +106,81 @@ const TOOLS: ToolSpec[] = [
   {
     name: "whmcs_facturas",
     description:
-      "Lista facturas de WHMCS. Filtra por cliente y estado (Paid, Unpaid, Overdue, Cancelled, Refunded, Draft).",
+      "Lista facturas de WHMCS con un resumen (número e importe total). Filtra por fecha de emisión (desde/hasta, AAAA-MM-DD: para «las facturas de hoy» usa la fecha de hoy en ambos), cliente y estado (Paid, Unpaid, Overdue, Cancelled, Refunded, Draft).",
     inputSchema: schema({
+      desde: str("Fecha de emisión desde, AAAA-MM-DD (incluida)", { pattern: DATE_RE }),
+      hasta: str("Fecha de emisión hasta, AAAA-MM-DD (incluida)", { pattern: DATE_RE }),
       clientid: int("ID del cliente"),
       estado: str("Estado de la factura"),
-      limite: limit,
+      limite: int("Máximo de facturas a devolver (por defecto 50, máximo 200)", {
+        minimum: 1,
+        maximum: 200,
+      }),
     }),
     mode: "read",
     action: "GetInvoices",
-    params: (a) => ({
-      userid: a.clientid,
-      status: a.estado,
-      limitnum: a.limite ?? 25,
-      orderby: "date",
-      order: "desc",
-    }),
+    // GetInvoices has no date filter: page newest-first and stop past `desde`.
+    run: async (call, a) => {
+      const from = typeof a.desde === "string" ? a.desde : undefined;
+      const to = typeof a.hasta === "string" ? a.hasta : undefined;
+      const max = Number(a.limite ?? 50);
+      const found: WhmcsInvoice[] = [];
+      let scanned = 0;
+      let complete = true;
+      for (let page = 0; page < INVOICE_PAGES; page++) {
+        const res = await call("GetInvoices", {
+          userid: a.clientid,
+          status: a.estado,
+          orderby: "date",
+          order: "desc",
+          limitstart: page * INVOICE_PAGE_SIZE,
+          limitnum: from || to ? INVOICE_PAGE_SIZE : max,
+        });
+        if (!res.ok) return res;
+        const list =
+          (res.data as { invoices?: { invoice?: WhmcsInvoice[] } }).invoices?.invoice ?? [];
+        scanned += list.length;
+        for (const inv of list) {
+          const date = String(inv.date ?? "");
+          if ((!from || date >= from) && (!to || date <= to)) found.push(inv);
+        }
+        const oldest = String(list.at(-1)?.date ?? "");
+        // Done: no date filter (one page), last page, or already older than the range.
+        if (!(from || to) || list.length < INVOICE_PAGE_SIZE || (from && oldest < from)) break;
+        if (page === INVOICE_PAGES - 1) complete = false;
+      }
+      const totals: Record<string, number> = {};
+      for (const inv of found) {
+        const cur = String(inv.currencycode ?? "");
+        totals[cur] = Math.round(((totals[cur] ?? 0) + Number(inv.total ?? 0)) * 100) / 100;
+      }
+      return {
+        ok: true,
+        truncated: false,
+        data: {
+          resumen: {
+            facturas: found.length,
+            importe_total: totals,
+            ...(complete ? {} : { aviso: `revisadas las ${scanned} facturas más recientes` }),
+          },
+          facturas: found.slice(0, max).map((inv) => ({
+            id: inv.id,
+            numero: inv.invoicenum || inv.id,
+            clientid: inv.userid,
+            cliente: [inv.firstname, inv.lastname].filter(Boolean).join(" "),
+            empresa: inv.companyname || undefined,
+            emision: inv.date,
+            vencimiento: inv.duedate,
+            pagada:
+              inv.datepaid && !String(inv.datepaid).startsWith("0000") ? inv.datepaid : undefined,
+            total: inv.total,
+            moneda: inv.currencycode,
+            estado: inv.status,
+            metodo_pago: inv.paymentmethod,
+          })),
+        },
+      };
+    },
   },
   {
     name: "whmcs_factura",
@@ -504,6 +575,7 @@ export async function executeWhmcsTool(
 ): Promise<NativeResult> {
   const tool = TOOLS.find((t) => t.name === toolName);
   if (!tool) throw new NativeToolError(`herramienta de WHMCS desconocida: ${toolName}`);
+  if (tool.run) return tool.run((action, params) => callWhmcs(ctx, action, params), args);
   const res = await callWhmcs(ctx, tool.action, tool.params ? tool.params(args) : args);
   return res.ok && tool.shape
     ? { ...res, data: tool.shape(res.data as Record<string, unknown>, args) }
