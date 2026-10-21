@@ -152,14 +152,20 @@ function Probe({
   }, [state, onState]);
 
   useEffect(() => {
-    onTranscript?.(
-      transcriptions.map((tr) => ({
-        id: tr.streamInfo.id,
+    // One line per spoken segment: the worker sends an interim and a final stream for
+    // the same segment (same lk.segment_id, different stream ids); keep the latest text.
+    const bySegment = new Map<string, VoiceLine>();
+    for (const tr of transcriptions) {
+      const attrs = tr.streamInfo.attributes ?? {};
+      const id = attrs["lk.segment_id"] || tr.streamInfo.id;
+      bySegment.set(id, {
+        id,
         who: tr.participantInfo.identity === localParticipant.identity ? "user" : "agent",
         text: tr.text,
-        final: tr.streamInfo.attributes?.["lk.transcription_final"] !== "false",
-      })),
-    );
+        final: attrs["lk.transcription_final"] !== "false",
+      });
+    }
+    onTranscript?.([...bySegment.values()]);
   }, [transcriptions, localParticipant.identity, onTranscript]);
 
   return null;
