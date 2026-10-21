@@ -16,7 +16,11 @@ const FEATURES = ["voice", "tools", "control"] as const;
 export default async function Home() {
   const t = await getTranslations("home");
   const session = await getSession().catch(() => null);
-  const maxMinutes = Math.max(1, Math.round(env().HOME_VOICE_MAX_SECONDS / 60));
+  const e = env();
+  const maxMinutes = Math.max(1, Math.round(e.HOME_VOICE_MAX_SECONDS / 60));
+  // Absolute: on the marketing domains the panel lives on APP_URL (see middleware), and a
+  // prefetched cross-domain redirect would fail CORS.
+  const panelHref = `${e.APP_URL.replace(/\/$/, "")}${session ? "/panel" : "/login"}`;
 
   return (
     <div className="flex min-h-dvh flex-col bg-paper text-ink">
@@ -25,12 +29,12 @@ export default async function Home() {
           {t("brand")}
           <span className="text-signal">.</span>
         </Link>
-        <Link
-          href={session ? "/panel" : "/login"}
+        <a
+          href={panelHref}
           className="rounded-full border border-line-strong px-4 py-2 text-sm font-medium hover:bg-surface-2"
         >
           {session ? t("goToPanel") : t("signIn")}
-        </Link>
+        </a>
       </header>
 
       <main className="mx-auto grid w-full max-w-6xl flex-1 items-center gap-10 px-4 pb-12 pt-4 sm:px-6 lg:grid-cols-[1fr_1.15fr] lg:gap-14">
