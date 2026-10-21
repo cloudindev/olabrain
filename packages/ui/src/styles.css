@@ -1,20 +1,22 @@
 /*
- * BrainAgent design tokens. Warm paper + deep ink, with a single "signal" accent
- * (the colour of a live voice). Light and dark share names; components only use tokens.
- * Theme: system by default; [data-theme] on <html> forces one.
+ * OlaBrain design tokens ("Kinetic Autonomy"): obsidian surfaces + white type, with a
+ * single electric-lime "signal" accent (live agent, primary action). In light mode the
+ * accent darkens to stay legible as text. Light and dark share names; components only
+ * use tokens. Theme: system by default; [data-theme] on <html> forces one, and
+ * .theme-dark forces dark on a subtree (the public home).
  */
 :root {
-  --paper: #f6f4ef;
-  --surface: #fffdf8;
-  --surface-2: #efece4;
-  --ink: #16181c;
-  --ink-2: #4a4d55;
-  --ink-3: #7b7e86;
-  --line: #e2ded3;
-  --line-strong: #cfc9bb;
-  --signal: #d9481f;
+  --paper: #f5f6f3;
+  --surface: #ffffff;
+  --surface-2: #ecede9;
+  --ink: #131313;
+  --ink-2: #474a44;
+  --ink-3: #7b7f76;
+  --line: #e0e2dc;
+  --line-strong: #c9ccc3;
+  --signal: #3a6a00;
   --signal-ink: #ffffff;
-  --signal-soft: #fbe5dc;
+  --signal-soft: #e3f5cf;
   --ok: #1f7a4d;
   --ok-soft: #dcefe4;
   --warn: #a8620a;
@@ -27,17 +29,17 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --paper: #0f1113;
-    --surface: #16191c;
-    --surface-2: #1d2125;
-    --ink: #ecebe6;
-    --ink-2: #b4b5b0;
-    --ink-3: #82847f;
-    --line: #272b30;
-    --line-strong: #363b41;
-    --signal: #ff7a50;
-    --signal-ink: #1a0b05;
-    --signal-soft: #3a1d12;
+    --paper: #131313;
+    --surface: #1b1b1b;
+    --surface-2: #2a2a2a;
+    --ink: #f4f4f2;
+    --ink-2: #c1c6b9;
+    --ink-3: #8e9188;
+    --line: #262626;
+    --line-strong: #3a3a3a;
+    --signal: #a6f55a;
+    --signal-ink: #0e2000;
+    --signal-soft: #1f3310;
     --ok: #4cc38a;
     --ok-soft: #12291d;
     --warn: #f0a841;
@@ -49,18 +51,19 @@
   }
 }
 
-:root[data-theme="dark"] {
-  --paper: #0f1113;
-  --surface: #16191c;
-  --surface-2: #1d2125;
-  --ink: #ecebe6;
-  --ink-2: #b4b5b0;
-  --ink-3: #82847f;
-  --line: #272b30;
-  --line-strong: #363b41;
-  --signal: #ff7a50;
-  --signal-ink: #1a0b05;
-  --signal-soft: #3a1d12;
+:root[data-theme="dark"],
+.theme-dark {
+  --paper: #131313;
+  --surface: #1b1b1b;
+  --surface-2: #2a2a2a;
+  --ink: #f4f4f2;
+  --ink-2: #c1c6b9;
+  --ink-3: #8e9188;
+  --line: #262626;
+  --line-strong: #3a3a3a;
+  --signal: #a6f55a;
+  --signal-ink: #0e2000;
+  --signal-soft: #1f3310;
   --ok: #4cc38a;
   --ok-soft: #12291d;
   --warn: #f0a841;

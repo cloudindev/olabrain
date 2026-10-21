@@ -332,13 +332,94 @@
     "eraseConfirm": "The contact, their memory and all their conversations will be deleted. This cannot be undone. Continue?"
   },
   "home": {
-    "metaTitle": "OlaBrain — Digital employees with a voice",
-    "brand": "OlaBrain",
+    "metaTitle": "OlaBrain — Digital employees you run by voice",
+    "nav": {
+      "agents": "Agents",
+      "how": "How it works",
+      "integrations": "Integrations",
+      "demo": "Demo"
+    },
     "signIn": "Sign in",
     "goToPanel": "Go to dashboard",
-    "eyebrow": "Digital employees with a voice",
-    "title": "Talk to Alba. This is how your company will answer.",
-    "subtitle": "Alba answers by voice and chat, looks things up in your systems (ERP, CRM, calendar…) and logs every conversation. Try her now: just press the button.",
+    "startFree": "Start free",
+    "tag": "Voice, chat and your systems connected",
+    "titleA": "Create agents, connect them to anything and",
+    "titleAccent": "automate",
+    "titleB": "your whole back office.",
+    "badgeVoice": "Digital employees you run by voice",
+    "badgePersonal": "Your all-round agent",
+    "ctaCreate": "Create my first agent",
+    "ctaTalk": "Talk to Alba now",
+    "proof": "Data hosted in the EU · GDPR compliant · The agent says it is an AI",
+    "demoTag": "Live demo",
+    "demoTitle": "Talk to Alba",
+    "demoBody": "Press the button and ask anything: how OlaBrain works, what it can do for your company or how it connects to your systems.",
+    "galleryTag": "Character catalog",
+    "galleryTitle": "Choose your digital employee",
+    "galleryBody": "Twelve characters ready to work, each with its own voice and personality. Give them instructions, connect your tools and they start.",
+    "talkTo": "Talk to {name} ↗",
+    "createWith": "Create with {name} ↗",
+    "voicePrompt": "Ask by voice in plain language:",
+    "voiceExample": "“Alba, which invoices were issued today? Send me the PDF of the last one.”",
+    "howTag": "3-step execution",
+    "howTitle": "How your digital team works",
+    "howBody": "No code. Each agent with its own permissions and a confirmation before changing any data.",
+    "steps": {
+      "create": {
+        "title": "Create",
+        "body": "Pick a character, set its tone and instructions, and give it memory of each contact.",
+        "metaLabel": "To start",
+        "metaValue": "a few minutes"
+      },
+      "connect": {
+        "title": "Connect",
+        "body": "Connect your apps (WHMCS, Outlook, Google Drive), any MCP server, APIs or databases.",
+        "metaLabel": "Connection",
+        "metaValue": "no code"
+      },
+      "automate": {
+        "title": "Automate",
+        "body": "Your agent looks up, drafts and acts: invoices, emails, tickets, documents. It always confirms before changing data.",
+        "metaLabel": "Channels",
+        "metaValue": "voice and chat"
+      }
+    },
+    "intTag": "Connection ecosystem",
+    "intTitle": "Connect your models, apps and data",
+    "intBody": "Credentials are stored encrypted and the model never sees them. Every tool that writes asks for confirmation.",
+    "soon": "Coming soon",
+    "intFoot": "AES-256 encryption per organization and outbound calls filtered against SSRF.",
+    "intLink": "See all connections ↗",
+    "facts": {
+      "eu": {
+        "value": "EU",
+        "label": "Data in Europe",
+        "body": "Servers and database in the EU"
+      },
+      "gdpr": {
+        "value": "GDPR",
+        "label": "Privacy",
+        "body": "Per-contact memory you can erase"
+      },
+      "aes": {
+        "value": "AES-256",
+        "label": "Credentials",
+        "body": "Encrypted, out of the model's reach"
+      },
+      "code": {
+        "value": "0 code",
+        "label": "Setup",
+        "body": "Character, instructions and connections"
+      }
+    },
+    "closeTag": "Start today",
+    "closeTitle": "Put your first digital employee to work.",
+    "closeBody": "Create your agent, connect your tools and talk to it. Pay only for what you use.",
+    "closeCta": "Create agent",
+    "closeTalk": "Talk to Alba",
+    "footerTag": "Digital employees with voice, chat and access to your systems.",
+    "footer": "Data hosted in the EU.",
+    "status": "All systems operational",
     "start": "Talk to Alba",
     "connecting": "Connecting…",
     "hangUp": "Hang up",
@@ -357,22 +438,7 @@
       "limit": "You have used all the demos for this hour. Please try again later.",
       "unavailable": "The demo is not available right now. Please try again in a few minutes.",
       "generic": "We couldn't start the call. Please try again."
-    },
-    "features": {
-      "voice": {
-        "title": "Natural voice",
-        "body": "Answers in under a second and you can interrupt her at any time."
-      },
-      "tools": {
-        "title": "Connected to your systems",
-        "body": "MCP, APIs, databases and apps like Outlook or WHMCS, no code."
-      },
-      "control": {
-        "title": "Under control",
-        "body": "Confirms before changing data, keeps memory per contact and complies with GDPR."
-      }
-    },
-    "footer": "Data hosted in the EU."
+    }
   },
   "console": {
     "tabs": {

@@ -1,6 +1,7 @@
 "use client";
 
-import { Button, cn } from "@brainagent/ui";
+import { cn } from "@brainagent/ui";
+import { Mic, PhoneOff } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { AvatarStage, useAvatarClip, type VoiceState } from "@/components/avatar/avatar-stage";
@@ -14,6 +15,8 @@ import {
 } from "@/components/voice/use-voice-call";
 
 const LABELLED: VoiceState[] = ["initializing", "listening", "thinking", "speaking"];
+const PILL =
+  "inline-flex h-12 min-w-56 items-center justify-center gap-2 rounded-full px-8 font-display text-sm font-semibold uppercase tracking-wide transition-all duration-150";
 
 /** The public home agent: one button to talk, with the video avatar (ADR-012). */
 export function HomeAgent({ maxMinutes }: { maxMinutes: number }) {
@@ -53,56 +56,61 @@ export function HomeAgent({ maxMinutes }: { maxMinutes: number }) {
         onGreetingEnd={onGreetingEnd}
         greetingRef={greetingRef}
         className={cn(
-          "relative aspect-video w-full rounded-[28px] border border-line",
-          "shadow-[0_30px_80px_-40px_rgba(22,24,28,0.45)] transition-[box-shadow] duration-500",
-          clip === "talking" && "shadow-[0_30px_90px_-30px_var(--signal)]",
+          "relative aspect-video w-full rounded-2xl border border-line-strong",
+          "shadow-[0_30px_80px_-40px_rgba(0,0,0,0.8)] transition-[box-shadow,border-color] duration-500",
+          clip === "talking" && "border-signal shadow-[0_0_24px_rgba(166,245,90,0.18)]",
         )}
       >
         {stateLabel ? (
           <div
-            className="absolute left-4 top-4 flex items-center gap-2 rounded-full bg-white/85 px-3 py-1.5 text-sm font-medium text-[#16181c] backdrop-blur"
+            className="absolute left-4 top-4 flex items-center gap-2 rounded-full border border-white/10 bg-black/75 px-3 py-1.5 font-display text-xs font-semibold uppercase tracking-wider text-white backdrop-blur"
             aria-live="polite"
             data-testid="home-agent-state"
           >
             <span
               className={cn(
-                "h-2 w-2 rounded-full bg-[#7b7e86]",
-                agentState === "speaking" && "animate-pulse bg-[#d9481f]",
-                agentState === "listening" && "bg-[#1f7a4d]",
+                "h-2 w-2 rounded-full bg-[#8e9188]",
+                agentState === "speaking" && "animate-pulse bg-[#a6f55a]",
+                agentState === "listening" && "bg-[#a6f55a]",
               )}
             />
             {stateLabel}
           </div>
         ) : null}
         {live && remaining !== null ? (
-          <div className="absolute right-4 top-4 rounded-full bg-white/85 px-3 py-1.5 font-mono text-sm text-[#4a4d55] backdrop-blur">
+          <div className="absolute right-4 top-4 rounded-full border border-white/10 bg-black/75 px-3 py-1.5 font-mono text-xs text-white/80 backdrop-blur">
             {t("remaining", { time: formatClock(remaining) })}
           </div>
         ) : null}
       </AvatarStage>
 
       {live ? (
-        <Button
-          variant="danger"
-          size="lg"
+        <button
+          type="button"
           onClick={() => {
             stopGreeting();
             void call.hangUp();
           }}
+          className={cn(PILL, "border border-[#ff453a] text-[#ff453a] hover:bg-[#ff453a] hover:text-white")}
           data-testid="home-hangup"
         >
+          <PhoneOff className="size-4" />
           {t("hangUp")}
-        </Button>
+        </button>
       ) : (
-        <Button
-          size="lg"
-          className="min-w-56"
+        <button
+          type="button"
           onClick={start}
           disabled={call.status === "connecting"}
+          className={cn(
+            PILL,
+            "bg-signal text-signal-ink shadow-[0_0_24px_rgba(166,245,90,0.3)] hover:bg-white hover:text-black disabled:opacity-60",
+          )}
           data-testid="home-start"
         >
+          <Mic className="size-4" />
           {call.status === "connecting" ? t("connecting") : t("start")}
-        </Button>
+        </button>
       )}
 
       <p

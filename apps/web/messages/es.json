@@ -332,13 +332,94 @@
     "eraseConfirm": "Se eliminarán el contacto, su memoria y todas sus conversaciones. No se puede deshacer. ¿Continuar?"
   },
   "home": {
-    "metaTitle": "OlaBrain — Empleados digitales con voz",
-    "brand": "OlaBrain",
+    "metaTitle": "OlaBrain — Empleados digitales que diriges por voz",
+    "nav": {
+      "agents": "Agentes",
+      "how": "Cómo funciona",
+      "integrations": "Integraciones",
+      "demo": "Demo"
+    },
     "signIn": "Acceder",
     "goToPanel": "Ir al panel",
-    "eyebrow": "Empleados digitales con voz",
-    "title": "Habla con Alba. Así atenderá tu empresa.",
-    "subtitle": "Alba contesta por voz y por chat, consulta tus sistemas (ERP, CRM, agenda…) y deja cada conversación registrada. Pruébala ahora: solo tienes que darle al botón.",
+    "startFree": "Empezar gratis",
+    "tag": "Voz, chat y tus sistemas conectados",
+    "titleA": "Crea agentes, conéctalos con lo que quieras y",
+    "titleAccent": "automatiza",
+    "titleB": "toda tu gestión.",
+    "badgeVoice": "Empleados digitales que diriges por voz",
+    "badgePersonal": "Agente personal total",
+    "ctaCreate": "Crear mi primer agente",
+    "ctaTalk": "Hablar con Alba ahora",
+    "proof": "Datos alojados en la UE · Cumple el RGPD · El agente se identifica como IA",
+    "demoTag": "Demo en directo",
+    "demoTitle": "Habla con Alba",
+    "demoBody": "Pulsa el botón y pregúntale lo que quieras: cómo funciona OlaBrain, qué puede hacer por tu empresa o cómo se conecta a tus sistemas.",
+    "galleryTag": "Catálogo de personajes",
+    "galleryTitle": "Elige a tu empleado digital",
+    "galleryBody": "Doce personajes listos para trabajar, cada uno con su voz y su carácter. Les das instrucciones, les conectas tus herramientas y empiezan.",
+    "talkTo": "Hablar con {name} ↗",
+    "createWith": "Crear con {name} ↗",
+    "voicePrompt": "Pide por voz en lenguaje natural:",
+    "voiceExample": "«Alba, dime qué facturas se han emitido hoy y mándame el PDF de la última.»",
+    "howTag": "Ejecución en 3 fases",
+    "howTitle": "Cómo funciona tu equipo digital",
+    "howBody": "Sin código. Cada agente con sus permisos y confirmación antes de modificar cualquier dato.",
+    "steps": {
+      "create": {
+        "title": "Crear",
+        "body": "Elige un personaje, define su tono y sus instrucciones, y dale memoria de cada contacto.",
+        "metaLabel": "Para empezar",
+        "metaValue": "unos minutos"
+      },
+      "connect": {
+        "title": "Conectar",
+        "body": "Conecta tus apps (WHMCS, Outlook, Google Drive), cualquier servidor MCP, APIs o bases de datos.",
+        "metaLabel": "Conexión",
+        "metaValue": "sin código"
+      },
+      "automate": {
+        "title": "Automatizar",
+        "body": "Tu agente consulta, redacta y ejecuta: facturas, correos, tickets, documentos. Siempre pide confirmación antes de cambiar datos.",
+        "metaLabel": "Canales",
+        "metaValue": "voz y chat"
+      }
+    },
+    "intTag": "Ecosistema de conexiones",
+    "intTitle": "Conecta tus modelos, apps y datos",
+    "intBody": "Las credenciales se guardan cifradas y el modelo nunca las ve. Cada herramienta que escribe pide confirmación.",
+    "soon": "Próximamente",
+    "intFoot": "Cifrado AES-256 por organización y llamadas salientes filtradas contra SSRF.",
+    "intLink": "Ver todas las conexiones ↗",
+    "facts": {
+      "eu": {
+        "value": "UE",
+        "label": "Datos en Europa",
+        "body": "Servidores y base de datos en la UE"
+      },
+      "gdpr": {
+        "value": "RGPD",
+        "label": "Privacidad",
+        "body": "Memoria por contacto que se puede borrar"
+      },
+      "aes": {
+        "value": "AES-256",
+        "label": "Credenciales",
+        "body": "Cifradas, fuera del alcance del modelo"
+      },
+      "code": {
+        "value": "0 código",
+        "label": "Puesta en marcha",
+        "body": "Personaje, instrucciones y conexiones"
+      }
+    },
+    "closeTag": "Empieza hoy",
+    "closeTitle": "Pon a tu primer empleado digital a trabajar.",
+    "closeBody": "Crea tu agente, conecta tus herramientas y háblale. Pagas solo por lo que usas.",
+    "closeCta": "Crear agente",
+    "closeTalk": "Hablar con Alba",
+    "footerTag": "Empleados digitales con voz, chat y acceso a tus sistemas.",
+    "footer": "Datos alojados en la UE.",
+    "status": "Sistemas operativos",
     "start": "Hablar con Alba",
     "connecting": "Conectando…",
     "hangUp": "Colgar",
@@ -357,22 +438,7 @@
       "limit": "Has usado todas las demos de esta hora. Vuelve a intentarlo más tarde.",
       "unavailable": "La demo no está disponible ahora mismo. Inténtalo en unos minutos.",
       "generic": "No hemos podido iniciar la llamada. Inténtalo de nuevo."
-    },
-    "features": {
-      "voice": {
-        "title": "Voz natural",
-        "body": "Responde en menos de un segundo y puedes interrumpirla cuando quieras."
-      },
-      "tools": {
-        "title": "Conectada a tus sistemas",
-        "body": "MCP, APIs, bases de datos y apps como Outlook o WHMCS, sin código."
-      },
-      "control": {
-        "title": "Bajo control",
-        "body": "Confirma antes de modificar datos, guarda la memoria por contacto y cumple el RGPD."
-      }
-    },
-    "footer": "Datos alojados en la UE."
+    }
   },
   "console": {
     "tabs": {
