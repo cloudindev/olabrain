@@ -3,9 +3,13 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import { Logo } from "@/components/logo";
+import { memberships, tenants } from "@brainagent/db";
+import { asc, eq } from "drizzle-orm";
 import { LocaleSwitch } from "@/components/shell/locale-switch";
+import { OrgSwitcher } from "@/components/shell/org-switcher";
 import { SignOutButton } from "@/components/shell/sign-out-button";
 import { ThemeToggle } from "@/components/shell/theme-toggle";
+import { db } from "@/lib/db";
 import { AuthError, requireTenant } from "@/lib/tenant";
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
@@ -18,6 +22,13 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     throw error;
   }
   const t = await getTranslations("nav");
+  // memberships/tenants are auth tables (no RLS): filter by the session user explicitly.
+  const orgs = await db()
+    .select({ id: tenants.id, name: tenants.name })
+    .from(memberships)
+    .innerJoin(tenants, eq(tenants.id, memberships.organizationId))
+    .where(eq(memberships.userId, ctx.user.id))
+    .orderBy(asc(tenants.name));
 
   return (
     <div className="min-h-dvh">
@@ -38,12 +49,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
             ))}
           </nav>
           <div className="ml-auto flex items-center gap-0.5 whitespace-nowrap sm:gap-1">
-            <span
-              className="mr-2 truncate text-sm text-ink-2 max-md:hidden"
-              data-testid="tenant-name"
-            >
-              {ctx.tenantName}
-            </span>
+            <OrgSwitcher orgs={orgs} activeId={ctx.tenantId} />
             <LocaleSwitch />
             <ThemeToggle />
             <SignOutButton />

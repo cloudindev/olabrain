@@ -45,7 +45,8 @@
     "agents": "Agents",
     "connections": "Connections",
     "soon": "soon",
-    "contacts": "Contacts"
+    "contacts": "Contacts",
+    "organization": "Organization"
   },
   "lab": {
     "title": "Voice lab",
