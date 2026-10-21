@@ -1,0 +1,4 @@
+App icons shown next to each connection (nominative use, to identify the integrated app).
+- outlook.svg: Microsoft Fluent brand icon (res-1.cdn.office.net/files/fabric-cdn-prod_20230815.002/assets/brand-icons/product/svg/outlook_48x1.svg)
+- whmcs.png: WHMCS logomark from whmcs.com
+- mcp.svg, openapi.svg, postgresql.svg, mysql.svg: simple-icons 16.34.0 (CC0), brand colours from its data

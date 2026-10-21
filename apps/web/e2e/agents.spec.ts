@@ -43,6 +43,10 @@ test("create an agent, connect the demo database tools and use them", async ({ p
 
   // New agents get every enabled tool (Conexiones); turning one off and on again saves.
   await page.goto(`${agentUrl}?tab=connections`, { waitUntil: "networkidle" });
+  // A card per connected app; opening it shows its tools.
+  await expect(page.getByTestId("connection-cards")).toContainText("2/2 herramientas");
+  await page.getByTestId("connection-card-Operaciones (demo)").click();
+  await expect(page).toHaveURL(/connection=[0-9a-f-]{36}/);
   await expect(page.getByRole("switch", { name: "partes_hoy" })).toBeChecked();
   await expect(page.getByRole("switch", { name: "horas_equipo" })).toBeChecked();
   await page.getByRole("switch", { name: "horas_equipo" }).uncheck({ force: true });

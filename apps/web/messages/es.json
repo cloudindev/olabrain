@@ -437,6 +437,19 @@
     "unsaved": "{count, plural, one {# cambio sin guardar} other {# cambios sin guardar}}",
     "discard": "Descartar",
     "save": "Guardar cambios",
-    "saved": "Herramientas guardadas"
+    "saved": "Herramientas guardadas",
+    "gridIntro": "Apps y sistemas a los que este agente tiene acceso. Entra en una para elegir qué herramientas puede usar.",
+    "back": "Todas las conexiones",
+    "connectAnother": "Conectar otra app",
+    "connectAnotherHint": "MCP, APIs, bases de datos, Outlook, WHMCS…",
+    "status": {
+      "active": "Conectada",
+      "needs_auth": "Requiere autorización",
+      "error": "Con errores"
+    },
+    "toolsOf": "Herramientas de {name}",
+    "notFound": "Esta conexión ya no existe.",
+    "cardTools": "{on}/{total} herramientas",
+    "noneEnabled": "Sin herramientas activas"
   }
 }

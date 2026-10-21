@@ -437,6 +437,19 @@
     "unsaved": "{count, plural, one {# unsaved change} other {# unsaved changes}}",
     "discard": "Discard",
     "save": "Save changes",
-    "saved": "Tools saved"
+    "saved": "Tools saved",
+    "gridIntro": "Apps and systems this agent can access. Open one to choose which tools it may use.",
+    "back": "All connections",
+    "connectAnother": "Connect another app",
+    "connectAnotherHint": "MCP, APIs, databases, Outlook, WHMCS…",
+    "status": {
+      "active": "Connected",
+      "needs_auth": "Needs authorization",
+      "error": "Has errors"
+    },
+    "toolsOf": "{name} tools",
+    "notFound": "This connection no longer exists.",
+    "cardTools": "{on}/{total} tools",
+    "noneEnabled": "No tools enabled"
   }
 }

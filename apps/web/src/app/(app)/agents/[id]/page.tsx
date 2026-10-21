@@ -24,10 +24,11 @@ export default async function AgentPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ tab?: string }>;
+  searchParams: Promise<{ tab?: string; connection?: string }>;
 }) {
   const { id } = await params;
-  const { tab: rawTab = "" } = await searchParams;
+  const { tab: rawTab = "", connection: rawConnection } = await searchParams;
+  const connectionId = z.uuid().safeParse(rawConnection).success ? rawConnection! : null;
   if (!z.uuid().safeParse(id).success) notFound();
   const tab: Tab = (TABS as readonly string[]).includes(rawTab)
     ? (rawTab as Tab)
@@ -52,18 +53,36 @@ export default async function AgentPage({
         mode: tools.mode,
         confirmation: tools.confirmation,
         enabled: tools.enabled,
-        connectionId: connections.id,
-        connectionName: connections.name,
-        connectionKind: connections.kind,
+        connectionId: tools.connectionId,
       })
       .from(tools)
-      .innerJoin(connections, eq(connections.id, tools.connectionId))
-      .orderBy(asc(connections.name), asc(tools.name));
+      .orderBy(asc(tools.name));
+    const connectionRows = await tx
+      .select({
+        id: connections.id,
+        name: connections.name,
+        kind: connections.kind,
+        status: connections.status,
+        config: connections.config,
+      })
+      .from(connections)
+      .orderBy(asc(connections.name));
     const assigned = await tx
       .select({ toolId: agentTools.toolId })
       .from(agentTools)
       .where(eq(agentTools.agentId, id));
-    return { agent, personaList, toolList, assigned: assigned.map((a) => a.toolId) };
+    // Only what the UI shows: never send connection config (URLs, hosts) to the client.
+    const connectionList = connectionRows.map(({ config, ...c }) => {
+      const cfg = (config ?? {}) as { provider?: string; dialect?: string };
+      return { ...c, provider: cfg.provider ?? null, dialect: cfg.dialect ?? null };
+    });
+    return {
+      agent,
+      personaList,
+      toolList,
+      connectionList,
+      assigned: assigned.map((a) => a.toolId),
+    };
   });
   if (!data) notFound();
   const { agent } = data;
@@ -157,7 +176,13 @@ export default async function AgentPage({
         />
       ) : null}
       {tab === "connections" ? (
-        <AgentConnections agentId={id} tools={data.toolList} assigned={data.assigned} />
+        <AgentConnections
+          agentId={id}
+          connections={data.connectionList}
+          tools={data.toolList}
+          assigned={data.assigned}
+          connectionId={connectionId}
+        />
       ) : null}
     </>
   );
