@@ -98,6 +98,12 @@ def build_session(
     agent = Agent(instructions=instructions, tools=list[llm.Tool | llm.Toolset](tools or []))
 
     if cfg.mode == "realtime":
+        # Native-audio models can drift in accent or register mid-call; anchor them.
+        instructions += (
+            "\n\nHabla siempre en español de España, con la misma voz, el mismo acento y el "
+            "mismo tono durante toda la llamada, también después de usar herramientas."
+        )
+        agent = Agent(instructions=instructions, tools=list[llm.Tool | llm.Toolset](tools or []))
         realtime_cfg = cfg.realtime
         persona_voice = (
             catalog_voice("google", runtime_agent.persona_slug) if runtime_agent else None
