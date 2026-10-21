@@ -354,5 +354,89 @@
       }
     },
     "footer": "Data hosted in the EU."
+  },
+  "console": {
+    "tabs": {
+      "chat": "Conversation",
+      "customize": "Customize",
+      "connections": "Connections"
+    },
+    "back": "Agents",
+    "title": "Conversation",
+    "newConversation": "New conversation",
+    "placeholder": "Write a message…",
+    "send": "Send",
+    "attach": "Attach file",
+    "removeAttachment": "Remove {name}",
+    "startVoice": "Talk by voice",
+    "hangUp": "Hang up",
+    "mute": "Mute microphone",
+    "unmute": "Unmute microphone",
+    "dropHere": "Drop files to attach them",
+    "emptyTitle": "Talk or write to {name}",
+    "emptyBody": "Press the microphone for a voice call or write a message. You can attach images, PDFs or text files.",
+    "voiceTag": "voice",
+    "online": "Available",
+    "draft": "Draft",
+    "archived": "Archived",
+    "typing": "Typing…",
+    "state": {
+      "connecting": "Connecting…",
+      "initializing": "Getting ready…",
+      "listening": "Listening",
+      "thinking": "Thinking…",
+      "speaking": "Speaking"
+    },
+    "callEnded": "Call ended · {time}",
+    "attachmentsNote": "Files are sent with this message and are not stored.",
+    "errors": {
+      "mic": "We need permission to use the microphone.",
+      "generic": "The call could not start. Please try again.",
+      "limit": "Call limit reached. Please try again later.",
+      "unavailable": "Voice is not available right now.",
+      "fileType": "{name}: file type not supported.",
+      "fileSize": "Files exceed {mb} MB in total.",
+      "fileCount": "Up to {count} files per message."
+    }
+  },
+  "customize": {
+    "identity": "Identity",
+    "identityHint": "Its name and the character that gives it voice, tone and base prompt.",
+    "instructionsTitle": "Instructions",
+    "characters": "{count} characters",
+    "behavior": "Behaviour",
+    "behaviorHint": "Model, main channel and how it uses its tools and memory.",
+    "maxToolSteps": "Tool steps per turn",
+    "maxToolStepsHint": "How many tools it can chain before answering.",
+    "publish": "Publishing",
+    "statusHints": {
+      "draft": "Only you and your team see it in the panel.",
+      "active": "Available on its channels (chat, voice, widget).",
+      "archived": "Retired: it does not take conversations."
+    },
+    "unsaved": "Unsaved changes",
+    "upToDate": "All saved",
+    "discard": "Discard",
+    "voiceOf": "Voice of {name}"
+  },
+  "agentConnections": {
+    "title": "Agent tools",
+    "intro": "Choose what this agent can look up and do in your systems. Write tools ask the user to confirm before running.",
+    "summary": "{on} of {total} tools enabled",
+    "search": "Search tools…",
+    "all": "All",
+    "enableAll": "Enable all tools of {name}",
+    "confirm": "Asks for confirmation",
+    "auto": "Automatic",
+    "disabledInConnection": "Disabled in the connection",
+    "manage": "Manage connection",
+    "addConnection": "New connection",
+    "noResults": "No tool matches “{query}”.",
+    "emptyTitle": "No connections yet",
+    "emptyBody": "Connect an MCP server, an API, a database or apps like Outlook or WHMCS so the agent can use them.",
+    "unsaved": "{count, plural, one {# unsaved change} other {# unsaved changes}}",
+    "discard": "Discard",
+    "save": "Save changes",
+    "saved": "Tools saved"
   }
 }

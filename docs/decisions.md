@@ -182,3 +182,14 @@ group by 1 order by first_audio_p50;
 - **Avatar ligero con vídeo**, no un avatar en tiempo real (ADR-001 sigue vigente): tres clips en bucle (en espera, hablando, saludando) superpuestos y fundidos según el estado del agente (`useVoiceAssistant`). No hay sincronía labial; coste cero y sin latencia añadida.
 - **Endpoint público** `POST /api/public/voice` sin sesión, protegido por: comprobación de origen, límite por visitante y hora (hash de la IP con sal; nunca se guarda la IP), tope diario global, duración máxima de la llamada que corta el worker (`max_session_seconds`) y token de 5 minutos. El cliente no elige nada.
 - La llamada se identifica como IA en pantalla (AI Act art. 50) y el agente también lo dice.
+
+---
+
+## ADR-013 — Ficha del agente: conversación con avatar, Personalizar y Conexiones (2026-10-21)
+
+**Decisión.**
+- Al abrir un agente se ve primero **la conversación**: avatar en vídeo 9:16 a la izquierda (los mismos clips que la home, ADR-012) y un chat único a la derecha donde se escribe, se adjuntan archivos o se inicia una **llamada de voz**; la transcripción de la llamada entra en el mismo hilo. En móvil la conversación ocupa la pantalla completa sobre el avatar, con los dos últimos mensajes flotando sobre los controles.
+- Las otras dos vistas: **Personalizar** (identidad y personaje, instrucciones, comportamiento, publicación, con barra de guardado) y **Conexiones** (herramientas por conexión con interruptores, buscador y guardado de cambios). Los enlaces antiguos `?tab=general|tools|test` redirigen a las nuevas.
+- **Adjuntos** (imágenes, PDF y texto; máx. 3 archivos y 3 MB por mensaje, por el límite de 4,5 MB de Vercel) van al modelo **solo con ese mensaje**: no se guardan todavía (falta el almacenamiento S3/Supabase Storage); en el historial queda «📎 nombre». Adaptadores: imagen y documento nativos en Anthropic, `inlineData` en Gemini, `image_url`/`file` en OpenAI; el texto va como texto.
+- Las respuestas del agente se muestran con Markdown mínimo y seguro (sin HTML).
+- Si el agente se llama distinto de su personaje, ambos runtimes le indican su nombre y el saludo de voz lo usa.

@@ -354,5 +354,89 @@
       }
     },
     "footer": "Datos alojados en la UE."
+  },
+  "console": {
+    "tabs": {
+      "chat": "Conversación",
+      "customize": "Personalizar",
+      "connections": "Conexiones"
+    },
+    "back": "Agentes",
+    "title": "Conversación",
+    "newConversation": "Nueva conversación",
+    "placeholder": "Escribe un mensaje…",
+    "send": "Enviar",
+    "attach": "Adjuntar archivo",
+    "removeAttachment": "Quitar {name}",
+    "startVoice": "Hablar por voz",
+    "hangUp": "Colgar",
+    "mute": "Silenciar micrófono",
+    "unmute": "Activar micrófono",
+    "dropHere": "Suelta los archivos para adjuntarlos",
+    "emptyTitle": "Habla o escribe a {name}",
+    "emptyBody": "Pulsa el micrófono para una llamada de voz o escribe un mensaje. Puedes adjuntar imágenes, PDF o archivos de texto.",
+    "voiceTag": "voz",
+    "online": "Disponible",
+    "draft": "Borrador",
+    "archived": "Archivado",
+    "typing": "Escribiendo…",
+    "state": {
+      "connecting": "Conectando…",
+      "initializing": "Preparándose…",
+      "listening": "Escuchando",
+      "thinking": "Pensando…",
+      "speaking": "Hablando"
+    },
+    "callEnded": "Llamada finalizada · {time}",
+    "attachmentsNote": "Los archivos se envían con este mensaje y no se guardan.",
+    "errors": {
+      "mic": "Necesitamos permiso para usar el micrófono.",
+      "generic": "No se pudo iniciar la llamada. Inténtalo de nuevo.",
+      "limit": "Has alcanzado el límite de llamadas. Inténtalo más tarde.",
+      "unavailable": "La voz no está disponible ahora mismo.",
+      "fileType": "{name}: tipo de archivo no admitido.",
+      "fileSize": "Los archivos superan {mb} MB en total.",
+      "fileCount": "Máximo {count} archivos por mensaje."
+    }
+  },
+  "customize": {
+    "identity": "Identidad",
+    "identityHint": "Cómo se llama y qué personaje le da voz, tono y prompt base.",
+    "instructionsTitle": "Instrucciones",
+    "characters": "{count} caracteres",
+    "behavior": "Comportamiento",
+    "behaviorHint": "Modelo, canal principal y cómo usa sus herramientas y su memoria.",
+    "maxToolSteps": "Pasos con herramientas por turno",
+    "maxToolStepsHint": "Cuántas herramientas puede encadenar antes de responder.",
+    "publish": "Publicación",
+    "statusHints": {
+      "draft": "Solo lo ves tú y tu equipo en el panel.",
+      "active": "Disponible en sus canales (chat, voz, widget).",
+      "archived": "Retirado: no atiende conversaciones."
+    },
+    "unsaved": "Cambios sin guardar",
+    "upToDate": "Todo guardado",
+    "discard": "Descartar",
+    "voiceOf": "Voz de {name}"
+  },
+  "agentConnections": {
+    "title": "Herramientas del agente",
+    "intro": "Elige qué puede consultar y hacer este agente en tus sistemas. Las herramientas de escritura piden confirmación al usuario antes de ejecutarse.",
+    "summary": "{on} de {total} herramientas activas",
+    "search": "Buscar herramienta…",
+    "all": "Todas",
+    "enableAll": "Activar todas las de {name}",
+    "confirm": "Pide confirmación",
+    "auto": "Automática",
+    "disabledInConnection": "Desactivada en la conexión",
+    "manage": "Gestionar conexión",
+    "addConnection": "Nueva conexión",
+    "noResults": "Ninguna herramienta coincide con «{query}».",
+    "emptyTitle": "Aún no hay conexiones",
+    "emptyBody": "Conecta un servidor MCP, una API, una base de datos o apps como Outlook o WHMCS para que el agente pueda consultarlas.",
+    "unsaved": "{count, plural, one {# cambio sin guardar} other {# cambios sin guardar}}",
+    "discard": "Descartar",
+    "save": "Guardar cambios",
+    "saved": "Herramientas guardadas"
   }
 }

@@ -30,18 +30,25 @@ test("create an agent, connect the demo database tools and use them", async ({ p
   await expect(page).toHaveURL(/\/agents\/[0-9a-f-]{36}$/);
   const agentUrl = page.url();
 
-  // Give it instructions and the tools.
+  // The agent opens on its conversation (avatar + chat).
+  await expect(page.getByTestId("agent-console-state")).toBeVisible();
+
+  // Give it instructions (Personalizar).
+  await page.goto(`${agentUrl}?tab=customize`, { waitUntil: "networkidle" });
   await page
     .getByLabel("Instrucciones")
     .fill("Trabajas para Talleres Ruiz. Responde en una o dos frases.");
   await page.getByRole("button", { name: "Guardar" }).click();
   await expect(page.getByRole("status")).toHaveText("Guardado");
 
-  await page.goto(`${agentUrl}?tab=tools`, { waitUntil: "networkidle" });
-  await page.getByRole("checkbox", { name: "partes_hoy" }).check();
-  await page.getByRole("checkbox", { name: "horas_equipo" }).check();
-  await page.getByRole("button", { name: "Guardar" }).click();
-  await expect(page.getByText("Guardado")).toBeVisible();
+  // New agents get every enabled tool (Conexiones); turning one off and on again saves.
+  await page.goto(`${agentUrl}?tab=connections`, { waitUntil: "networkidle" });
+  await expect(page.getByRole("switch", { name: "partes_hoy" })).toBeChecked();
+  await expect(page.getByRole("switch", { name: "horas_equipo" })).toBeChecked();
+  await page.getByRole("switch", { name: "horas_equipo" }).uncheck({ force: true });
+  await expect(page.getByTestId("tools-summary")).toHaveText("1 de 2 herramientas activas");
+  await page.getByRole("switch", { name: "horas_equipo" }).check({ force: true });
+  await expect(page.getByText(/cambio sin guardar/)).toHaveCount(0);
 
   await page.goto("/agents");
   await expect(page.getByTestId("agent-list")).toContainText("2 herramientas");
@@ -55,7 +62,9 @@ test("create an agent, connect the demo database tools and use them", async ({ p
   await page.goto(`${agentUrl}?tab=test`, { waitUntil: "networkidle" });
   // `next dev` may hydrate after the first fill and reset the controlled textarea.
   await expect(async () => {
-    await page.getByLabel("Escribe un mensaje…").fill("¿Qué partes de trabajo hay hoy? Dime los clientes.");
+    await page
+      .getByLabel("Escribe un mensaje…")
+      .fill("¿Qué partes de trabajo hay hoy? Dime los clientes.");
     await expect(page.getByRole("button", { name: "Enviar" })).toBeEnabled({ timeout: 1_000 });
   }).toPass({ timeout: 20_000 });
   await page.getByRole("button", { name: "Enviar" }).click();
@@ -68,4 +77,19 @@ test("create an agent, connect the demo database tools and use them", async ({ p
       timeout: 60_000,
     },
   );
+
+  // Attach a file: the agent reads it with the message.
+  await page.locator('input[type="file"]').setInputFiles({
+    name: "tarifas.txt",
+    mimeType: "text/plain",
+    buffer: Buffer.from("Tarifas 2026: el plan Pro cuesta 199 euros al mes."),
+  });
+  await expect(page.getByText("tarifas.txt")).toBeVisible();
+  await page
+    .getByLabel("Escribe un mensaje…")
+    .fill("Según el archivo, ¿cuánto cuesta el plan Pro?");
+  await page.getByRole("button", { name: "Enviar" }).click();
+  await expect(page.getByTestId("assistant-message").last()).toContainText("199", {
+    timeout: 60_000,
+  });
 });
