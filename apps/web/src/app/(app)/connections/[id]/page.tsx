@@ -7,6 +7,7 @@ import { z } from "zod";
 import { ConnectionActions } from "@/components/connections/connection-actions";
 import { StudioEditor } from "@/components/connections/studio-editor";
 import { ToolsTable } from "@/components/connections/tools-table";
+import { WhmcsAccessKey } from "@/components/connections/whmcs-access-key";
 import { PageHeader } from "@/components/page-header";
 import { requireTenant, tenantTx } from "@/lib/tenant";
 
@@ -86,6 +87,9 @@ export default async function ConnectionPage({
           connectionId={conn.id}
           kind={conn.kind}
         />
+        {canEdit && conn.kind === "native" && config.provider === "whmcs" ? (
+          <WhmcsAccessKey connectionId={conn.id} />
+        ) : null}
         {canEdit && (conn.kind === "sql" || conn.kind === "http") ? (
           <Card>
             <StudioEditor connectionId={conn.id} kind={conn.kind} />

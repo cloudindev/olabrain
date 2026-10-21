@@ -203,7 +203,11 @@ export async function callWhmcs(
   params: Record<string, unknown>,
 ): Promise<NativeResult> {
   const url = String(ctx.config.url ?? "");
-  const { identifier, secret } = ctx.secret as { identifier?: string; secret?: string };
+  const { identifier, secret, accessKey } = ctx.secret as {
+    identifier?: string;
+    secret?: string;
+    accessKey?: string;
+  };
   if (!url || !identifier || !secret)
     throw new NativeToolError("faltan la URL o las credenciales de WHMCS");
   const res = await executeHttp(
@@ -211,7 +215,15 @@ export async function callWhmcs(
       baseUrl: url,
       method: "POST",
       path: "includes/api.php",
-      form: toForm({ ...params, action, identifier, secret, responsetype: "json" }),
+      form: toForm({
+        ...params,
+        action,
+        identifier,
+        secret,
+        // Bypasses WHMCS's API IP allowlist when configured ($api_access_key).
+        ...(accessKey ? { accesskey: accessKey } : {}),
+        responsetype: "json",
+      }),
       auth: { type: "none" },
       secret: {},
       timeoutMs: ctx.timeoutMs,

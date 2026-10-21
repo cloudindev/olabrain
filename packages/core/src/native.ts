@@ -27,6 +27,17 @@ export const whmcsConnectionSchema = z.object({
   url: z.url().refine((u) => /^https?:\/\//.test(u), "La URL debe empezar por http(s)://"),
   identifier: z.string().min(1).max(200),
   secret: z.string().min(1).max(200),
+  /**
+   * Optional `$api_access_key` from WHMCS configuration.php: lets API calls through the
+   * IP allowlist (our servers have no fixed outbound IP).
+   */
+  accessKey: z.preprocess(
+    (v) => (typeof v === "string" && v.trim() === "" ? undefined : v),
+    z.string().trim().max(200).optional(),
+  ),
+});
+export const whmcsAccessKeySchema = z.object({
+  accessKey: z.string().trim().max(200).nullable(),
 });
 export type WhmcsConnectionInput = z.infer<typeof whmcsConnectionSchema>;
 

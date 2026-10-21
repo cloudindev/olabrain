@@ -8,6 +8,7 @@ import { timingSafeEqual } from "node:crypto";
 import {
   attachmentsSchema,
   microsoft365ConnectionSchema,
+  whmcsAccessKeySchema,
   whmcsConnectionSchema,
 } from "@brainagent/core";
 import { waitUntil } from "@vercel/functions";
@@ -28,6 +29,7 @@ import {
   completeOAuth,
   createMicrosoft365Connection,
   createWhmcsConnection,
+  updateWhmcsAccessKey,
   createHttpConnection,
   createHttpSchema,
   createMcpConnection,
@@ -225,6 +227,16 @@ export function createApp(ctx: ConnectorContext, serviceToken: string, opts: App
   });
   app.post("/v1/connections/native/whmcs", async (c) =>
     c.json(await createWhmcsConnection(ctx, c.var.tenantId, await body(c, whmcsConnectionSchema))),
+  );
+  app.post("/v1/connections/:id/whmcs/access-key", async (c) =>
+    c.json(
+      await updateWhmcsAccessKey(
+        ctx,
+        c.var.tenantId,
+        uuid.parse(c.req.param("id")),
+        (await body(c, whmcsAccessKeySchema)).accessKey || null,
+      ),
+    ),
   );
   app.post("/v1/connections/native/microsoft365", async (c) =>
     c.json(

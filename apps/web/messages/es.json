@@ -252,7 +252,16 @@
         "url": "URL de tu WHMCS",
         "identifier": "Identificador de API",
         "secret": "Secreto de API",
-        "help": "En WHMCS: Configuración › Ajustes del sistema › Credenciales de API (un administrador con permiso «API Access»). Permite además la IP de BrainAgent en Ajustes generales › Seguridad › Restricción de acceso IP a la API."
+        "help": "En WHMCS: Configuración › Ajustes del sistema › Credenciales de API (un administrador con permiso «API Access»). Como nuestros servidores no tienen IP fija, añade además una clave de acceso de API (abajo).",
+        "accessKey": "Clave de acceso de API (opcional)",
+        "accessKeyHint": "El valor de $api_access_key en el configuration.php de tu WHMCS. Permite que BrainAgent llame a la API sin depender de la lista de IPs (nuestros servidores no tienen IP fija).",
+        "accessKeyTitle": "Clave de acceso de API",
+        "accessKeyBody": "Nuestros servidores en la nube no tienen una IP fija, así que la lista de IPs de WHMCS los bloqueará tarde o temprano. Añade en el configuration.php de tu WHMCS la línea $api_access_key = 'una-clave-larga'; y pega aquí esa misma clave.",
+        "accessKeySave": "Guardar y probar",
+        "accessKeyClear": "Quitar clave",
+        "accessKeyOk": "Clave guardada. WHMCS responde correctamente.",
+        "accessKeyFail": "Clave guardada, pero WHMCS no responde: {error}",
+        "accessKeyFirewall": "Si tarda y falla por tiempo, el cortafuegos de tu servidor está bloqueando nuestras conexiones: permite el acceso a includes/api.php desde cualquier IP (la clave protege la API)."
       },
       "microsoft365": {
         "name": "Outlook 365",

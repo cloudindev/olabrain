@@ -43,6 +43,18 @@ export async function createWhmcsConnection(input: unknown) {
   );
 }
 
+export async function updateWhmcsAccessKey(connectionId: string, accessKey: string | null) {
+  return run(async (tenantId) => {
+    const res = await connectorFetch<{ ok: boolean; error?: string }>(
+      tenantId,
+      `/v1/connections/${z.uuid().parse(connectionId)}/whmcs/access-key`,
+      { body: { accessKey } },
+    );
+    revalidatePath(`/connections/${connectionId}`);
+    return res;
+  });
+}
+
 export async function createMicrosoft365Connection(input: unknown) {
   return run((tenantId) =>
     connectorFetch<CreateResult>(tenantId, "/v1/connections/native/microsoft365", { body: input }),

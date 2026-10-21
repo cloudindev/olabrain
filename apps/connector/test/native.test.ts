@@ -166,6 +166,16 @@ describe("WHMCS", () => {
       secret: "sec-ok",
       responsetype: "json",
     });
+    expect(req.form.has("accesskey")).toBe(false);
+  });
+
+  it("sends the API access key when configured (bypasses the WHMCS IP allowlist)", async () => {
+    const { ctx } = nativeCtx(
+      { url: `${base}/whmcs/` },
+      { identifier: "id-ok", secret: "sec-ok", accessKey: "llave-larga" },
+    );
+    await executeWhmcsTool(ctx, "whmcs_buscar_clientes", { buscar: "acme" });
+    expect(seen.at(-1)!.form.get("accesskey")).toBe("llave-larga");
   });
 
   it("maps WHMCS errors (e.g. IP not allowed) to a tool error with the message", async () => {

@@ -587,7 +587,11 @@ export async function createWhmcsConnection(
   input: z.infer<typeof whmcsConnectionSchema>,
 ) {
   const url = input.url.endsWith("/") ? input.url : `${input.url}/`;
-  const secret = { identifier: input.identifier, secret: input.secret };
+  const secret = {
+    identifier: input.identifier,
+    secret: input.secret,
+    ...(input.accessKey ? { accessKey: input.accessKey } : {}),
+  };
   try {
     await checkWhmcs({
       config: { url },
@@ -608,6 +612,39 @@ export async function createWhmcsConnection(
   });
   await syncNativeTools(ctx, conn, "whmcs");
   return { connectionId: conn.id, status: "active" as const };
+}
+
+/** Sets or clears the WHMCS API access key of an existing connection, then tests it. */
+export async function updateWhmcsAccessKey(
+  ctx: ConnectorContext,
+  tenantId: string,
+  connectionId: string,
+  accessKey: string | null,
+) {
+  const [conn] = await withTenant(ctx.db, tenantId, (tx) =>
+    tx.select().from(connections).where(eq(connections.id, connectionId)).limit(1),
+  );
+  if (!conn || (conn.config as { provider?: string }).provider !== "whmcs") {
+    throw new ServiceError("La conexión no existe o no es de WHMCS", 404);
+  }
+  const row = conn as ConnectionRow;
+  const current = await loadSecret<Record<string, unknown>>(ctx, row);
+  const { accessKey: _old, ...rest } = current;
+  const next = accessKey ? { ...rest, accessKey } : rest;
+  await nativeSecretStore(ctx, row)(next);
+  try {
+    await checkWhmcs({
+      config: conn.config as Record<string, unknown>,
+      secret: next,
+      saveSecret: async () => undefined,
+      fetcher: ctx.fetcher,
+      timeoutMs: 15_000,
+      maxBytes: 200_000,
+    });
+    return { ok: true as const };
+  } catch (e) {
+    return { ok: false as const, error: (e as Error).message };
+  }
 }
 
 export async function createMicrosoft365Connection(

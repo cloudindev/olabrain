@@ -522,7 +522,13 @@ function HttpForm() {
 function WhmcsForm() {
   const t = useTranslations("connections");
   const { error, pending, submit } = useSubmit();
-  const [v, setV] = useState({ name: "WHMCS", url: "", identifier: "", secret: "" });
+  const [v, setV] = useState({
+    name: "WHMCS",
+    url: "",
+    identifier: "",
+    secret: "",
+    accessKey: "",
+  });
   const set = (k: keyof typeof v, value: string) => setV((prev) => ({ ...prev, [k]: value }));
   return (
     <FormCard
@@ -563,6 +569,21 @@ function WhmcsForm() {
             onChange={(e) => set("secret", e.target.value)}
           />
         </Field>
+        <div className="sm:col-span-2">
+          <Field
+            label={t("providers.whmcs.accessKey")}
+            htmlFor="w-access"
+            hint={t("providers.whmcs.accessKeyHint")}
+          >
+            <Input
+              id="w-access"
+              type="password"
+              autoComplete="off"
+              value={v.accessKey}
+              onChange={(e) => set("accessKey", e.target.value)}
+            />
+          </Field>
+        </div>
       </div>
       <Button type="submit" disabled={pending || !v.name || !v.url || !v.identifier || !v.secret}>
         {t("connect")}
