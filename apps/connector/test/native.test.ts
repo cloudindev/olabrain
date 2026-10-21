@@ -70,6 +70,37 @@ beforeAll(async () => {
           );
         if (action === "OpenTicket")
           return res.end(JSON.stringify({ result: "success", id: 99, tid: "ABC-123" }));
+        if (action === "GetClientsDomains")
+          return res.end(
+            JSON.stringify({
+              result: "success",
+              domains: {
+                domain: [
+                  {
+                    id: 12,
+                    userid: 7,
+                    domainname: form.get("domain"),
+                    status: "Active",
+                    registrar: "dondominio",
+                    regdate: "2024-01-10",
+                    expirydate: "2027-01-10",
+                    nextduedate: "2027-01-10",
+                    recurringamount: "12.00",
+                    donotrenew: false,
+                    paymentmethod: "stripe",
+                  },
+                ],
+              },
+            }),
+          );
+        if (action === "DomainWhois")
+          return res.end(
+            JSON.stringify({
+              result: "success",
+              status: form.get("domain") === "libre.es" ? "available" : "unavailable",
+              whois: "Domain Name: ACME.ES ".repeat(200),
+            }),
+          );
         if (action === "GetProducts")
           return res.end(
             JSON.stringify({
@@ -268,6 +299,44 @@ describe("WHMCS", () => {
       itemamount2: "80",
       itemtaxed2: "false",
     });
+  });
+
+  it("finds a domain by name (normalized) and trims the record", async () => {
+    const { ctx } = nativeCtx({ url: `${base}/whmcs/` }, { identifier: "id-ok", secret: "sec-ok" });
+    const res = await executeWhmcsTool(ctx, "whmcs_dominios", {
+      dominio: "https://www.Acme.es/tienda",
+    });
+    expect(seen.at(-1)!.form.get("domain")).toBe("acme.es");
+    expect(res.data).toEqual([
+      {
+        id: 12,
+        dominio: "acme.es",
+        clientid: 7,
+        estado: "Active",
+        registrador: "dondominio",
+        alta: "2024-01-10",
+        caducidad: "2027-01-10",
+        proximo_cobro: "2027-01-10",
+        importe_renovacion: "12.00",
+        no_renovar: false,
+      },
+    ]);
+    await expect(executeWhmcsTool(ctx, "whmcs_dominios", {})).rejects.toThrow(
+      "dominio o un clientid",
+    );
+  });
+
+  it("checks domain availability with a short answer", async () => {
+    const { ctx } = nativeCtx({ url: `${base}/whmcs/` }, { identifier: "id-ok", secret: "sec-ok" });
+    const free = await executeWhmcsTool(ctx, "whmcs_disponibilidad_dominio", {
+      dominio: "LIBRE.es",
+    });
+    expect(free.data).toEqual({ dominio: "libre.es", disponible: true });
+    const taken = await executeWhmcsTool(ctx, "whmcs_disponibilidad_dominio", {
+      dominio: "acme.es",
+    });
+    expect(taken.data).toMatchObject({ dominio: "acme.es", disponible: false });
+    expect(String((taken.data as { whois: string }).whois).length).toBeLessThanOrEqual(800);
   });
 
   it("sends the API access key when configured (bypasses the WHMCS IP allowlist)", async () => {

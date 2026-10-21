@@ -25,6 +25,19 @@ type ToolSpec = NativeToolDef & {
   shape?: (data: Record<string, unknown>, args: Record<string, unknown>) => unknown;
 };
 
+/** "https://www.Acme.es/tienda" -> "acme.es": WHMCS matches the exact domain name. */
+export function normalizeDomain(value: unknown): string | undefined {
+  if (typeof value !== "string" || !value.trim()) return undefined;
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/^[a-z]+:\/\//, "")
+    .replace(/^www\./, "")
+    .split(/[/?#\s]/)[0];
+}
+
+type WhmcsDomain = Record<string, unknown>;
+
 const CYCLES = ["monthly", "quarterly", "semiannually", "annually", "biennially", "triennially"];
 
 type WhmcsProduct = {
@@ -142,6 +155,50 @@ const TOOLS: ToolSpec[] = [
     },
   },
   {
+    name: "whmcs_dominios",
+    description:
+      "Busca dominios registrados en WHMCS: por nombre exacto (p. ej. acme.es) o todos los de un cliente. Devuelve el cliente titular, estado, registrador, fechas de alta y caducidad, próximo cobro y renovación automática.",
+    inputSchema: schema({
+      dominio: str("Nombre del dominio, p. ej. acme.es"),
+      clientid: int("ID del cliente para listar todos sus dominios"),
+      limite: limit,
+    }),
+    mode: "read",
+    action: "GetClientsDomains",
+    params: (a) => {
+      const domain = normalizeDomain(a.dominio);
+      if (!domain && !a.clientid) throw new NativeToolError("indica un dominio o un clientid");
+      return { domain, clientid: a.clientid, limitnum: a.limite ?? 25 };
+    },
+    shape: (data) =>
+      ((data.domains as { domain?: WhmcsDomain[] } | undefined)?.domain ?? []).map((d) => ({
+        id: d.id,
+        dominio: d.domainname,
+        clientid: d.userid,
+        estado: d.status,
+        registrador: d.registrar,
+        alta: d.regdate,
+        caducidad: d.expirydate,
+        proximo_cobro: d.nextduedate,
+        importe_renovacion: d.recurringamount,
+        no_renovar: d.donotrenew,
+      })),
+  },
+  {
+    name: "whmcs_disponibilidad_dominio",
+    description: "Comprueba en WHMCS si un dominio está libre para registrar (consulta WHOIS).",
+    inputSchema: schema({ dominio: str("Dominio a comprobar, p. ej. acme.es") }, ["dominio"]),
+    mode: "read",
+    action: "DomainWhois",
+    params: (a) => ({ domain: normalizeDomain(a.dominio) }),
+    shape: (data, args) => ({
+      dominio: normalizeDomain(args.dominio),
+      disponible: data.status === "available",
+      // The raw WHOIS text is long and mostly noise for a conversation.
+      whois: data.status === "available" ? undefined : String(data.whois ?? "").slice(0, 800),
+    }),
+  },
+  {
     name: "whmcs_departamentos",
     description:
       "Departamentos de soporte de WHMCS con su id (necesario para abrir tickets) y tickets abiertos.",
@@ -245,9 +302,7 @@ const TOOLS: ToolSpec[] = [
         .map((p) => {
           const [currency, prices] = Object.entries(p.pricing ?? {})[0] ?? [];
           const price = Object.fromEntries(
-            CYCLES.filter((c) => prices && Number(prices[c]) >= 0).map(
-              (c) => [c, prices![c]],
-            ),
+            CYCLES.filter((c) => prices && Number(prices[c]) >= 0).map((c) => [c, prices![c]]),
           );
           return {
             pid: p.pid,
