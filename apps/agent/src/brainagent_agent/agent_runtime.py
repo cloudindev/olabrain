@@ -11,9 +11,11 @@ the same arguments *after a new user message*, so the LLM can't confirm on its o
 
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import time
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
@@ -194,6 +196,9 @@ class ToolBridge:
     channel: str = "voice"  # "voice" | "chat"
     user_turns: int = 0
     calls: list[dict[str, Any]] = field(default_factory=list)
+    # Files a tool produced (e.g. an invoice PDF link) are shown in the conversation UI
+    # instead of being read aloud: (label, url).
+    on_file: Callable[[str, str], Awaitable[None]] | None = None
     _pending: dict[str, _Pending] = field(default_factory=dict)
 
     def user_message_received(self) -> None:
@@ -236,7 +241,13 @@ class ToolBridge:
             )
         if status == "error":
             return f"ERROR: {result.get('error', 'error desconocido')}"
-        payload = json.dumps(result.get("result"), ensure_ascii=False, default=str)
+        data = result.get("result")
+        if self.on_file and isinstance(data, dict) and isinstance(data.get("pdf_url"), str):
+            label = f"Factura {data.get('factura') or ''}".strip()
+            # The UI hint must never break the tool call.
+            with contextlib.suppress(Exception):
+                await self.on_file(label, data["pdf_url"])
+        payload = json.dumps(data, ensure_ascii=False, default=str)
         if result.get("truncated"):
             payload += "\n(Resultado recortado: hay más datos de los mostrados.)"
         return payload

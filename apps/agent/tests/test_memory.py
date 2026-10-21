@@ -123,3 +123,20 @@ def test_realtime_turn_detection_is_eager_by_default_and_tunable(monkeypatch) ->
     monkeypatch.setenv("LAB_REALTIME_END_SENSITIVITY", "low")
     tuned = load_lab_config(None).realtime
     assert (tuned.silence_ms, tuned.end_sensitivity) == (800, "low")
+
+
+async def test_tool_files_are_shared_with_the_ui_not_only_the_model() -> None:
+    class Client:
+        async def call_tool(self, *a, **k):  # noqa: ANN002, ANN003, ANN202
+            return {"status": "ok", "result": {"factura": "CDIN-1", "pdf_url": "https://x/f"}}
+
+    shared: list[tuple[str, str]] = []
+
+    async def on_file(label: str, url: str) -> None:
+        shared.append((label, url))
+
+    agent = RuntimeAgent.from_config("t-1", CONFIG)
+    bridge = ToolBridge(client=Client(), agent=agent, conversation_id="c", on_file=on_file)  # type: ignore[arg-type]
+    out = await bridge.call("whmcs_pdf_factura", {"invoiceid": 1})
+    assert shared == [("Factura CDIN-1", "https://x/f")]
+    assert "pdf_url" in out

@@ -15,7 +15,7 @@ import {
   needsMicrosoftConsent,
   type MicrosoftApp,
 } from "../src/adapters/native/microsoft365";
-import { executeWhmcsTool } from "../src/adapters/native/whmcs";
+import { executeWhmcsTool, fetchWhmcsInvoicePdf } from "../src/adapters/native/whmcs";
 import { createTenant, dropTenant, testDbs } from "./helpers";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -30,6 +30,7 @@ type Seen = {
   form: URLSearchParams;
 };
 const seen: Seen[] = [];
+const paidInvoices = new Set<string>();
 let server: Server;
 let base = "";
 
@@ -49,6 +50,25 @@ beforeAll(async () => {
       });
       res.setHeader("content-type", "application/json");
       const url = req.url ?? "";
+      // --- WHMCS client-area SSO + invoice download mock
+      if (url.startsWith("/whmcs/oauth/singlesignon.php")) {
+        res.statusCode = 302;
+        res.setHeader("set-cookie", "WHMCSsess=abc123; path=/; HttpOnly");
+        res.setHeader(
+          "location",
+          url.includes("evil") ? "https://evil.example/x" : "/whmcs/dl.php?type=i&id=32794",
+        );
+        return res.end();
+      }
+      if (url.startsWith("/whmcs/dl.php")) {
+        if (!String(req.headers.cookie ?? "").includes("WHMCSsess=abc123")) {
+          res.setHeader("content-type", "text/html");
+          return res.end("<html>login</html>");
+        }
+        res.setHeader("content-type", "application/pdf");
+        res.setHeader("content-disposition", 'attachment; filename="CDIN-32794.pdf"');
+        return res.end("%PDF-1.4 fake");
+      }
       // --- WHMCS mock
       if (url === "/whmcs/includes/api.php") {
         if (form.get("identifier") !== "id-ok" || form.get("secret") !== "sec-ok") {
@@ -71,6 +91,31 @@ beforeAll(async () => {
           );
         if (action === "OpenTicket")
           return res.end(JSON.stringify({ result: "success", id: 99, tid: "ABC-123" }));
+        if (action === "GetInvoice")
+          return res.end(
+            JSON.stringify({
+              result: "success",
+              invoiceid: Number(form.get("invoiceid")),
+              invoicenum: "CDIN-32794",
+              userid: 256,
+              status: paidInvoices.has(form.get("invoiceid")!) ? "Paid" : "Unpaid",
+              paymentmethod: "banktransfer",
+              total: "650.00",
+              balance: paidInvoices.has(form.get("invoiceid")!) ? "0.00" : "650.00",
+            }),
+          );
+        if (action === "AddInvoicePayment") {
+          paidInvoices.add(form.get("invoiceid")!);
+          return res.end(JSON.stringify({ result: "success" }));
+        }
+        if (action === "CreateSsoToken")
+          return res.end(
+            JSON.stringify({
+              result: "success",
+              access_token: "tok",
+              redirect_url: `${base}/whmcs/oauth/singlesignon.php?access_token=tok${form.get("sso_redirect_path")?.includes("id=666") ? "&evil=1" : ""}`,
+            }),
+          );
         if (action === "GetInvoices") {
           // 250 invoices newest first: 3 today, 150 yesterday, the rest older.
           const all = Array.from({ length: 250 }, (_, i) => ({
@@ -183,6 +228,7 @@ beforeAll(async () => {
           action === "CreateInvoice" ||
           action === "AddClient" ||
           action === "UpdateClient" ||
+          action === "UpdateInvoice" ||
           action === "UpdatePayMethod"
         )
           return res.end(JSON.stringify({ result: "success", orderid: 55, invoiceid: 77 }));
@@ -493,6 +539,63 @@ describe("WHMCS", () => {
       bank_account: "ES9121000418450200051332",
       set_as_default: "true",
     });
+  });
+
+  it("marks an invoice paid by registering a payment with the invoice's gateway", async () => {
+    const { ctx } = nativeCtx({ url: `${base}/whmcs/` }, { identifier: "id-ok", secret: "sec-ok" });
+    const res = await executeWhmcsTool(ctx, "whmcs_marcar_pagada", {
+      invoiceid: 32794,
+      referencia: "TRF-889",
+    });
+    expect(res.data).toEqual({ invoiceid: 32794, estado: "Paid", pendiente: "0.00" });
+    const payment = seen.find((r) => r.form.get("action") === "AddInvoicePayment")!;
+    expect(Object.fromEntries(payment.form)).toMatchObject({
+      invoiceid: "32794",
+      gateway: "banktransfer",
+      transid: "TRF-889",
+    });
+    expect(payment.form.get("date")).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/);
+    expect(payment.form.has("amount")).toBe(false); // full outstanding amount
+
+    const again = await executeWhmcsTool(ctx, "whmcs_marcar_pagada", { invoiceid: 32794 });
+    expect(again.data).toMatchObject({ aviso: "ya estaba pagada" });
+  });
+
+  it("sets an invoice back to unpaid", async () => {
+    const { ctx } = nativeCtx({ url: `${base}/whmcs/` }, { identifier: "id-ok", secret: "sec-ok" });
+    await executeWhmcsTool(ctx, "whmcs_cambiar_estado_factura", {
+      invoiceid: 32794,
+      estado: "Unpaid",
+    });
+    expect(Object.fromEntries(seen.at(-1)!.form)).toMatchObject({
+      action: "UpdateInvoice",
+      invoiceid: "32794",
+      status: "Unpaid",
+    });
+  });
+
+  it("returns a signed PDF link and downloads the official PDF via client SSO", async () => {
+    const { ctx } = nativeCtx({ url: `${base}/whmcs/` }, { identifier: "id-ok", secret: "sec-ok" });
+    const linked = await executeWhmcsTool(
+      { ...ctx, fileLink: (kind, ref) => `https://app.test/api/files?k=${kind}&r=${ref}` },
+      "whmcs_pdf_factura",
+      { invoiceid: 32794 },
+    );
+    expect(linked.data).toMatchObject({
+      factura: "CDIN-32794",
+      pdf_url: "https://app.test/api/files?k=whmcs-invoice&r=32794",
+    });
+
+    const pdf = await fetchWhmcsInvoicePdf(ctx, 32794);
+    expect(pdf.filename).toBe("CDIN-32794.pdf");
+    expect(Buffer.from(pdf.bytes).toString()).toBe("%PDF-1.4 fake");
+    const sso = seen.find((r) => r.form.get("action") === "CreateSsoToken")!;
+    expect(Object.fromEntries(sso.form)).toMatchObject({
+      client_id: "256",
+      destination: "sso:custom_redirect",
+      sso_redirect_path: "dl.php?type=i&id=32794",
+    });
+    await expect(fetchWhmcsInvoicePdf(ctx, 666)).rejects.toThrow("fuera de su dominio");
   });
 
   it("sends the API access key when configured (bypasses the WHMCS IP allowlist)", async () => {

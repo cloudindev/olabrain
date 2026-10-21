@@ -15,6 +15,8 @@ export type ConnectorContext = {
   appUrl: string;
   /** Platform app for Outlook 365; null when not configured. */
   microsoft: MicrosoftApp | null;
+  /** Key that signs file download links (shared with apps/web). */
+  linkKey?: string;
 };
 
 export function createLogger(level = "info"): Logger {
@@ -48,6 +50,7 @@ export function createContext(opts: {
   appUrl: string;
   logLevel?: string;
   microsoft?: MicrosoftApp | null;
+  linkKey?: string;
 }): ConnectorContext {
   const policy = { allowedPrivateHosts: opts.allowedPrivateHosts };
   return {
@@ -64,5 +67,6 @@ export function createContext(opts: {
     log: createLogger(opts.logLevel),
     appUrl: opts.appUrl,
     microsoft: opts.microsoft ?? null,
+    linkKey: opts.linkKey,
   };
 }

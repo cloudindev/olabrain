@@ -35,7 +35,7 @@ import {
   needsMicrosoftConsent,
   type MicrosoftSecret,
 } from "./adapters/native/microsoft365";
-import { checkWhmcs } from "./adapters/native/whmcs";
+import { checkWhmcs, fetchWhmcsInvoicePdf } from "./adapters/native/whmcs";
 import type { ApiSecret } from "./adapters/http";
 import {
   McpOAuthProvider,
@@ -617,6 +617,37 @@ export async function createWhmcsConnection(
   });
   await syncNativeTools(ctx, conn, "whmcs");
   return { connectionId: conn.id, status: "active" as const };
+}
+
+/** The official PDF of a WHMCS invoice (served through a signed link by apps/web). */
+export async function whmcsInvoicePdf(
+  ctx: ConnectorContext,
+  tenantId: string,
+  connectionId: string,
+  invoiceId: number,
+) {
+  const [conn] = await withTenant(ctx.db, tenantId, (tx) =>
+    tx.select().from(connections).where(eq(connections.id, connectionId)).limit(1),
+  );
+  if (!conn || (conn.config as { provider?: string }).provider !== "whmcs") {
+    throw new ServiceError("La conexión no existe o no es de WHMCS", 404);
+  }
+  const row = conn as ConnectionRow;
+  try {
+    return await fetchWhmcsInvoicePdf(
+      {
+        config: row.config,
+        secret: await loadSecret<Record<string, unknown>>(ctx, row),
+        saveSecret: async () => undefined,
+        fetcher: ctx.fetcher,
+        timeoutMs: 20_000,
+        maxBytes: 200_000,
+      },
+      invoiceId,
+    );
+  } catch (e) {
+    throw new ServiceError((e as Error).message, 502);
+  }
 }
 
 /** Sets or clears the WHMCS API access key of an existing connection, then tests it. */

@@ -4,6 +4,7 @@ import {
   RoomAudioRenderer,
   RoomContext,
   useLocalParticipant,
+  useDataChannel,
   useTranscriptions,
   useVoiceAssistant,
 } from "@livekit/components-react";
@@ -136,13 +137,29 @@ export function formatClock(seconds: number): string {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 }
 
+export type SharedFile = { label: string; url: string };
+
+/** Topic on which the voice worker shares files a tool produced (agent.files). */
+const FILES_TOPIC = "agent.files";
+const decoder = new TextDecoder();
+
 function Probe({
   onState,
   onTranscript,
+  onFile,
 }: {
   onState: (s: VoiceState) => void;
   onTranscript?: (lines: VoiceLine[]) => void;
+  onFile?: (file: SharedFile) => void;
 }) {
+  useDataChannel(FILES_TOPIC, (msg) => {
+    try {
+      const file = JSON.parse(decoder.decode(msg.payload)) as SharedFile;
+      if (typeof file.url === "string" && /^https:\/\//.test(file.url)) onFile?.(file);
+    } catch {
+      // ignore malformed messages
+    }
+  });
   const { state } = useVoiceAssistant();
   const transcriptions = useTranscriptions();
   const { localParticipant } = useLocalParticipant();
@@ -176,10 +193,12 @@ export function VoiceRoom({
   room,
   onState,
   onTranscript,
+  onFile,
 }: {
   room: Room | null;
   onState: (s: VoiceState) => void;
   onTranscript?: (lines: VoiceLine[]) => void;
+  onFile?: (file: SharedFile) => void;
 }) {
   useEffect(() => {
     if (!room) onState("disconnected");
@@ -188,7 +207,7 @@ export function VoiceRoom({
   return (
     <RoomContext.Provider value={room}>
       <RoomAudioRenderer />
-      <Probe onState={onState} onTranscript={onTranscript} />
+      <Probe onState={onState} onTranscript={onTranscript} onFile={onFile} />
     </RoomContext.Provider>
   );
 }

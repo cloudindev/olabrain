@@ -26,4 +26,17 @@ describe("RichText", () => {
     expect(out).toContain("&lt;img");
     expect(out).toContain("<strong>&lt;b&gt;hola&lt;/b&gt;</strong>");
   });
+
+  it("renders markdown and bare https links, never javascript: ones", () => {
+    const out = html(
+      "[Descargar factura](https://app.olabrain.com/api/files?k=a&s=b) o https://x.es/f.pdf.",
+    );
+    expect(out).toContain(
+      '<a href="https://app.olabrain.com/api/files?k=a&amp;s=b" target="_blank" rel="noopener noreferrer"',
+    );
+    expect(out).toContain(">Descargar factura</a>");
+    expect(out).toContain('href="https://x.es/f.pdf"');
+    expect(out).toContain("</a>.");
+    expect(html("[x](javascript:alert(1))")).not.toContain("<a");
+  });
 });

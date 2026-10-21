@@ -56,6 +56,8 @@ logger = logging.getLogger("brainagent.agent")
 OPENING_LINE = "Hola. ¿En qué te puedo ayudar?"
 
 METRICS_TOPIC = "lab.metrics"
+# Files a tool produced during a call (shown as a download card, never read aloud).
+FILES_TOPIC = "agent.files"
 DEFAULT_AGENT_NAME = "brainagent-lab"
 
 
@@ -248,6 +250,13 @@ async def entrypoint(ctx: JobContext) -> None:
     if runtime:
         bridge = runtime[1]
         client = runtime[2]
+
+        async def _share_file(label: str, url: str) -> None:
+            await ctx.room.local_participant.publish_data(
+                json.dumps({"label": label, "url": url}), reliable=True, topic=FILES_TOPIC
+            )
+
+        bridge.on_file = _share_file
 
         @session.on("conversation_item_added")
         def _on_item(ev: ConversationItemAddedEvent) -> None:

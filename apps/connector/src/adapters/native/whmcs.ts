@@ -25,6 +25,7 @@ type ToolSpec = NativeToolDef & {
   run?: (
     call: (action: string, params: Record<string, unknown>) => Promise<NativeResult>,
     args: Record<string, unknown>,
+    ctx: NativeCallContext,
   ) => Promise<NativeResult>;
   /** Trims a successful response to what the model needs (default: as is). */
   shape?: (data: Record<string, unknown>, args: Record<string, unknown>) => unknown;
@@ -46,6 +47,15 @@ type WhmcsInvoice = Record<string, string | number | undefined>;
 
 const DATE_RE = "^\\d{4}-\\d{2}-\\d{2}$";
 const INVOICE_PAGE_SIZE = 100;
+
+/** "YYYY-MM-DD HH:mm:ss" in Madrid time (WHMCS stores local dates). */
+function madridNow(now = new Date()): string {
+  return new Intl.DateTimeFormat("sv-SE", {
+    timeZone: "Europe/Madrid",
+    dateStyle: "short",
+    timeStyle: "medium",
+  }).format(now);
+}
 /** Up to 2,000 invoices scanned per question. */
 const INVOICE_PAGES = 20;
 
@@ -209,6 +219,100 @@ const TOOLS: ToolSpec[] = [
       subject: a.asunto,
       limitnum: a.limite ?? 25,
     }),
+  },
+  {
+    name: "whmcs_marcar_pagada",
+    description:
+      "Marca una factura de WHMCS como pagada registrando el pago (como «Marcar como pagado» en WHMCS). Por defecto, el importe pendiente completo, con la forma de pago de la factura y fecha de ahora.",
+    inputSchema: schema(
+      {
+        invoiceid: int("ID de la factura"),
+        importe: { type: "number", description: "Importe pagado (por defecto, todo lo pendiente)" },
+        metodo_pago: str("Forma de pago (module); por defecto, la de la factura"),
+        referencia: str("Referencia o ID de la transacción (p. ej. de la transferencia)"),
+        fecha: str("Fecha del pago AAAA-MM-DD (por defecto, hoy)", { pattern: DATE_RE }),
+        sin_email: {
+          type: "boolean",
+          description: "No enviar al cliente el email de pago recibido",
+        },
+      },
+      ["invoiceid"],
+    ),
+    mode: "write",
+    action: "AddInvoicePayment",
+    run: async (call, a) => {
+      const inv = await call("GetInvoice", { invoiceid: a.invoiceid });
+      if (!inv.ok) return inv;
+      const invoice = inv.data as { status?: string; paymentmethod?: string; balance?: string };
+      if (invoice.status === "Paid") {
+        return {
+          ok: true,
+          truncated: false,
+          data: { invoiceid: a.invoiceid, estado: "Paid", aviso: "ya estaba pagada" },
+        };
+      }
+      const now = madridNow();
+      const paid = await call("AddInvoicePayment", {
+        invoiceid: a.invoiceid,
+        transid: a.referencia || `OlaBrain ${now.slice(0, 10)}`,
+        gateway: a.metodo_pago || invoice.paymentmethod,
+        date: a.fecha ? `${a.fecha} 12:00:00` : now,
+        amount: a.importe,
+        noemail: a.sin_email,
+      });
+      if (!paid.ok) return paid;
+      const after = await call("GetInvoice", { invoiceid: a.invoiceid });
+      const status = (after.data as { status?: string; balance?: string }) ?? {};
+      return {
+        ok: true,
+        truncated: false,
+        data: { invoiceid: a.invoiceid, estado: status.status, pendiente: status.balance },
+      };
+    },
+  },
+  {
+    name: "whmcs_cambiar_estado_factura",
+    description:
+      "Cambia el estado de una factura de WHMCS a pendiente de pago (Unpaid) o cancelada (Cancelled). Para marcarla como pagada usa whmcs_marcar_pagada.",
+    inputSchema: schema(
+      {
+        invoiceid: int("ID de la factura"),
+        estado: str("Nuevo estado", { enum: ["Unpaid", "Cancelled"] }),
+      },
+      ["invoiceid", "estado"],
+    ),
+    mode: "write",
+    action: "UpdateInvoice",
+    params: (a) => ({ invoiceid: a.invoiceid, status: a.estado }),
+  },
+  {
+    name: "whmcs_pdf_factura",
+    description:
+      "Devuelve un enlace de descarga del PDF oficial de una factura de WHMCS (válido 24 horas). Muestra el enlace en el chat; en una llamada de voz no lo leas en voz alta: di que lo tiene en la conversación.",
+    inputSchema: schema({ invoiceid: int("ID de la factura") }, ["invoiceid"]),
+    mode: "read",
+    action: "GetInvoice",
+    run: async (call, a, ctx) => {
+      const inv = await call("GetInvoice", { invoiceid: a.invoiceid });
+      if (!inv.ok) return inv;
+      if (!ctx.fileLink) throw new NativeToolError("las descargas no están configuradas");
+      const data = inv.data as {
+        invoicenum?: string;
+        invoiceid?: number;
+        total?: string;
+        status?: string;
+      };
+      return {
+        ok: true,
+        truncated: false,
+        data: {
+          factura: data.invoicenum || a.invoiceid,
+          estado: data.status,
+          total: data.total,
+          pdf_url: ctx.fileLink("whmcs-invoice", String(a.invoiceid)),
+        },
+      };
+    },
   },
   {
     name: "whmcs_ticket",
@@ -673,7 +777,7 @@ export async function executeWhmcsTool(
 ): Promise<NativeResult> {
   const tool = TOOLS.find((t) => t.name === toolName);
   if (!tool) throw new NativeToolError(`herramienta de WHMCS desconocida: ${toolName}`);
-  if (tool.run) return tool.run((action, params) => callWhmcs(ctx, action, params), args);
+  if (tool.run) return tool.run((action, params) => callWhmcs(ctx, action, params), args, ctx);
   const res = await callWhmcs(ctx, tool.action, tool.params ? tool.params(args) : args);
   return res.ok && tool.shape
     ? { ...res, data: tool.shape(res.data as Record<string, unknown>, args) }
@@ -687,4 +791,62 @@ export async function checkWhmcs(ctx: NativeCallContext): Promise<void> {
     throw new NativeToolError(
       `WHMCS rechazó la conexión: ${(res.data as { error: string }).error}`,
     );
+}
+
+const MAX_PDF_BYTES = 10 * 1024 * 1024;
+
+/**
+ * The official invoice PDF. The API has no PDF action: log in as the invoice's client with
+ * a one-time SSO token (60 s) redirecting to dl.php, follow the redirects on the WHMCS host
+ * keeping its session cookie, and return the file.
+ */
+export async function fetchWhmcsInvoicePdf(
+  ctx: NativeCallContext,
+  invoiceId: number,
+): Promise<{ bytes: ArrayBuffer; filename: string }> {
+  const inv = await callWhmcs(ctx, "GetInvoice", { invoiceid: invoiceId });
+  if (!inv.ok) throw new NativeToolError(`WHMCS: ${(inv.data as { error?: string }).error}`);
+  const clientId = (inv.data as { userid?: number }).userid;
+  const sso = await callWhmcs(ctx, "CreateSsoToken", {
+    client_id: clientId,
+    destination: "sso:custom_redirect",
+    sso_redirect_path: `dl.php?type=i&id=${invoiceId}`,
+  });
+  if (!sso.ok) throw new NativeToolError(`WHMCS: ${(sso.data as { error?: string }).error}`);
+  let url = new URL(String((sso.data as { redirect_url?: string }).redirect_url ?? ""));
+  const host = new URL(String(ctx.config.url)).host;
+  const cookies = new Map<string, string>();
+  for (let hop = 0; hop < 6; hop++) {
+    if (url.host !== host) throw new NativeToolError("WHMCS redirigió fuera de su dominio");
+    const res = await ctx.fetcher.guardedFetch(
+      url,
+      {
+        headers: { cookie: [...cookies].map(([k, v]) => `${k}=${v}`).join("; ") },
+        signal: AbortSignal.timeout(20_000),
+      },
+      0,
+      false,
+    );
+    for (const raw of res.headers.getSetCookie()) {
+      const [pair] = raw.split(";");
+      const eq = pair!.indexOf("=");
+      if (eq > 0) cookies.set(pair!.slice(0, eq).trim(), pair!.slice(eq + 1).trim());
+    }
+    const location = res.headers.get("location");
+    if (res.status >= 300 && res.status < 400 && location) {
+      await res.body?.cancel();
+      url = new URL(location, url);
+      continue;
+    }
+    if (!/application\/pdf/i.test(res.headers.get("content-type") ?? "")) {
+      await res.body?.cancel();
+      throw new NativeToolError(`WHMCS no devolvió el PDF (HTTP ${res.status})`);
+    }
+    const bytes = await res.arrayBuffer();
+    if (bytes.byteLength > MAX_PDF_BYTES) throw new NativeToolError("el PDF es demasiado grande");
+    const disposition = res.headers.get("content-disposition") ?? "";
+    const filename = /filename="?([^";]+)"?/i.exec(disposition)?.[1] ?? `factura-${invoiceId}.pdf`;
+    return { bytes, filename };
+  }
+  throw new NativeToolError("demasiadas redirecciones de WHMCS");
 }

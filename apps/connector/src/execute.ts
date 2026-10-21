@@ -4,6 +4,7 @@
  * for the duration of the call.
  */
 import type { ApiAuth, SqlConfig, StudioParam, ToolLimits } from "@brainagent/core";
+import { signFileLink } from "@brainagent/core/file-links";
 import { withTenant } from "@brainagent/db";
 import type { ConnectorContext } from "./context";
 import { executeHttp, renderJsonBody, renderTemplate, type ApiSecret } from "./adapters/http";
@@ -203,6 +204,14 @@ export async function executeTool(
           fetcher: ctx.fetcher,
           timeoutMs: limits.timeoutMs,
           maxBytes: limits.maxBytes,
+          fileLink: ctx.linkKey
+            ? (kind, ref) =>
+                signFileLink(
+                  ctx.appUrl,
+                  { kind, tenantId: conn.tenantId, connectionId: conn.id, ref },
+                  ctx.linkKey!,
+                )
+            : undefined,
         },
         tool.sourceRef,
         args,

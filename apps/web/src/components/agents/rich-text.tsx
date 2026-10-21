@@ -64,15 +64,34 @@ export function RichText({ text }: { text: string }) {
   return <div className="flex flex-col gap-2">{blocks}</div>;
 }
 
-/** **bold**, *italic*, `code`. */
+/** **bold**, *italic*, `code`, [links](https://…) and bare https:// URLs. */
 export function inline(text: string): ReactNode[] {
   const out: ReactNode[] = [];
-  const re = /(\*\*[^*]+\*\*|`[^`]+`|\*[^*\s][^*]*\*)/g;
+  const re =
+    /(\[[^\]]+\]\(https?:\/\/[^)\s]+\)|https?:\/\/[^\s)]+|\*\*[^*]+\*\*|`[^`]+`|\*[^*\s][^*]*\*)/g;
   let last = 0;
   for (const m of text.matchAll(re)) {
     if (m.index > last) out.push(text.slice(last, m.index));
     const token = m[0];
-    if (token.startsWith("**")) out.push(<strong key={m.index}>{token.slice(2, -2)}</strong>);
+    const md = /^\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)$/.exec(token);
+    if (md || /^https?:\/\//.test(token)) {
+      const href = md ? md[2]! : token.replace(/[.,;:!?]+$/, "");
+      const label = md ? md[1] : href;
+      out.push(
+        <a
+          key={m.index}
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-medium underline decoration-1 underline-offset-2 hover:opacity-80"
+        >
+          {label}
+        </a>,
+      );
+      // Punctuation trimmed from a bare URL stays as text.
+      if (!md && href.length < token.length) out.push(token.slice(href.length));
+    } else if (token.startsWith("**"))
+      out.push(<strong key={m.index}>{token.slice(2, -2)}</strong>);
     else if (token.startsWith("`"))
       out.push(
         <code key={m.index} className="rounded bg-black/5 px-1 py-0.5 font-mono text-[0.9em]">

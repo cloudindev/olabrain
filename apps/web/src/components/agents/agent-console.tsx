@@ -35,6 +35,7 @@ import {
   formatClock,
   useElapsed,
   useVoiceCall,
+  type SharedFile,
   type VoiceLine,
 } from "@/components/voice/use-voice-call";
 
@@ -193,6 +194,21 @@ export function AgentConsole({
       }
       return next;
     });
+  }, []);
+
+  // Files a tool produced during a voice call (e.g. an invoice PDF): a download link in
+  // the thread, since the agent doesn't read URLs aloud.
+  const onFile = useCallback((file: SharedFile) => {
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: nextId(),
+        role: "assistant",
+        text: `📄 [${file.label.replace(/[[\]]/g, "")}](${file.url})`,
+        source: "voice",
+        tools: [],
+      },
+    ]);
   }, []);
 
   async function addFiles(list: FileList | File[]) {
@@ -717,7 +733,12 @@ export function AgentConsole({
         </div>
       </section>
 
-      <VoiceRoom room={call.room} onState={setAgentState} onTranscript={onTranscript} />
+      <VoiceRoom
+        room={call.room}
+        onState={setAgentState}
+        onTranscript={onTranscript}
+        onFile={onFile}
+      />
     </div>
   );
 }

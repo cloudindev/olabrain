@@ -107,6 +107,8 @@ export function createSafeFetch(policy: EgressPolicy) {
     input: string | URL,
     init: RequestInit = {},
     maxRedirects = 3,
+    /** false: return a 3xx as is (callers that must handle each hop, e.g. cookies). */
+    follow = true,
   ): Promise<Response> {
     let url = checkUrl(input);
     for (let hop = 0; ; hop++) {
@@ -116,7 +118,7 @@ export function createSafeFetch(policy: EgressPolicy) {
         dispatcher: agent,
       })) as unknown as Response;
       const location = response.headers.get("location");
-      if (response.status >= 300 && response.status < 400 && location) {
+      if (follow && response.status >= 300 && response.status < 400 && location) {
         if (hop >= maxRedirects) throw new EgressBlockedError("demasiadas redirecciones");
         await response.body?.cancel();
         url = checkUrl(new URL(location, url));

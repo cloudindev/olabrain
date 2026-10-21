@@ -30,6 +30,7 @@ import {
   createMicrosoft365Connection,
   createWhmcsConnection,
   updateWhmcsAccessKey,
+  whmcsInvoicePdf,
   createHttpConnection,
   createHttpSchema,
   createMcpConnection,
@@ -228,6 +229,21 @@ export function createApp(ctx: ConnectorContext, serviceToken: string, opts: App
   app.post("/v1/connections/native/whmcs", async (c) =>
     c.json(await createWhmcsConnection(ctx, c.var.tenantId, await body(c, whmcsConnectionSchema))),
   );
+  app.get("/v1/files/whmcs-invoice/:connectionId/:invoiceId", async (c) => {
+    const file = await whmcsInvoicePdf(
+      ctx,
+      c.var.tenantId,
+      uuid.parse(c.req.param("connectionId")),
+      z.coerce.number().int().positive().parse(c.req.param("invoiceId")),
+    );
+    return new Response(file.bytes, {
+      headers: {
+        "content-type": "application/pdf",
+        "content-disposition": `attachment; filename="${file.filename.replace(/"/g, "")}"`,
+        "cache-control": "private, no-store",
+      },
+    });
+  });
   app.post("/v1/connections/:id/whmcs/access-key", async (c) =>
     c.json(
       await updateWhmcsAccessKey(

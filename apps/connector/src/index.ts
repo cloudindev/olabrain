@@ -25,6 +25,7 @@ export function createConnectorFromEnv(
     allowedPrivateHosts: e.EGRESS_ALLOWED_PRIVATE_HOSTS,
     appUrl: e.APP_URL,
     logLevel: e.LOG_LEVEL,
+    linkKey: e.CONNECTOR_SERVICE_TOKEN,
     microsoft:
       e.MICROSOFT_CLIENT_ID && e.MICROSOFT_CLIENT_SECRET
         ? {

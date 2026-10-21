@@ -16,6 +16,8 @@ export type NativeCallContext = {
   fetcher: SafeFetcher;
   timeoutMs: number;
   maxBytes: number;
+  /** Signed, expiring download link to a file served by apps/web (e.g. an invoice PDF). */
+  fileLink?: (kind: "whmcs-invoice", ref: string) => string;
 };
 
 export type NativeResult = { ok: boolean; data: unknown; truncated: boolean };
