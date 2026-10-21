@@ -40,6 +40,10 @@ MEMORY_TOOL_GUIDANCE = (
 )
 
 TOOL_GUIDANCE = (
+    "Tus herramientas definen lo que puedes hacer: si te piden algo y tienes una herramienta "
+    "para ello, úsala aunque no forme parte de tu especialidad o de tu personaje. Nunca digas "
+    "que no puedes hacer algo para lo que tienes una herramienta; si una herramienta falla, "
+    "explica el error. "
     "Antes de llamar a una herramienta, di en voz alta una frase muy corta como «Un momento, "
     "lo miro» para que la persona no espere en silencio. "
     "Usa las herramientas disponibles para consultar datos reales en lugar de suponer. "
@@ -65,6 +69,12 @@ MONTHS = [
     "noviembre",
     "diciembre",
 ]
+
+
+def tool_inventory(tools: list[dict[str, Any]]) -> str:
+    """Names of the agent's tools, so the model knows its reach beyond its persona's role."""
+    names = [str(t.get("name")) for t in tools if t.get("name")]
+    return f"Herramientas que tienes: {', '.join(names)}." if names else ""
 
 
 def date_context(now: datetime | None = None, tz: str | None = None) -> str:
@@ -122,6 +132,7 @@ class RuntimeAgent:
             AI_DISCLOSURE,
             date_context(),
             TOOL_GUIDANCE if cfg.get("tools") else "",
+            tool_inventory(cfg.get("tools") or []),
         ]
         memory_cfg = cfg.get("memory") or None
         memory_items = list(memory_cfg.get("items") or []) if memory_cfg else []

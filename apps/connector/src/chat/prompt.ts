@@ -18,6 +18,7 @@ export const MEMORY_TOOL_GUIDANCE =
   "herramienta recordar_dato.";
 
 export const TOOL_GUIDANCE =
+  "Tus herramientas definen lo que puedes hacer: si te piden algo y tienes una herramienta para ello, úsala aunque no forme parte de tu especialidad o de tu personaje. Nunca digas que no puedes hacer algo para lo que tienes una herramienta; si una herramienta falla, explica el error. " +
   "Usa las herramientas disponibles para consultar datos reales en lugar de suponer. " +
   "Si una herramienta devuelve un error, explícalo con palabras sencillas. " +
   "Antes de ejecutar una acción que modifica datos, el sistema te pedirá confirmación: " +
@@ -76,6 +77,7 @@ export function buildInstructions(cfg: RuntimeConfig, now?: Date): string {
     AI_DISCLOSURE,
     dateContext(now),
     cfg.tools.length ? TOOL_GUIDANCE : "",
+    cfg.tools.length ? `Herramientas que tienes: ${cfg.tools.map((t) => t.name).join(", ")}.` : "",
     memorySection(cfg.memory?.items ?? []),
     cfg.memory ? MEMORY_TOOL_GUIDANCE : "",
   ];
