@@ -85,3 +85,21 @@ def test_transcript_text_labels_speakers_and_skips_empty_turns() -> None:
         ]
     )
     assert text == "Persona: Hola, soy Luis\nAsistente: Hola Luis"
+
+
+def test_agent_name_wins_over_persona_name() -> None:
+    cfg = {
+        **CONFIG,
+        "agent": {**CONFIG["agent"], "name": "Claudia"},
+        "persona": {
+            "name": "Alba",
+            "basePrompt": "Eres Alba.",
+            "slug": "alba",
+            "greeting": "Hola, soy Alba, ¿en qué puedo ayudarte?",
+        },
+    }
+    agent = RuntimeAgent.from_config("t-1", cfg)
+    assert "Te llamas Claudia" in agent.instructions
+    assert agent.greeting == "Hola, soy Claudia, ¿en qué puedo ayudarte?"
+    same = RuntimeAgent.from_config("t-1", CONFIG)
+    assert "Te llamas" not in same.instructions

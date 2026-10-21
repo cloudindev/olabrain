@@ -62,9 +62,16 @@ export function dateContext(now = new Date(), timeZone?: string): string {
   );
 }
 
+/** The agent's own name wins over its persona's (e.g. "Claudia" built on persona "Alba"). */
+export function nameNote(agentName: string, personaName?: string | null): string {
+  if (!personaName || personaName.trim() === agentName.trim()) return "";
+  return `Te llamas ${agentName}. Preséntate siempre como ${agentName}, nunca como ${personaName}.`;
+}
+
 export function buildInstructions(cfg: RuntimeConfig, now?: Date): string {
   const parts = [
     cfg.persona?.basePrompt || `Eres ${cfg.agent.name}, un asistente de la empresa.`,
+    nameNote(cfg.agent.name, cfg.persona?.name),
     cfg.agent.instructions ?? "",
     AI_DISCLOSURE,
     dateContext(now),

@@ -75,6 +75,22 @@ def date_context(now: datetime | None = None, tz: str | None = None) -> str:
     )
 
 
+def name_note(agent_name: str, persona_name: str | None) -> str:
+    """The agent's own name wins over its persona's (e.g. "Claudia" built on "Alba")."""
+    if not persona_name or persona_name.strip() == agent_name.strip():
+        return ""
+    return (
+        f"Te llamas {agent_name}. Preséntate siempre como {agent_name}, nunca como {persona_name}."
+    )
+
+
+def own_greeting(greeting: str | None, agent_name: str, persona_name: str | None) -> str | None:
+    """The persona's greeting with the agent's name ("Hola, soy Alba" -> "Hola, soy Claudia")."""
+    if not greeting or not persona_name or persona_name == agent_name:
+        return greeting
+    return greeting.replace(persona_name, agent_name)
+
+
 @dataclass
 class RuntimeAgent:
     tenant_id: str
@@ -97,6 +113,7 @@ class RuntimeAgent:
         persona = cfg.get("persona") or {}
         parts = [
             persona.get("basePrompt") or f"Eres {agent['name']}, un asistente de la empresa.",
+            name_note(agent["name"], persona.get("name")),
             agent.get("instructions") or "",
             AI_DISCLOSURE,
             date_context(),
@@ -114,7 +131,7 @@ class RuntimeAgent:
             name=agent["name"],
             instructions="\n\n".join(p.strip() for p in parts if p and p.strip()),
             model_id=agent.get("model"),
-            greeting=persona.get("greeting"),
+            greeting=own_greeting(persona.get("greeting"), agent["name"], persona.get("name")),
             voice_provider=persona.get("voiceProvider"),
             voice_ref=persona.get("voiceRef"),
             tools=cfg.get("tools") or [],
