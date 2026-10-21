@@ -47,6 +47,8 @@ type Message = {
   source: "text" | "voice";
   tools: ToolEvent[];
   files?: { name: string; type: string }[];
+  /** Files a tool produced (download links), shown under the reply. */
+  links?: SharedFile[];
   stats?: { first?: number; total?: number };
 };
 type Pending = Attachment & { size: number };
@@ -299,6 +301,11 @@ export function AgentConsole({
                   : tool,
               ),
             }));
+          else if (ev.type === "file")
+            patchLast((m) => ({
+              ...m,
+              links: [...(m.links ?? []), { label: ev.label, url: ev.url }],
+            }));
           else if (ev.type === "done")
             patchLast((m) => ({ ...m, stats: { first: ev.firstTokenMs, total: ev.totalMs } }));
           else if (ev.type === "error") setError(tc("error", { message: ev.message }));
@@ -381,7 +388,12 @@ export function AgentConsole({
   const shownError = callError ?? error;
   const canSend = (input.trim().length > 0 || files.length > 0) && !busy;
   const visible = messages.filter(
-    (m) => m.text || m.tools.length || m.files?.length || (busy && m === messages.at(-1)),
+    (m) =>
+      m.text ||
+      m.tools.length ||
+      m.files?.length ||
+      m.links?.length ||
+      (busy && m === messages.at(-1)),
   );
 
   return (
@@ -564,6 +576,19 @@ export function AgentConsole({
                     )}
                   </div>
                 ) : null}
+                {m.links?.map((link) => (
+                  <a
+                    key={link.url}
+                    href={link.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 rounded-xl border border-line bg-surface px-3 py-2 text-sm font-medium text-ink shadow-sm hover:border-line-strong"
+                    data-testid="file-link"
+                  >
+                    <FileText className="size-4 text-signal" />
+                    {link.label} · PDF
+                  </a>
+                ))}
                 {m.source === "voice" ? (
                   <span className="inline-flex items-center gap-1 text-[11px] uppercase tracking-wide text-ink-3 max-lg:hidden">
                     <AudioLines className="size-3" />

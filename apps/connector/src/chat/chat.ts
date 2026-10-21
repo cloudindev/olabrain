@@ -21,6 +21,8 @@ export type ChatEvent =
   | { type: "delta"; text: string }
   | { type: "tool_call"; name: string; args: Record<string, unknown> }
   | { type: "tool_result"; name: string; status: string; durationMs: number }
+  /** A file a tool produced (e.g. an invoice PDF): the UI shows a download link. */
+  | { type: "file"; label: string; url: string }
   | {
       type: "done";
       text: string;
@@ -70,7 +72,13 @@ async function runTool(
   req: ChatRequest,
   name: string,
   args: Record<string, unknown>,
-): Promise<{ output: string; isError: boolean; status: string; durationMs: number }> {
+): Promise<{
+  output: string;
+  isError: boolean;
+  status: string;
+  durationMs: number;
+  file?: { label: string; url: string };
+}> {
   if (name === REMEMBER_TOOL && cfg.memory) {
     const started = performance.now();
     const fact = String(args.dato ?? "").trim();
@@ -116,7 +124,12 @@ async function runTool(
   }
   let output = JSON.stringify(result.result ?? null);
   if (result.truncated) output += "\n(Resultado recortado: hay más datos de los mostrados.)";
-  return { output, isError: false, status: result.status, durationMs };
+  const data = result.result as { pdf_url?: unknown; factura?: unknown } | null;
+  const file =
+    data && typeof data.pdf_url === "string"
+      ? { label: `Factura ${String(data.factura ?? "")}`.trim(), url: data.pdf_url }
+      : undefined;
+  return { output, isError: false, status: result.status, durationMs, file };
 }
 
 /** Streams deltas and tool events; loops while the model asks for tools. */
@@ -180,6 +193,7 @@ export async function* runChat(
         status: out.status,
         durationMs: out.durationMs,
       };
+      if (out.file) yield { type: "file", ...out.file };
       turns.push({
         role: "tool",
         callId: call.id,
