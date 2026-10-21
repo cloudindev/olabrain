@@ -151,7 +151,40 @@ beforeAll(async () => {
               },
             }),
           );
-        if (action === "AddOrder" || action === "CreateInvoice" || action === "AddClient")
+        if (action === "GetPayMethods")
+          return res.end(
+            JSON.stringify({
+              result: "success",
+              clientid: 7,
+              paymethods: [
+                {
+                  id: 3,
+                  type: "BankAccount",
+                  description: "",
+                  gateway_name: "",
+                  bank_name: "Banco Uno",
+                  card_last_four: "",
+                  remote_token: "",
+                },
+                {
+                  id: 4,
+                  type: "RemoteCreditCard",
+                  gateway_name: "stripe",
+                  card_last_four: "4242",
+                  expiry_date: "12/28",
+                  card_type: "Visa",
+                  remote_token: "pm_secret_token",
+                },
+              ],
+            }),
+          );
+        if (
+          action === "AddOrder" ||
+          action === "CreateInvoice" ||
+          action === "AddClient" ||
+          action === "UpdateClient" ||
+          action === "UpdatePayMethod"
+        )
           return res.end(JSON.stringify({ result: "success", orderid: 55, invoiceid: 77 }));
         return res.end(JSON.stringify({ result: "error", message: `unknown ${action}` }));
       }
@@ -411,6 +444,55 @@ describe("WHMCS", () => {
     const range = twoDays.data as { resumen: { facturas: number }; facturas: unknown[] };
     expect(range.resumen.facturas).toBe(153); // counted across two pages
     expect(range.facturas).toHaveLength(10); // list capped by `limite`
+  });
+
+  it("updates only the client fields given and refuses an empty update", async () => {
+    const { ctx } = nativeCtx({ url: `${base}/whmcs/` }, { identifier: "id-ok", secret: "sec-ok" });
+    await executeWhmcsTool(ctx, "whmcs_actualizar_cliente", {
+      clientid: 7,
+      email: "nuevo@acme.es",
+      metodo_pago: "banktransfer",
+    });
+    const form = Object.fromEntries(seen.at(-1)!.form);
+    expect(form).toMatchObject({
+      action: "UpdateClient",
+      clientid: "7",
+      email: "nuevo@acme.es",
+      paymentmethod: "banktransfer",
+    });
+    expect(form).not.toHaveProperty("firstname");
+    await expect(
+      executeWhmcsTool(ctx, "whmcs_actualizar_cliente", { clientid: 7 }),
+    ).rejects.toThrow("al menos un dato");
+  });
+
+  it("lists pay methods without gateway tokens and updates a bank account", async () => {
+    const { ctx } = nativeCtx({ url: `${base}/whmcs/` }, { identifier: "id-ok", secret: "sec-ok" });
+    const list = await executeWhmcsTool(ctx, "whmcs_formas_pago_cliente", { clientid: 7 });
+    expect(JSON.stringify(list.data)).not.toContain("pm_secret_token");
+    expect(list.data).toEqual([
+      { id: 3, tipo: "BankAccount", banco: "Banco Uno" },
+      {
+        id: 4,
+        tipo: "RemoteCreditCard",
+        pasarela: "stripe",
+        ultimos_4: "4242",
+        caducidad: "12/28",
+        tipo_tarjeta: "Visa",
+      },
+    ]);
+    await executeWhmcsTool(ctx, "whmcs_actualizar_cuenta_bancaria", {
+      clientid: 7,
+      paymethodid: 3,
+      iban: "es91 2100 0418 4502 0005 1332",
+      predeterminada: true,
+    });
+    expect(Object.fromEntries(seen.at(-1)!.form)).toMatchObject({
+      action: "UpdatePayMethod",
+      paymethodid: "3",
+      bank_account: "ES9121000418450200051332",
+      set_as_default: "true",
+    });
   });
 
   it("sends the API access key when configured (bypasses the WHMCS IP allowlist)", async () => {

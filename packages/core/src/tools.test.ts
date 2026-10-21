@@ -39,3 +39,16 @@ describe("redactSecrets", () => {
     });
   });
 });
+
+describe("redactSecrets: payment data", () => {
+  it("hides IBAN, account and card numbers", () => {
+    expect(
+      redactSecrets({ clientid: 7, iban: "ES91…", cuenta_bancaria: "123", card_number: "4111" }),
+    ).toEqual({
+      clientid: 7,
+      iban: "[redacted]",
+      cuenta_bancaria: "[redacted]",
+      card_number: "[redacted]",
+    });
+  });
+});

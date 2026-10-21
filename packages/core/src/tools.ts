@@ -58,9 +58,12 @@ export function toToolName(raw: string): string {
   return withLetter.slice(0, 64).replace(/_+$/g, "") || "tool";
 }
 
-/** Keys whose values are never logged or shown (args, headers, results). */
+/**
+ * Keys whose values are never logged or shown (args, headers, results): credentials, and
+ * payment data (IBAN, account and card numbers).
+ */
 const SECRET_KEY =
-  /pass(word)?|secret|token|api[-_]?key|authorization|cookie|credential|private[-_]?key/i;
+  /pass(word)?|secret|token|api[-_]?key|authorization|cookie|credential|private[-_]?key|iban|bank[-_]?account|cuenta|card[-_]?number|tarjeta|cvv/i;
 
 export function redactSecrets(value: unknown, depth = 0): unknown {
   if (depth > 8) return "[…]";

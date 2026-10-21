@@ -485,6 +485,104 @@ const TOOLS: ToolSpec[] = [
     },
   },
   {
+    name: "whmcs_actualizar_cliente",
+    description:
+      "Modifica los datos de un cliente de WHMCS: nombre, empresa, email, teléfono, dirección, NIF, estado, notas o método de pago por defecto (module de whmcs_metodos_pago). Indica solo los campos que cambian. Antes, consulta la ficha con whmcs_ficha_cliente y di qué vas a cambiar.",
+    inputSchema: schema(
+      {
+        clientid: int("ID del cliente"),
+        nombre: str("Nombre"),
+        apellidos: str("Apellidos"),
+        empresa: str("Empresa"),
+        email: str("Email"),
+        telefono: str("Teléfono"),
+        direccion: str("Dirección (línea 1)"),
+        direccion2: str("Dirección (línea 2)"),
+        ciudad: str("Ciudad"),
+        provincia: str("Provincia o estado"),
+        codigo_postal: str("Código postal"),
+        pais: str("País, código ISO de 2 letras"),
+        nif: str("NIF/CIF"),
+        estado: str("Estado del cliente", { enum: ["Active", "Inactive", "Closed"] }),
+        metodo_pago: str("Método de pago por defecto (module), p. ej. banktransfer"),
+        notas: str("Notas internas (sustituyen a las actuales)"),
+      },
+      ["clientid"],
+    ),
+    mode: "write",
+    action: "UpdateClient",
+    params: (a) => {
+      const changes = {
+        firstname: a.nombre,
+        lastname: a.apellidos,
+        companyname: a.empresa,
+        email: a.email,
+        phonenumber: a.telefono,
+        address1: a.direccion,
+        address2: a.direccion2,
+        city: a.ciudad,
+        state: a.provincia,
+        postcode: a.codigo_postal,
+        country: typeof a.pais === "string" ? a.pais.toUpperCase() : undefined,
+        tax_id: a.nif,
+        status: a.estado,
+        paymentmethod: a.metodo_pago,
+        notes: a.notas,
+      };
+      if (Object.values(changes).every((v) => v === undefined || v === "")) {
+        throw new NativeToolError("indica al menos un dato a cambiar");
+      }
+      return { clientid: a.clientid, ...changes };
+    },
+  },
+  {
+    name: "whmcs_formas_pago_cliente",
+    description:
+      "Formas de pago guardadas de un cliente de WHMCS (cuentas bancarias y tarjetas): tipo, banco, últimos 4 dígitos, caducidad y si es la predeterminada. Las tarjetas no se pueden modificar desde aquí: el cliente debe hacerlo en su área de cliente de WHMCS.",
+    inputSchema: schema({ clientid: int("ID del cliente") }, ["clientid"]),
+    mode: "read",
+    action: "GetPayMethods",
+    // Never expose gateway tokens or full numbers to the model.
+    shape: (data) =>
+      ((data.paymethods as Record<string, unknown>[] | undefined) ?? []).map((m) => ({
+        id: m.id,
+        tipo: m.type,
+        descripcion: m.description || undefined,
+        pasarela: m.gateway_name || undefined,
+        banco: m.bank_name || undefined,
+        ultimos_4: m.card_last_four || undefined,
+        caducidad: m.expiry_date || undefined,
+        tipo_tarjeta: m.card_type || undefined,
+      })),
+  },
+  {
+    name: "whmcs_actualizar_cuenta_bancaria",
+    description:
+      "Actualiza la cuenta bancaria (forma de pago de tipo BankAccount) de un cliente de WHMCS: banco, número de cuenta/IBAN y código. Obtén antes el id con whmcs_formas_pago_cliente. No sirve para tarjetas: por seguridad (PCI) los datos de tarjeta nunca se piden ni se dictan en la conversación.",
+    inputSchema: schema(
+      {
+        clientid: int("ID del cliente"),
+        paymethodid: int("ID de la forma de pago (cuenta bancaria)"),
+        banco: str("Nombre del banco"),
+        iban: str("Número de cuenta o IBAN"),
+        codigo_banco: str("Código del banco (BIC/SWIFT o código de entidad)"),
+        predeterminada: { type: "boolean", description: "Marcarla como forma de pago por defecto" },
+      },
+      ["clientid", "paymethodid"],
+    ),
+    mode: "write",
+    action: "UpdatePayMethod",
+    params: (a) => ({
+      clientid: a.clientid,
+      paymethodid: a.paymethodid,
+      bank_name: a.banco,
+      bank_account:
+        typeof a.iban === "string" ? a.iban.replace(/\s+/g, "").toUpperCase() : undefined,
+      bank_code: a.codigo_banco,
+      set_as_default: a.predeterminada,
+    }),
+  },
+  {
     name: "whmcs_responder_ticket",
     description: "Añade una respuesta a un ticket de soporte de WHMCS.",
     inputSchema: schema(
