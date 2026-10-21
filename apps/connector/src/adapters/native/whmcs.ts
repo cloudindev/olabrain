@@ -48,6 +48,41 @@ type WhmcsInvoice = Record<string, string | number | undefined>;
 const DATE_RE = "^\\d{4}-\\d{2}-\\d{2}$";
 const INVOICE_PAGE_SIZE = 100;
 
+/** Identifies an invoice by internal id or by the number people see (e.g. CDIN-32794). */
+const invoiceRef = {
+  invoiceid: int("ID interno de la factura, si lo conoces"),
+  numero: str("Número de factura tal como lo ve el cliente, p. ej. CDIN-32794"),
+};
+
+/**
+ * Internal id of an invoice from its id or visible number. GetInvoices can't filter by
+ * number, so scan newest-first (up to 2,000 invoices).
+ */
+async function resolveInvoiceId(
+  call: (action: string, params: Record<string, unknown>) => Promise<NativeResult>,
+  a: Record<string, unknown>,
+): Promise<number> {
+  if (typeof a.invoiceid === "number" && a.invoiceid > 0) return a.invoiceid;
+  const wanted = typeof a.numero === "string" ? a.numero.trim().toUpperCase() : "";
+  if (!wanted) throw new NativeToolError("indica el número de factura o su id");
+  for (let page = 0; page < INVOICE_PAGES; page++) {
+    const res = await call("GetInvoices", {
+      orderby: "id",
+      order: "desc",
+      limitstart: page * INVOICE_PAGE_SIZE,
+      limitnum: INVOICE_PAGE_SIZE,
+    });
+    if (!res.ok) throw new NativeToolError(`WHMCS: ${(res.data as { error?: string }).error}`);
+    const list = (res.data as { invoices?: { invoice?: WhmcsInvoice[] } }).invoices?.invoice ?? [];
+    const hit = list.find(
+      (inv) => String(inv.invoicenum ?? "").toUpperCase() === wanted || String(inv.id) === wanted,
+    );
+    if (hit) return Number(hit.id);
+    if (list.length < INVOICE_PAGE_SIZE) break;
+  }
+  throw new NativeToolError(`no encuentro la factura ${a.numero} en WHMCS`);
+}
+
 /** "YYYY-MM-DD HH:mm:ss" in Madrid time (WHMCS stores local dates). */
 function madridNow(now = new Date()): string {
   return new Intl.DateTimeFormat("sv-SE", {
@@ -194,10 +229,12 @@ const TOOLS: ToolSpec[] = [
   },
   {
     name: "whmcs_factura",
-    description: "Detalle de una factura de WHMCS: líneas, importes, estado y pagos.",
-    inputSchema: schema({ invoiceid: int("ID de la factura") }, ["invoiceid"]),
+    description:
+      "Detalle de una factura de WHMCS (líneas, importes, estado y pagos) por su número (p. ej. CDIN-32794) o id.",
+    inputSchema: schema(invoiceRef),
     mode: "read",
     action: "GetInvoice",
+    run: async (call, a) => call("GetInvoice", { invoiceid: await resolveInvoiceId(call, a) }),
   },
   {
     name: "whmcs_tickets",
@@ -223,37 +260,35 @@ const TOOLS: ToolSpec[] = [
   {
     name: "whmcs_marcar_pagada",
     description:
-      "Marca una factura de WHMCS como pagada registrando el pago (como «Marcar como pagado» en WHMCS). Por defecto, el importe pendiente completo, con la forma de pago de la factura y fecha de ahora.",
-    inputSchema: schema(
-      {
-        invoiceid: int("ID de la factura"),
-        importe: { type: "number", description: "Importe pagado (por defecto, todo lo pendiente)" },
-        metodo_pago: str("Forma de pago (module); por defecto, la de la factura"),
-        referencia: str("Referencia o ID de la transacción (p. ej. de la transferencia)"),
-        fecha: str("Fecha del pago AAAA-MM-DD (por defecto, hoy)", { pattern: DATE_RE }),
-        sin_email: {
-          type: "boolean",
-          description: "No enviar al cliente el email de pago recibido",
-        },
+      "Marca una factura de WHMCS (por su número, p. ej. CDIN-32794, o id) como pagada registrando el pago (como «Marcar como pagado» en WHMCS). Por defecto, el importe pendiente completo, con la forma de pago de la factura y fecha de ahora.",
+    inputSchema: schema({
+      ...invoiceRef,
+      importe: { type: "number", description: "Importe pagado (por defecto, todo lo pendiente)" },
+      metodo_pago: str("Forma de pago (module); por defecto, la de la factura"),
+      referencia: str("Referencia o ID de la transacción (p. ej. de la transferencia)"),
+      fecha: str("Fecha del pago AAAA-MM-DD (por defecto, hoy)", { pattern: DATE_RE }),
+      sin_email: {
+        type: "boolean",
+        description: "No enviar al cliente el email de pago recibido",
       },
-      ["invoiceid"],
-    ),
+    }),
     mode: "write",
     action: "AddInvoicePayment",
     run: async (call, a) => {
-      const inv = await call("GetInvoice", { invoiceid: a.invoiceid });
+      const invoiceid = await resolveInvoiceId(call, a);
+      const inv = await call("GetInvoice", { invoiceid });
       if (!inv.ok) return inv;
       const invoice = inv.data as { status?: string; paymentmethod?: string; balance?: string };
       if (invoice.status === "Paid") {
         return {
           ok: true,
           truncated: false,
-          data: { invoiceid: a.invoiceid, estado: "Paid", aviso: "ya estaba pagada" },
+          data: { invoiceid: invoiceid, estado: "Paid", aviso: "ya estaba pagada" },
         };
       }
       const now = madridNow();
       const paid = await call("AddInvoicePayment", {
-        invoiceid: a.invoiceid,
+        invoiceid: invoiceid,
         transid: a.referencia || `OlaBrain ${now.slice(0, 10)}`,
         gateway: a.metodo_pago || invoice.paymentmethod,
         date: a.fecha ? `${a.fecha} 12:00:00` : now,
@@ -261,12 +296,12 @@ const TOOLS: ToolSpec[] = [
         noemail: a.sin_email,
       });
       if (!paid.ok) return paid;
-      const after = await call("GetInvoice", { invoiceid: a.invoiceid });
+      const after = await call("GetInvoice", { invoiceid: invoiceid });
       const status = (after.data as { status?: string; balance?: string }) ?? {};
       return {
         ok: true,
         truncated: false,
-        data: { invoiceid: a.invoiceid, estado: status.status, pendiente: status.balance },
+        data: { invoiceid: invoiceid, estado: status.status, pendiente: status.balance },
       };
     },
   },
@@ -275,25 +310,24 @@ const TOOLS: ToolSpec[] = [
     description:
       "Cambia el estado de una factura de WHMCS a pendiente de pago (Unpaid) o cancelada (Cancelled). Para marcarla como pagada usa whmcs_marcar_pagada.",
     inputSchema: schema(
-      {
-        invoiceid: int("ID de la factura"),
-        estado: str("Nuevo estado", { enum: ["Unpaid", "Cancelled"] }),
-      },
-      ["invoiceid", "estado"],
+      { ...invoiceRef, estado: str("Nuevo estado", { enum: ["Unpaid", "Cancelled"] }) },
+      ["estado"],
     ),
     mode: "write",
     action: "UpdateInvoice",
-    params: (a) => ({ invoiceid: a.invoiceid, status: a.estado }),
+    run: async (call, a) =>
+      call("UpdateInvoice", { invoiceid: await resolveInvoiceId(call, a), status: a.estado }),
   },
   {
     name: "whmcs_pdf_factura",
     description:
-      "Devuelve un enlace de descarga del PDF oficial de una factura de WHMCS (válido 24 horas). Muestra el enlace en el chat; en una llamada de voz no lo leas en voz alta: di que lo tiene en la conversación.",
-    inputSchema: schema({ invoiceid: int("ID de la factura") }, ["invoiceid"]),
+      "Devuelve un enlace de descarga del PDF oficial de una factura de WHMCS (por su número, p. ej. CDIN-32794, o id), válido 24 horas. Muestra el enlace en el chat; en una llamada de voz no lo leas en voz alta: di que lo tiene en la conversación.",
+    inputSchema: schema(invoiceRef),
     mode: "read",
     action: "GetInvoice",
     run: async (call, a, ctx) => {
-      const inv = await call("GetInvoice", { invoiceid: a.invoiceid });
+      const invoiceid = await resolveInvoiceId(call, a);
+      const inv = await call("GetInvoice", { invoiceid });
       if (!inv.ok) return inv;
       if (!ctx.fileLink) throw new NativeToolError("las descargas no están configuradas");
       const data = inv.data as {
@@ -306,10 +340,10 @@ const TOOLS: ToolSpec[] = [
         ok: true,
         truncated: false,
         data: {
-          factura: data.invoicenum || a.invoiceid,
+          factura: data.invoicenum || invoiceid,
           estado: data.status,
           total: data.total,
-          pdf_url: ctx.fileLink("whmcs-invoice", String(a.invoiceid)),
+          pdf_url: ctx.fileLink("whmcs-invoice", String(invoiceid)),
         },
       };
     },

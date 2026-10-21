@@ -561,6 +561,23 @@ describe("WHMCS", () => {
     expect(again.data).toMatchObject({ aviso: "ya estaba pagada" });
   });
 
+  it("finds an invoice by the number people see (not the internal id)", async () => {
+    const { ctx } = nativeCtx({ url: `${base}/whmcs/` }, { identifier: "id-ok", secret: "sec-ok" });
+    await executeWhmcsTool(ctx, "whmcs_factura", { numero: "f-899" });
+    const scan = seen.find(
+      (r) => r.form.get("action") === "GetInvoices" && r.form.get("orderby") === "id",
+    )!;
+    expect(scan.form.get("order")).toBe("desc");
+    expect(Object.fromEntries(seen.at(-1)!.form)).toMatchObject({
+      action: "GetInvoice",
+      invoiceid: "899",
+    });
+    await expect(executeWhmcsTool(ctx, "whmcs_factura", { numero: "NO-EXISTE" })).rejects.toThrow(
+      "no encuentro la factura NO-EXISTE",
+    );
+    await expect(executeWhmcsTool(ctx, "whmcs_factura", {})).rejects.toThrow("número de factura");
+  });
+
   it("sets an invoice back to unpaid", async () => {
     const { ctx } = nativeCtx({ url: `${base}/whmcs/` }, { identifier: "id-ok", secret: "sec-ok" });
     await executeWhmcsTool(ctx, "whmcs_cambiar_estado_factura", {
