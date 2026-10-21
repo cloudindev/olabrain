@@ -20,11 +20,30 @@ import {
 export const MICROSOFT_SCOPES = [
   "offline_access",
   "User.Read",
+  // ReadWrite (not just Read): outlook_borrar_correos moves messages to Deleted Items.
+  "Mail.ReadWrite",
+  "Mail.Send",
+  "Calendars.ReadWrite",
+];
+/** What connections authorized before Mail.ReadWrite were granted (refresh can't widen it). */
+const LEGACY_SCOPES = [
+  "offline_access",
+  "User.Read",
   "Mail.Read",
   "Mail.Send",
   "Calendars.ReadWrite",
 ];
 const DEFAULT_TZ = "Europe/Madrid";
+
+const bareScope = (s: string) => s.replace(/^https:\/\/graph\.microsoft\.com\//i, "").toLowerCase();
+
+/** True when the stored grant lacks a scope the current tool catalog needs. */
+export function needsMicrosoftConsent(secret: MicrosoftSecret): boolean {
+  const granted = new Set((secret.scopes ?? LEGACY_SCOPES.join(" ")).split(/\s+/).map(bareScope));
+  return MICROSOFT_SCOPES.filter((s) => s !== "offline_access").some(
+    (s) => !granted.has(bareScope(s)),
+  );
+}
 
 export type MicrosoftApp = {
   clientId: string;
@@ -39,6 +58,8 @@ export type MicrosoftSecret = {
   accessToken?: string;
   refreshToken?: string;
   expiresAt?: number;
+  /** Scopes Microsoft granted (refreshes must not ask for more). */
+  scopes?: string;
   codeVerifier?: string;
   oauthState?: string;
 };
@@ -72,6 +93,7 @@ export function beginMicrosoftAuth(app: MicrosoftApp, connectionId: string, redi
 
 type TokenResponse = {
   access_token?: string;
+  scope?: string;
   refresh_token?: string;
   expires_in?: number;
   error?: string;
@@ -82,6 +104,7 @@ async function tokenRequest(
   app: MicrosoftApp,
   ctx: Pick<NativeCallContext, "fetcher">,
   form: Record<string, string>,
+  scopes: string = MICROSOFT_SCOPES.join(" "),
 ): Promise<MicrosoftSecret> {
   const res = await executeHttp(
     {
@@ -91,7 +114,7 @@ async function tokenRequest(
       form: {
         client_id: app.clientId,
         client_secret: app.clientSecret,
-        scope: MICROSOFT_SCOPES.join(" "),
+        scope: scopes,
         ...form,
       },
       auth: { type: "none" },
@@ -111,6 +134,7 @@ async function tokenRequest(
     accessToken: data.access_token,
     refreshToken: data.refresh_token,
     expiresAt: Date.now() + (data.expires_in ?? 3600) * 1000,
+    scopes: data.scope ? `offline_access ${data.scope}` : scopes,
   };
 }
 
@@ -137,11 +161,19 @@ async function accessToken(app: MicrosoftApp, ctx: NativeCallContext): Promise<s
     return secret.accessToken;
   if (!secret.refreshToken)
     throw new NativeToolError("la conexión con Microsoft ha caducado: vuelve a autorizarla");
-  const refreshed = await tokenRequest(app, ctx, {
-    grant_type: "refresh_token",
-    refresh_token: secret.refreshToken,
-  });
-  const next = { ...refreshed, refreshToken: refreshed.refreshToken ?? secret.refreshToken };
+  // Only what was granted: asking for a new scope here fails until the user consents again.
+  const granted = secret.scopes ?? LEGACY_SCOPES.join(" ");
+  const refreshed = await tokenRequest(
+    app,
+    ctx,
+    { grant_type: "refresh_token", refresh_token: secret.refreshToken },
+    granted,
+  );
+  const next = {
+    ...refreshed,
+    refreshToken: refreshed.refreshToken ?? secret.refreshToken,
+    scopes: secret.scopes ?? granted,
+  };
   await ctx.saveSecret(next);
   ctx.secret = next;
   return next.accessToken!;
@@ -222,6 +254,24 @@ export const MICROSOFT365_TOOLS: NativeToolDef[] = [
     mode: "read",
   },
   {
+    name: "outlook_borrar_correos",
+    description:
+      "Borra uno o varios correos de Outlook por su id (de outlook_buscar_correos): los mueve a Elementos eliminados, desde donde se pueden recuperar. Antes de borrar, di qué correos son (remitente y asunto).",
+    inputSchema: schema(
+      {
+        ids: {
+          type: "array",
+          items: { type: "string" },
+          minItems: 1,
+          maxItems: 25,
+          description: "IDs de los correos",
+        },
+      },
+      ["ids"],
+    ),
+    mode: "write",
+  },
+  {
     name: "outlook_enviar_correo",
     description: "Envía un correo desde la cuenta de Outlook conectada.",
     inputSchema: schema(
@@ -293,6 +343,28 @@ export async function executeMicrosoft365Tool(
         query: { $select: "id,subject,from,toRecipients,ccRecipients,receivedDateTime,body" },
         headers: textPrefer,
       });
+    case "outlook_borrar_correos": {
+      // Move to Deleted Items (recoverable) rather than DELETE.
+      const ids = (args.ids as string[]) ?? [];
+      const failed: { id: string; error: unknown }[] = [];
+      for (const id of ids) {
+        const res = await graph(app, ctx, "POST", `me/messages/${encodeURIComponent(id)}/move`, {
+          body: { destinationId: "deleteditems" },
+        });
+        if (!res.ok) failed.push({ id, error: (res.data as { error?: unknown }).error });
+      }
+      const denied = failed.some((f) => /access is denied|accessdenied/i.test(String(f.error)));
+      if (denied) {
+        throw new NativeToolError(
+          "Outlook no ha dado permiso para borrar correos: vuelve a conectar Outlook en Conexiones (Sincronizar) para aceptar el nuevo permiso.",
+        );
+      }
+      return {
+        ok: failed.length < ids.length,
+        data: { movidos_a_eliminados: ids.length - failed.length, errores: failed },
+        truncated: false,
+      };
+    }
     case "outlook_enviar_correo":
       return graph(app, ctx, "POST", "me/sendMail", {
         body: {

@@ -32,6 +32,7 @@ import {
   beginMicrosoftAuth,
   completeMicrosoftAuth,
   microsoftAccount,
+  needsMicrosoftConsent,
   type MicrosoftSecret,
 } from "./adapters/native/microsoft365";
 import { checkWhmcs } from "./adapters/native/whmcs";
@@ -147,8 +148,12 @@ export async function syncMcpConnection(
   if (conn.kind === "native") {
     // Native: refresh the tool catalog; OAuth apps without tokens get a new login link.
     const native = conn.config.provider as NativeProvider;
-    if (native === "microsoft365" && !(await loadSecret<MicrosoftSecret>(ctx, conn)).refreshToken) {
-      return reauthorizeNative(ctx, conn);
+    if (native === "microsoft365") {
+      // No tokens, or a grant older than the current catalog (e.g. Mail.ReadWrite to delete
+      // mail): send the user through Microsoft's consent again.
+      const secret = await loadSecret<MicrosoftSecret>(ctx, conn);
+      if (!secret.refreshToken || needsMicrosoftConsent(secret))
+        return reauthorizeNative(ctx, conn);
     }
     await syncNativeTools(ctx, conn, native);
     return { connectionId: conn.id, status: "active" as const };

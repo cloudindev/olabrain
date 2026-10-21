@@ -12,6 +12,7 @@ import {
   completeMicrosoftAuth,
   dayBounds,
   executeMicrosoft365Tool,
+  needsMicrosoftConsent,
   type MicrosoftApp,
 } from "../src/adapters/native/microsoft365";
 import { executeWhmcsTool } from "../src/adapters/native/whmcs";
@@ -153,6 +154,14 @@ beforeAll(async () => {
         return res.end(JSON.stringify({ error: "invalid_grant" }));
       }
       // --- Graph mock
+      if (url.includes("/move") && url.startsWith("/graph/me/messages/denied")) {
+        res.statusCode = 403;
+        return res.end(
+          JSON.stringify({ error: { code: "ErrorAccessDenied", message: "Access is denied." } }),
+        );
+      }
+      if (url.includes("/move") && url.startsWith("/graph/me/messages/"))
+        return ((res.statusCode = 201), res.end(JSON.stringify({ id: "moved" })));
       if (url.startsWith("/graph/me/messages"))
         return res.end(JSON.stringify({ value: [{ id: "m1", subject: "Factura" }] }));
       if (url.startsWith("/graph/me/sendMail")) {
@@ -436,6 +445,32 @@ describe("Outlook 365", () => {
     const req = seen.at(-1)!;
     expect(decodeURIComponent(req.url)).toContain("startDateTime=2026-10-20T00:00:00+02:00");
     expect(req.prefer).toBe('outlook.timezone="Europe/Madrid"');
+  });
+
+  it("deletes mail by moving it to Deleted Items, and asks to reconnect without permission", async () => {
+    const { ctx } = nativeCtx({}, { accessToken: "at-9", expiresAt: Date.now() + 3_600_000 });
+    const res = await executeMicrosoft365Tool(app, ctx, "outlook_borrar_correos", {
+      ids: ["m1", "m2"],
+    });
+    expect(res).toMatchObject({ ok: true, data: { movidos_a_eliminados: 2, errores: [] } });
+    const req = seen.at(-1)!;
+    expect(req.url).toBe("/graph/me/messages/m2/move");
+    expect(JSON.parse(req.body)).toEqual({ destinationId: "deleteditems" });
+
+    await expect(
+      executeMicrosoft365Tool(app, ctx, "outlook_borrar_correos", { ids: ["denied"] }),
+    ).rejects.toThrow("vuelve a conectar Outlook");
+  });
+
+  it("asks for consent again only when the stored grant lacks a needed scope", () => {
+    expect(needsMicrosoftConsent({ refreshToken: "rt" })).toBe(true); // legacy grant: Mail.Read
+    expect(
+      needsMicrosoftConsent({
+        refreshToken: "rt",
+        scopes:
+          "offline_access https://graph.microsoft.com/Mail.ReadWrite https://graph.microsoft.com/Mail.Send https://graph.microsoft.com/Calendars.ReadWrite https://graph.microsoft.com/User.Read",
+      }),
+    ).toBe(false);
   });
 
   it("computes day bounds with the right DST offset", () => {
