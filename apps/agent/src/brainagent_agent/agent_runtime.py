@@ -38,6 +38,8 @@ MEMORY_TOOL_GUIDANCE = (
 )
 
 TOOL_GUIDANCE = (
+    "Antes de llamar a una herramienta, di en voz alta una frase muy corta como «Un momento, "
+    "lo miro» para que la persona no espere en silencio. "
     "Usa las herramientas disponibles para consultar datos reales en lugar de suponer. "
     "Si una herramienta devuelve un error, explícalo con palabras sencillas. "
     "Antes de ejecutar una acción que modifica datos, el sistema te pedirá confirmación: "
