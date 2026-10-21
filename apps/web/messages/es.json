@@ -46,7 +46,10 @@
     "connections": "Conexiones",
     "soon": "pronto",
     "contacts": "Contactos",
-    "organization": "Organización"
+    "organization": "Organización",
+    "menu": "Menú",
+    "openMenu": "Abrir menú",
+    "closeMenu": "Cerrar menú"
   },
   "lab": {
     "title": "Laboratorio de voz",

@@ -6,11 +6,14 @@ import { Logo } from "@/components/logo";
 import { memberships, tenants } from "@brainagent/db";
 import { asc, eq } from "drizzle-orm";
 import { LocaleSwitch } from "@/components/shell/locale-switch";
+import { MobileMenu } from "@/components/shell/mobile-menu";
 import { OrgSwitcher } from "@/components/shell/org-switcher";
 import { SignOutButton } from "@/components/shell/sign-out-button";
 import { ThemeToggle } from "@/components/shell/theme-toggle";
 import { db } from "@/lib/db";
 import { AuthError, requireTenant } from "@/lib/tenant";
+
+const SECTIONS = ["agents", "connections", "contacts", "lab"] as const;
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
   let ctx;
@@ -37,8 +40,8 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           <Link href="/agents" aria-label="BrainAgent">
             <Logo compact />
           </Link>
-          <nav className="flex items-center gap-1 overflow-x-auto text-sm">
-            {(["agents", "connections", "contacts", "lab"] as const).map((key) => (
+          <nav className="hidden items-center gap-1 text-sm md:flex">
+            {SECTIONS.map((key) => (
               <Link
                 key={key}
                 href={`/${key}`}
@@ -48,11 +51,24 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
               </Link>
             ))}
           </nav>
-          <div className="ml-auto flex items-center gap-0.5 whitespace-nowrap sm:gap-1">
+          <div className="ml-auto flex min-w-0 items-center gap-1 whitespace-nowrap">
             <OrgSwitcher orgs={orgs} activeId={ctx.tenantId} />
-            <LocaleSwitch />
-            <ThemeToggle />
-            <SignOutButton />
+            <div className="hidden items-center gap-1 md:flex">
+              <LocaleSwitch />
+              <ThemeToggle />
+              <SignOutButton />
+            </div>
+            <MobileMenu
+              items={SECTIONS.map((key) => ({ href: `/${key}`, label: t(key) }))}
+              user={{ name: ctx.user.name, email: ctx.user.email }}
+              footer={
+                <>
+                  <LocaleSwitch />
+                  <ThemeToggle />
+                  <SignOutButton />
+                </>
+              }
+            />
           </div>
         </div>
       </header>

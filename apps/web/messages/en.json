@@ -46,7 +46,10 @@
     "connections": "Connections",
     "soon": "soon",
     "contacts": "Contacts",
-    "organization": "Organization"
+    "organization": "Organization",
+    "menu": "Menu",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu"
   },
   "lab": {
     "title": "Voice lab",

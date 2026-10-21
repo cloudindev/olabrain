@@ -36,7 +36,7 @@ export function OrgSwitcher({ orgs, activeId }: { orgs: Org[]; activeId: string 
       value={activeId}
       disabled={busy}
       onChange={(e) => void change(e.target.value)}
-      className="mr-2 max-w-48 truncate rounded-[var(--radius-control)] border border-line bg-surface px-2 py-1 text-sm text-ink-2"
+      className="max-w-[46vw] truncate rounded-[var(--radius-control)] md:mr-2 md:max-w-48 border border-line bg-surface px-2 py-1 text-sm text-ink-2"
       data-testid="tenant-name"
     >
       {orgs.map((o) => (
