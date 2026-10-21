@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque, IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale } from "next-intl/server";
@@ -22,6 +22,14 @@ const numeric = IBM_Plex_Mono({
   variable: "--font-numeric",
   display: "swap",
 });
+
+// viewport-fit=cover: iOS reports the area under Safari's floating toolbar and the home
+// indicator as env(safe-area-inset-*), so full-screen views can keep controls above it.
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+};
 
 export const metadata: Metadata = {
   title: { default: "BrainAgent", template: "%s · BrainAgent" },

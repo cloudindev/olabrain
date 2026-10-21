@@ -360,7 +360,8 @@ export function AgentConsole({
     <div
       className={cn(
         // Mobile: full-screen call-like view over the avatar.
-        "fixed inset-0 z-40 flex flex-col overflow-hidden bg-[#f3f3f1]",
+        // 100dvh = the visible height (without Safari's toolbars), not the screen's.
+        "fixed inset-x-0 top-0 z-40 flex h-dvh flex-col overflow-hidden bg-[#f3f3f1]",
         // Desktop: avatar column + chat panel.
         "lg:static lg:z-auto lg:grid lg:h-[calc(100dvh-12.5rem)] lg:min-h-[560px] lg:grid-cols-[auto_1fr] lg:gap-6 lg:overflow-visible lg:bg-transparent",
       )}
@@ -561,7 +562,7 @@ export function AgentConsole({
         ) : null}
 
         {/* Composer */}
-        <div className="px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:border-t lg:border-line lg:p-4">
+        <div className="px-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] lg:border-t lg:border-line lg:p-4">
           {live ? (
             <div className="flex items-center justify-center gap-4 lg:justify-between">
               <div className="hidden items-center gap-2.5 text-sm text-ink-2 lg:flex">
