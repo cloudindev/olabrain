@@ -7,6 +7,7 @@
 import { timingSafeEqual } from "node:crypto";
 import {
   attachmentsSchema,
+  googleDriveConnectionSchema,
   microsoft365ConnectionSchema,
   whmcsAccessKeySchema,
   whmcsConnectionSchema,
@@ -27,6 +28,7 @@ import {
 import {
   ServiceError,
   completeOAuth,
+  createGoogleDriveConnection,
   createMicrosoft365Connection,
   createWhmcsConnection,
   updateWhmcsAccessKey,
@@ -251,6 +253,15 @@ export function createApp(ctx: ConnectorContext, serviceToken: string, opts: App
         c.var.tenantId,
         uuid.parse(c.req.param("id")),
         (await body(c, whmcsAccessKeySchema)).accessKey || null,
+      ),
+    ),
+  );
+  app.post("/v1/connections/native/googledrive", async (c) =>
+    c.json(
+      await createGoogleDriveConnection(
+        ctx,
+        c.var.tenantId,
+        await body(c, googleDriveConnectionSchema),
       ),
     ),
   );

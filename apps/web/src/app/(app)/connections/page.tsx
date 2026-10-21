@@ -61,7 +61,9 @@ export default async function ConnectionsPage() {
                     <p className="truncate font-medium">{c.name}</p>
                     <p className="text-sm text-ink-2">
                       {c.kind === "native" && typeof c.config.provider === "string"
-                        ? t(`providers.${c.config.provider as "whmcs" | "microsoft365"}.name`)
+                        ? t(
+                            `providers.${c.config.provider as "whmcs" | "microsoft365" | "googledrive"}.name`,
+                          )
                         : t(`kinds.${c.kind}`)}
                     </p>
                   </div>

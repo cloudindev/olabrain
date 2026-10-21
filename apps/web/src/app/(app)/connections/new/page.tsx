@@ -10,7 +10,7 @@ import { PageHeader } from "@/components/page-header";
 import { requireTenant } from "@/lib/tenant";
 
 export const metadata = { title: "Nueva conexión" };
-const APPS = ["whmcs", "microsoft365"] as const;
+const APPS = ["whmcs", "microsoft365", "googledrive"] as const;
 const CUSTOM = ["mcp", "openapi", "sql", "http"] as const;
 const ALL: readonly string[] = [...APPS, ...CUSTOM];
 

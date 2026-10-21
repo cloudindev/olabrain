@@ -201,3 +201,14 @@ group by 1 order by first_audio_p50;
 **Decisión.** En la home y en la conversación del panel, al pulsar «Hablar» se reproduce el clip de saludo **con su audio** («Hola. ¿En qué te puedo ayudar?») dentro del mismo clic (los navegadores solo permiten sonido iniciado por un gesto). La sesión se pide con `client_greeting: true` y el agente **no saluda**: se le indica que ya ha saludado y espera a que la persona hable. El micrófono se abre al acabar la frase del vídeo (4 s) para que el agente no la oiga. El laboratorio y los canales sin vídeo (teléfono, WhatsApp) siguen con el saludo hablado por el agente.
 
 **Motivo.** Sincronía perfecta entre labios y voz, y el saludo tapa el tiempo de conexión.
+
+---
+
+## ADR-015 — Google Drive y adjuntos de conversación (2026-10-22)
+
+**Decisión.**
+- Conector nativo **Google Drive** con OAuth 2.0 + PKCE y el permiso **`drive.file`** (no sensible): el agente crea carpetas y documentos y sube archivos, y solo ve lo que ha creado él. Los permisos `drive`/`drive.readonly` (ver todo el Drive) son «restringidos» y Google exige una auditoría de seguridad anual para usarlos con clientes; se descartan mientras no hagan falta.
+- Herramientas: `drive_crear_carpeta`, `drive_listar`, `drive_crear_documento` (Google Doc o texto) y `drive_subir_archivo` (subida multipart, máx. 5 MB).
+- **Adjuntos de conversación:** los ficheros adjuntos en el chat se guardan **24 h** en `conversation_files` (RLS) y el agente recibe su `adjunto_id`, para poder usarlos después del turno (p. ej. subirlos a Drive). Los caducados se borran al llegar nuevos.
+- Los archivos generados por herramientas (PDF de facturas) se pueden subir por su enlace firmado; el conector solo acepta enlaces válidos de la **misma organización**.
+- Cliente OAuth de la plataforma en `GOOGLE_DRIVE_CLIENT_ID` / `GOOGLE_DRIVE_CLIENT_SECRET` (proyecto de Google Cloud «olabrain»).

@@ -55,6 +55,12 @@ export async function updateWhmcsAccessKey(connectionId: string, accessKey: stri
   });
 }
 
+export async function createGoogleDriveConnection(input: unknown) {
+  return run((tenantId) =>
+    connectorFetch<CreateResult>(tenantId, "/v1/connections/native/googledrive", { body: input }),
+  );
+}
+
 export async function createMicrosoft365Connection(input: unknown) {
   return run((tenantId) =>
     connectorFetch<CreateResult>(tenantId, "/v1/connections/native/microsoft365", { body: input }),

@@ -5,7 +5,7 @@ import { z } from "zod";
  * definitions and execution live in apps/connector; this is the shared, secret-free
  * metadata the UI needs.
  */
-export const NATIVE_PROVIDERS = ["whmcs", "microsoft365"] as const;
+export const NATIVE_PROVIDERS = ["whmcs", "microsoft365", "googledrive"] as const;
 export const nativeProviderSchema = z.enum(NATIVE_PROVIDERS);
 export type NativeProvider = z.infer<typeof nativeProviderSchema>;
 
@@ -19,6 +19,7 @@ export type NativeProviderInfo = {
 export const NATIVE_PROVIDER_INFO: Record<NativeProvider, NativeProviderInfo> = {
   whmcs: { id: "whmcs", name: "WHMCS", auth: "api_credentials" },
   microsoft365: { id: "microsoft365", name: "Outlook 365", auth: "oauth" },
+  googledrive: { id: "googledrive", name: "Google Drive", auth: "oauth" },
 };
 
 export const whmcsConnectionSchema = z.object({
@@ -42,5 +43,9 @@ export const whmcsAccessKeySchema = z.object({
 export type WhmcsConnectionInput = z.infer<typeof whmcsConnectionSchema>;
 
 export const microsoft365ConnectionSchema = z.object({
+  name: z.string().trim().min(1).max(80),
+});
+
+export const googleDriveConnectionSchema = z.object({
   name: z.string().trim().min(1).max(80),
 });

@@ -16,6 +16,11 @@ import {
   type MicrosoftApp,
 } from "../src/adapters/native/microsoft365";
 import { executeWhmcsTool, fetchWhmcsInvoicePdf } from "../src/adapters/native/whmcs";
+import {
+  beginGoogleAuth,
+  completeGoogleAuth,
+  executeGoogleDriveTool,
+} from "../src/adapters/native/googledrive";
 import { createTenant, dropTenant, testDbs } from "./helpers";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -50,6 +55,57 @@ beforeAll(async () => {
       });
       res.setHeader("content-type", "application/json");
       const url = req.url ?? "";
+      // --- Google mock (OAuth token endpoint + Drive API)
+      if (url === "/google/token") {
+        if (form.get("grant_type") === "authorization_code" && form.get("code") === "good-code") {
+          const idToken = `x.${Buffer.from(JSON.stringify({ email: "luis@cloudin.pro" })).toString("base64url")}.y`;
+          return res.end(
+            JSON.stringify({
+              access_token: "g-at",
+              refresh_token: "g-rt",
+              expires_in: 3600,
+              id_token: idToken,
+            }),
+          );
+        }
+        res.statusCode = 400;
+        return res.end(JSON.stringify({ error: "invalid_grant" }));
+      }
+      if (url.startsWith("/google/drive/files") && req.method === "POST") {
+        const meta = JSON.parse(body);
+        return res.end(
+          JSON.stringify({
+            id: "fold-1",
+            name: meta.name,
+            mimeType: meta.mimeType,
+            webViewLink: "https://drive.test/f/fold-1",
+          }),
+        );
+      }
+      if (url.startsWith("/google/drive/files"))
+        return res.end(
+          JSON.stringify({
+            files: [
+              {
+                id: "doc-1",
+                name: "Acta",
+                mimeType: "application/vnd.google-apps.document",
+                webViewLink: "https://drive.test/d/doc-1",
+              },
+            ],
+          }),
+        );
+      if (url.startsWith("/google/upload/files")) {
+        const meta = JSON.parse(/\r\n\r\n(\{.*?\})\r\n/s.exec(body)![1]!);
+        return res.end(
+          JSON.stringify({
+            id: "up-1",
+            name: meta.name,
+            mimeType: meta.mimeType ?? "application/pdf",
+            webViewLink: "https://drive.test/f/up-1",
+          }),
+        );
+      }
       // --- WHMCS client-area SSO + invoice download mock
       if (url.startsWith("/whmcs/oauth/singlesignon.php")) {
         res.statusCode = 302;
@@ -738,6 +794,96 @@ describe("Outlook 365", () => {
           "offline_access https://graph.microsoft.com/Mail.ReadWrite https://graph.microsoft.com/Mail.Send https://graph.microsoft.com/Calendars.ReadWrite https://graph.microsoft.com/User.Read",
       }),
     ).toBe(false);
+  });
+
+  it("Google Drive: PKCE consent with refresh token, then the account email", async () => {
+    const google = {
+      clientId: "gid",
+      clientSecret: "gsecret",
+      authBase: `${base}/google/auth`,
+      tokenUrl: `${base}/google/token`,
+    };
+    const { authorizationUrl, secret } = beginGoogleAuth(google, "conn-1", "https://app.test/cb");
+    const url = new URL(authorizationUrl);
+    expect(url.searchParams.get("scope")).toContain("https://www.googleapis.com/auth/drive.file");
+    expect(url.searchParams.get("access_type")).toBe("offline");
+    expect(url.searchParams.get("prompt")).toBe("consent");
+    expect(url.searchParams.get("code_challenge_method")).toBe("S256");
+    expect(url.searchParams.get("state")).toMatch(/^conn-1\./);
+    const tokens = await completeGoogleAuth(
+      google,
+      { fetcher },
+      secret,
+      "good-code",
+      "https://app.test/cb",
+    );
+    expect(tokens).toMatchObject({
+      accessToken: "g-at",
+      refreshToken: "g-rt",
+      email: "luis@cloudin.pro",
+    });
+    expect(seen.at(-1)!.form.get("code_verifier")).toBe(secret.codeVerifier);
+  });
+
+  it("Google Drive: folders, Google Docs from text and uploads of chat files", async () => {
+    const google = {
+      clientId: "gid",
+      clientSecret: "gsecret",
+      apiBase: `${base}/google/drive`,
+      uploadBase: `${base}/google/upload`,
+    };
+    const { ctx } = nativeCtx({}, { accessToken: "g-at", expiresAt: Date.now() + 3_600_000 });
+    const folder = await executeGoogleDriveTool(google, ctx, "drive_crear_carpeta", {
+      nombre: "Facturas 2026",
+    });
+    expect(folder.data).toMatchObject({ id: "fold-1", nombre: "Facturas 2026", tipo: "carpeta" });
+    expect(seen.at(-1)!.auth).toBe("Bearer g-at");
+
+    const doc = await executeGoogleDriveTool(google, ctx, "drive_crear_documento", {
+      nombre: "Acta",
+      contenido: "Reunión con Acme",
+      carpeta: "fold-1",
+    });
+    expect(doc.data).toMatchObject({ id: "up-1", nombre: "Acta" });
+    const multipart = seen.at(-1)!;
+    expect(multipart.url).toContain("uploadType=multipart");
+    expect(multipart.body).toContain('"mimeType":"application/vnd.google-apps.document"');
+    expect(multipart.body).toContain('"parents":["fold-1"]');
+    expect(multipart.body).toContain("Reunión con Acme");
+
+    const withFile = {
+      ...ctx,
+      loadFile: async () => ({
+        name: "factura.pdf",
+        mediaType: "application/pdf",
+        bytes: Buffer.from("%PDF"),
+      }),
+    };
+    const up = await executeGoogleDriveTool(google, withFile, "drive_subir_archivo", {
+      adjunto_id: "a1",
+    });
+    expect(up.data).toMatchObject({ nombre: "factura.pdf" });
+    expect(seen.at(-1)!.body).toContain("Content-Type: application/pdf");
+
+    const big = {
+      ...ctx,
+      loadFile: async () => ({
+        name: "big.bin",
+        mediaType: "application/octet-stream",
+        bytes: new Uint8Array(6 * 1024 * 1024),
+      }),
+    };
+    await expect(
+      executeGoogleDriveTool(google, big, "drive_subir_archivo", { adjunto_id: "a2" }),
+    ).rejects.toThrow("5 MB");
+
+    const list = await executeGoogleDriveTool(google, ctx, "drive_listar", { carpeta: "fold-1" });
+    expect(list.data).toEqual([
+      expect.objectContaining({ id: "doc-1", enlace: "https://drive.test/d/doc-1" }),
+    ]);
+    expect(new URL(seen.at(-1)!.url, base).searchParams.get("q")).toBe(
+      "trashed = false and 'fold-1' in parents",
+    );
   });
 
   it("computes day bounds with the right DST offset", () => {

@@ -34,6 +34,10 @@ export function createConnectorFromEnv(
             tenant: e.MICROSOFT_TENANT_ID ?? "common",
           }
         : null,
+    google:
+      e.GOOGLE_DRIVE_CLIENT_ID && e.GOOGLE_DRIVE_CLIENT_SECRET
+        ? { clientId: e.GOOGLE_DRIVE_CLIENT_ID, clientSecret: e.GOOGLE_DRIVE_CLIENT_SECRET }
+        : null,
   });
   const app = createApp(ctx, e.CONNECTOR_SERVICE_TOKEN, opts);
   return {

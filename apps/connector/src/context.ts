@@ -1,5 +1,6 @@
 import type { Database } from "@brainagent/db";
 import pino, { type Logger } from "pino";
+import type { GoogleApp } from "./adapters/native/googledrive";
 import type { MicrosoftApp } from "./adapters/native/microsoft365";
 import { createSafeFetch, type EgressPolicy, type SafeFetcher } from "./egress";
 import { Vault, parseMasterKey } from "./vault";
@@ -15,6 +16,8 @@ export type ConnectorContext = {
   appUrl: string;
   /** Platform app for Outlook 365; null when not configured. */
   microsoft: MicrosoftApp | null;
+  /** Platform app for Google Drive; null when not configured. */
+  google: GoogleApp | null;
   /** Key that signs file download links (shared with apps/web). */
   linkKey?: string;
 };
@@ -50,6 +53,7 @@ export function createContext(opts: {
   appUrl: string;
   logLevel?: string;
   microsoft?: MicrosoftApp | null;
+  google?: GoogleApp | null;
   linkKey?: string;
 }): ConnectorContext {
   const policy = { allowedPrivateHosts: opts.allowedPrivateHosts };
@@ -67,6 +71,7 @@ export function createContext(opts: {
     log: createLogger(opts.logLevel),
     appUrl: opts.appUrl,
     microsoft: opts.microsoft ?? null,
+    google: opts.google ?? null,
     linkKey: opts.linkKey,
   };
 }

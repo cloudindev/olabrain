@@ -13,6 +13,7 @@ export type AppIconSource = {
 const LOGOS: Record<string, string> = {
   microsoft365: "/apps/outlook.svg",
   whmcs: "/apps/whmcs.png",
+  googledrive: "/apps/googledrive.svg",
   mcp: "/apps/mcp.svg",
   openapi: "/apps/openapi.svg",
   postgres: "/apps/postgresql.svg",

@@ -7,6 +7,7 @@ import { useState, useTransition, type FormEvent, type ReactNode } from "react";
 import {
   createHttpConnection,
   createMcpConnection,
+  createGoogleDriveConnection,
   createMicrosoft365Connection,
   createWhmcsConnection,
   createOpenApiConnection,
@@ -14,7 +15,8 @@ import {
   previewOpenApi,
 } from "@/app/(app)/connections/actions";
 
-export type NewConnectionKind = "mcp" | "openapi" | "sql" | "http" | "whmcs" | "microsoft365";
+export type NewConnectionKind =
+  "mcp" | "openapi" | "sql" | "http" | "whmcs" | "microsoft365" | "googledrive";
 type ApiAuthType = "none" | "bearer" | "api_key_header" | "api_key_query" | "basic";
 type Secret = { token?: string; apiKey?: string; username?: string; password?: string };
 
@@ -615,9 +617,33 @@ function Microsoft365Form() {
   );
 }
 
+function GoogleDriveForm() {
+  const t = useTranslations("connections");
+  const { error, pending, submit } = useSubmit();
+  const [name, setName] = useState("Google Drive");
+  return (
+    <FormCard
+      error={error}
+      onSubmit={(e) => {
+        e.preventDefault();
+        submit(() => createGoogleDriveConnection({ name }));
+      }}
+    >
+      <p className="text-sm text-ink-2">{t("providers.googledrive.help")}</p>
+      <Field label={t("name")} htmlFor="g-name">
+        <Input id="g-name" value={name} onChange={(e) => setName(e.target.value)} />
+      </Field>
+      <Button type="submit" disabled={pending || !name}>
+        {t("providers.googledrive.connect")}
+      </Button>
+    </FormCard>
+  );
+}
+
 export function NewConnectionForm({ kind }: { kind: NewConnectionKind }) {
   if (kind === "whmcs") return <WhmcsForm />;
   if (kind === "microsoft365") return <Microsoft365Form />;
+  if (kind === "googledrive") return <GoogleDriveForm />;
   if (kind === "mcp") return <McpForm />;
   if (kind === "openapi") return <OpenApiForm />;
   if (kind === "sql") return <SqlForm />;

@@ -12,7 +12,11 @@ import {
   studioParamsToJsonSchema,
   type ApiAuth,
 } from "@brainagent/core";
-import type { microsoft365ConnectionSchema, whmcsConnectionSchema } from "@brainagent/core";
+import type {
+  googleDriveConnectionSchema,
+  microsoft365ConnectionSchema,
+  whmcsConnectionSchema,
+} from "@brainagent/core";
 import { type NativeProvider } from "@brainagent/core";
 import { agentTools, agents, connections, tools, withTenant, type Tx } from "@brainagent/db";
 import { and, eq, inArray, notInArray } from "drizzle-orm";
@@ -36,6 +40,11 @@ import {
   type MicrosoftSecret,
 } from "./adapters/native/microsoft365";
 import { checkWhmcs, fetchWhmcsInvoicePdf } from "./adapters/native/whmcs";
+import {
+  beginGoogleAuth,
+  completeGoogleAuth,
+  type GoogleSecret,
+} from "./adapters/native/googledrive";
 import type { ApiSecret } from "./adapters/http";
 import {
   McpOAuthProvider,
@@ -709,15 +718,41 @@ export async function createMicrosoft365Connection(
   return { connectionId: conn.id, status: "needs_auth" as const, authorizationUrl };
 }
 
-/** Re-authorization for an existing Outlook 365 connection (expired or revoked). */
+export async function createGoogleDriveConnection(
+  ctx: ConnectorContext,
+  tenantId: string,
+  input: z.infer<typeof googleDriveConnectionSchema>,
+) {
+  if (!ctx.google) {
+    throw new ServiceError(
+      "Google Drive no está configurado: faltan GOOGLE_DRIVE_CLIENT_ID y GOOGLE_DRIVE_CLIENT_SECRET en la plataforma",
+    );
+  }
+  const conn = await createConnection(ctx, tenantId, {
+    kind: "native",
+    name: input.name,
+    config: { provider: "googledrive" },
+    secret: {},
+  });
+  const { authorizationUrl, secret } = beginGoogleAuth(ctx.google, conn.id, oauthRedirectUrl(ctx));
+  await nativeSecretStore(ctx, conn)(secret);
+  await setStatus(ctx, conn, "needs_auth");
+  return { connectionId: conn.id, status: "needs_auth" as const, authorizationUrl };
+}
+
+/** Authorization URL (and the PKCE state to keep) for an OAuth native connector. */
+function beginNativeAuth(ctx: ConnectorContext, conn: ConnectionRow) {
+  const provider = conn.config.provider;
+  if (provider === "microsoft365" && ctx.microsoft)
+    return beginMicrosoftAuth(ctx.microsoft, conn.id, oauthRedirectUrl(ctx));
+  if (provider === "googledrive" && ctx.google)
+    return beginGoogleAuth(ctx.google, conn.id, oauthRedirectUrl(ctx));
+  throw new ServiceError("esta conexión no usa OAuth");
+}
+
+/** Re-authorization for an existing OAuth connection (expired, revoked or new scopes). */
 export async function reauthorizeNative(ctx: ConnectorContext, conn: ConnectionRow) {
-  if (conn.config.provider !== "microsoft365" || !ctx.microsoft)
-    throw new ServiceError("esta conexión no usa OAuth");
-  const { authorizationUrl, secret } = beginMicrosoftAuth(
-    ctx.microsoft,
-    conn.id,
-    oauthRedirectUrl(ctx),
-  );
+  const { authorizationUrl, secret } = beginNativeAuth(ctx, conn);
   await nativeSecretStore(ctx, conn)(secret);
   return { connectionId: conn.id, status: "needs_auth" as const, authorizationUrl };
 }
@@ -728,6 +763,31 @@ async function completeNativeOAuth(
   state: string,
   code: string,
 ) {
+  if (conn.config.provider === "googledrive" && ctx.google) {
+    const pending = await loadSecret<GoogleSecret>(ctx, conn);
+    if (!pending.oauthState || pending.oauthState !== state)
+      throw new ServiceError("estado OAuth no válido");
+    let granted: Awaited<ReturnType<typeof completeGoogleAuth>>;
+    try {
+      granted = await completeGoogleAuth(ctx.google, ctx, pending, code, oauthRedirectUrl(ctx));
+    } catch (e) {
+      throw new ServiceError((e as Error).message);
+    }
+    const { email, ...tokens } = granted;
+    await nativeSecretStore(ctx, conn)(tokens);
+    await withTenant(ctx.db, conn.tenantId, (tx) =>
+      tx
+        .update(connections)
+        .set({
+          config: { ...conn.config, account: email ?? null },
+          status: "active",
+          lastError: null,
+        })
+        .where(eq(connections.id, conn.id)),
+    );
+    await syncNativeTools(ctx, conn, "googledrive");
+    return { connectionId: conn.id, status: "active" as const };
+  }
   if (conn.config.provider !== "microsoft365" || !ctx.microsoft)
     throw new ServiceError("esta conexión no usa OAuth");
   const secret = await loadSecret<MicrosoftSecret>(ctx, conn);

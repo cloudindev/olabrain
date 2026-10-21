@@ -18,6 +18,11 @@ export type NativeCallContext = {
   maxBytes: number;
   /** Signed, expiring download link to a file served by apps/web (e.g. an invoice PDF). */
   fileLink?: (kind: "whmcs-invoice", ref: string) => string;
+  /** A file for upload tools: a chat attachment or the file behind a signed link. */
+  loadFile?: (ref: {
+    attachmentId?: string;
+    link?: string;
+  }) => Promise<{ name: string; mediaType: string; bytes: Uint8Array }>;
 };
 
 export type NativeResult = { ok: boolean; data: unknown; truncated: boolean };

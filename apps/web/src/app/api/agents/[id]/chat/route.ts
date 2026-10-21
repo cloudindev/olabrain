@@ -1,5 +1,5 @@
-import { agents, conversations, messages, usageEvents } from "@brainagent/db";
-import { and, asc, eq } from "drizzle-orm";
+import { agents, conversationFiles, conversations, messages, usageEvents } from "@brainagent/db";
+import { and, asc, eq, lt } from "drizzle-orm";
 import { z } from "zod";
 import { attachmentsSchema } from "@brainagent/core";
 import { ensurePanelContact } from "@/lib/contacts";
@@ -16,10 +16,14 @@ const bodySchema = z
   })
   .refine((b) => b.message.length > 0 || b.attachments.length > 0, { message: "empty_message" });
 
-/** What is stored for a message with files (the files themselves are not kept, ADR-013). */
-function storedContent(message: string, attachments: { name: string }[]): string {
-  if (!attachments.length) return message;
-  const note = `📎 ${attachments.map((a) => a.name).join(", ")}`;
+/**
+ * What is stored for a message with files: their names and ids. The files are kept 24 h
+ * in conversation_files so tools can use them later in the conversation (e.g. upload to
+ * Google Drive) by `adjunto_id` (ADR-015).
+ */
+function storedContent(message: string, files: { id: string; name: string }[]): string {
+  if (!files.length) return message;
+  const note = files.map((f) => `📎 ${f.name} (adjunto_id: ${f.id})`).join("\n");
   return message ? `${message}\n\n${note}` : note;
 }
 
@@ -115,11 +119,31 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         .returning({ id: conversations.id });
       conversationId = conv!.id;
     }
+    // Expired files of this organization go first: they are kept only 24 h.
+    await tx.delete(conversationFiles).where(lt(conversationFiles.expiresAt, new Date()));
+    const stored = parsed.data.attachments.length
+      ? await tx
+          .insert(conversationFiles)
+          .values(
+            parsed.data.attachments.map((a) => {
+              const data = Buffer.from(a.data, "base64");
+              return {
+                tenantId: ctx.tenantId,
+                conversationId: conversationId!,
+                name: a.name,
+                mediaType: a.mediaType,
+                size: data.byteLength,
+                data,
+              };
+            }),
+          )
+          .returning({ id: conversationFiles.id, name: conversationFiles.name })
+      : [];
     await tx.insert(messages).values({
       tenantId: ctx.tenantId,
       conversationId,
       role: "user",
-      content: storedContent(parsed.data.message, parsed.data.attachments),
+      content: storedContent(parsed.data.message, stored),
     });
     const history = await tx
       .select({ role: messages.role, content: messages.content })
@@ -148,7 +172,12 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         // The files go with the message just sent (the last one); earlier ones were not kept.
         messages: setup.history.map((m, i, all) =>
           i === all.length - 1 && parsed.data.attachments.length
-            ? { ...m, content: parsed.data.message, attachments: parsed.data.attachments }
+            ? {
+                ...m,
+                // The model sees the files themselves and their ids (for upload tools).
+                content: m.content,
+                attachments: parsed.data.attachments,
+              }
             : m,
         ),
       }),

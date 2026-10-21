@@ -51,7 +51,7 @@ export default async function ConnectionPage({
           <span className="flex flex-wrap items-center gap-2">
             <Badge>
               {conn.kind === "native" && typeof config.provider === "string"
-                ? t(`providers.${config.provider as "whmcs" | "microsoft365"}.name`)
+                ? t(`providers.${config.provider as "whmcs" | "microsoft365" | "googledrive"}.name`)
                 : t(`kinds.${conn.kind}`)}
             </Badge>
             <Badge

@@ -4,12 +4,14 @@
  * for the duration of the call.
  */
 import type { ApiAuth, SqlConfig, StudioParam, ToolLimits } from "@brainagent/core";
-import { signFileLink } from "@brainagent/core/file-links";
-import { withTenant } from "@brainagent/db";
+import { signFileLink, verifyFileLink } from "@brainagent/core/file-links";
+import { connections, conversationFiles, withTenant } from "@brainagent/db";
+import { and, eq, gt } from "drizzle-orm";
 import type { ConnectorContext } from "./context";
 import { executeHttp, renderJsonBody, renderTemplate, type ApiSecret } from "./adapters/http";
 import { McpOAuthProvider, callMcpTool, connectMcp, type McpAuthState } from "./adapters/mcp";
-import { executeNativeTool } from "./adapters/native";
+import { NativeToolError, executeNativeTool } from "./adapters/native";
+import { fetchWhmcsInvoicePdf } from "./adapters/native/whmcs";
 import { requestFromArgs, type OperationMapping } from "./adapters/openapi";
 import { runReadOnlyQuery } from "./adapters/sql";
 
@@ -196,7 +198,7 @@ export async function executeTool(
       const store = nativeSecretStore(ctx, conn);
       return executeNativeTool(
         String(conn.config.provider),
-        ctx.microsoft,
+        { microsoft: ctx.microsoft, google: ctx.google },
         {
           config: conn.config,
           secret,
@@ -212,6 +214,7 @@ export async function executeTool(
                   ctx.linkKey!,
                 )
             : undefined,
+          loadFile: (ref) => loadConversationFile(ctx, conn.tenantId, ref),
         },
         tool.sourceRef,
         args,
@@ -221,4 +224,60 @@ export async function executeTool(
     default:
       throw new Error(`tipo de conexión no soportado: ${conn.kind}`);
   }
+}
+
+/**
+ * A file for upload tools, always within the same organization: a chat attachment (kept
+ * 24 h in conversation_files) or the file behind a signed download link another tool made.
+ */
+export async function loadConversationFile(
+  ctx: ConnectorContext,
+  tenantId: string,
+  ref: { attachmentId?: string; link?: string },
+): Promise<{ name: string; mediaType: string; bytes: Uint8Array }> {
+  if (ref.attachmentId) {
+    const [file] = await withTenant(ctx.db, tenantId, (tx) =>
+      tx
+        .select()
+        .from(conversationFiles)
+        .where(
+          and(
+            eq(conversationFiles.id, ref.attachmentId!),
+            gt(conversationFiles.expiresAt, new Date()),
+          ),
+        )
+        .limit(1),
+    );
+    if (!file) throw new NativeToolError("ese adjunto no existe o ha caducado (se guardan 24 h)");
+    return { name: file.name, mediaType: file.mediaType, bytes: new Uint8Array(file.data) };
+  }
+  if (ref.link) {
+    let params: URLSearchParams;
+    try {
+      params = new URL(ref.link).searchParams;
+    } catch {
+      throw new NativeToolError("el enlace no es válido");
+    }
+    const link = ctx.linkKey ? verifyFileLink(params, ctx.linkKey) : null;
+    if (!link || link.tenantId !== tenantId)
+      throw new NativeToolError("el enlace no es válido o ha caducado");
+    const [source] = await withTenant(ctx.db, tenantId, (tx) =>
+      tx.select().from(connections).where(eq(connections.id, link.connectionId)).limit(1),
+    );
+    if (!source || (source.config as { provider?: string }).provider !== "whmcs")
+      throw new NativeToolError("no encuentro la conexión de ese archivo");
+    const pdf = await fetchWhmcsInvoicePdf(
+      {
+        config: source.config as Record<string, unknown>,
+        secret: await loadSecret<Record<string, unknown>>(ctx, source as ConnectionRow),
+        saveSecret: async () => undefined,
+        fetcher: ctx.fetcher,
+        timeoutMs: 20_000,
+        maxBytes: 200_000,
+      },
+      Number(link.ref),
+    );
+    return { name: pdf.filename, mediaType: "application/pdf", bytes: new Uint8Array(pdf.bytes) };
+  }
+  throw new NativeToolError("indica el adjunto_id o el enlace del archivo");
 }

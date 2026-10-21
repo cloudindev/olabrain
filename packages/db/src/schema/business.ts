@@ -5,6 +5,7 @@
  */
 import { sql } from "drizzle-orm";
 import {
+  customType,
   boolean,
   foreignKey,
   index,
@@ -404,6 +405,38 @@ export const contactMemories = pgTable(
       name: "contact_memories_contact_fk",
       columns: [t.contactId, t.tenantId],
       foreignColumns: [contacts.id, contacts.tenantId],
+    }).onDelete("cascade"),
+  ],
+);
+
+const bytea = customType<{ data: Buffer; driverData: Buffer }>({ dataType: () => "bytea" });
+
+/**
+ * Files attached in a conversation, kept 24 h so tools can use them after the turn (e.g.
+ * upload a chat attachment to Google Drive). Content is personal data: short-lived, RLS.
+ */
+export const conversationFiles = pgTable(
+  "conversation_files",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: tenantId(),
+    conversationId: uuid("conversation_id").notNull(),
+    name: text("name").notNull(),
+    mediaType: text("media_type").notNull(),
+    size: integer("size").notNull(),
+    data: bytea("data").notNull(),
+    createdAt: createdAt(),
+    expiresAt: timestamp("expires_at", { withTimezone: true })
+      .notNull()
+      .default(sql`now() + interval '1 day'`),
+  },
+  (t) => [
+    index("conversation_files_conversation_idx").on(t.conversationId),
+    index("conversation_files_expires_idx").on(t.expiresAt),
+    foreignKey({
+      name: "conversation_files_conversation_fk",
+      columns: [t.conversationId, t.tenantId],
+      foreignColumns: [conversations.id, conversations.tenantId],
     }).onDelete("cascade"),
   ],
 );

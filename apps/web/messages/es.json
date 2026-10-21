@@ -272,6 +272,13 @@
         "connect": "Conectar con Microsoft",
         "help": "Te llevaremos a Microsoft para iniciar sesión y aceptar los permisos: leer y enviar correo y gestionar el calendario.",
         "account": "Cuenta: {account}"
+      },
+      "googledrive": {
+        "name": "Google Drive",
+        "hint": "Crea carpetas y documentos y sube archivos (adjuntos del chat, PDF de facturas) a tu Google Drive.",
+        "connect": "Conectar con Google",
+        "help": "Te llevaremos a Google para iniciar sesión y aceptar el permiso. OlaBrain solo verá los archivos y carpetas que cree él mismo, no el resto de tu Drive.",
+        "account": "Cuenta: {account}"
       }
     },
     "reauthorize": "Volver a autorizar"

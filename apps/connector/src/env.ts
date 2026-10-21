@@ -38,6 +38,9 @@ const schema = z.object({
   MICROSOFT_CLIENT_ID: emptyAsUndefined(z.string().optional()),
   MICROSOFT_CLIENT_SECRET: emptyAsUndefined(z.string().optional()),
   MICROSOFT_TENANT_ID: emptyAsUndefined(z.string().default("common")),
+  /** Platform OAuth client for the Google Drive connector (drive.file scope). */
+  GOOGLE_DRIVE_CLIENT_ID: emptyAsUndefined(z.string().optional()),
+  GOOGLE_DRIVE_CLIENT_SECRET: emptyAsUndefined(z.string().optional()),
   LOG_LEVEL: z.string().default("info"),
 });
 
