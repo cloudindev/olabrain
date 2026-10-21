@@ -129,7 +129,14 @@ function ToolChips({ tools }: { tools: ToolEvent[] }) {
 export function AgentConsole({
   agent,
 }: {
-  agent: { id: string; name: string; role: string | null; status: "draft" | "active" | "archived" };
+  agent: {
+    id: string;
+    name: string;
+    role: string | null;
+    status: "draft" | "active" | "archived";
+    /** Organization, shown on phones (each device keeps its own active organization). */
+    orgName: string;
+  };
 }) {
   const t = useTranslations("console");
   const tc = useTranslations("chat");
@@ -399,13 +406,16 @@ export function AgentConsole({
           >
             <ArrowLeft className="size-5" />
           </Link>
-          <div
-            className="flex items-center gap-2 rounded-full bg-white/85 px-3 py-1.5 text-sm font-medium text-[#16181c] shadow-sm backdrop-blur"
-            aria-live="polite"
-            data-testid="agent-console-state"
-          >
-            <span className={cn("size-2 rounded-full", dot)} />
-            {status}
+          <div className="flex min-w-0 items-center gap-2 rounded-full bg-white/85 px-3 py-1.5 text-sm font-medium text-[#16181c] shadow-sm backdrop-blur">
+            <span className={cn("size-2 shrink-0 rounded-full", dot)} />
+            <span className="flex min-w-0 flex-col leading-tight">
+              <span className="truncate text-[11px] font-normal text-[#4a4d55] lg:hidden">
+                {agent.name} · {agent.orgName}
+              </span>
+              <span aria-live="polite" data-testid="agent-console-state">
+                {status}
+              </span>
+            </span>
           </div>
           <div className="ml-auto flex items-center gap-2">
             {live && elapsed !== null ? (
