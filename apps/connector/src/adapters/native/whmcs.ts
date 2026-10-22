@@ -54,6 +54,19 @@ const invoiceRef = {
   numero: str("Número de factura tal como lo ve el cliente, p. ej. CDIN-32794"),
 };
 
+type InvoiceItem = { id: number; description: string; amount: string; taxed: boolean };
+
+/** Line items of a GetInvoice response (`items.item`, absent when the invoice is empty). */
+function invoiceItems(data: unknown): InvoiceItem[] {
+  const list = (data as { items?: { item?: Record<string, unknown>[] } })?.items?.item ?? [];
+  return list.map((i) => ({
+    id: Number(i.id),
+    description: String(i.description ?? ""),
+    amount: String(i.amount ?? "0"),
+    taxed: i.taxed === true || i.taxed === 1 || i.taxed === "1",
+  }));
+}
+
 /**
  * Internal id of an invoice from its id or visible number. GetInvoices can't filter by
  * number, so scan newest-first (up to 2,000 invoices).
@@ -317,6 +330,136 @@ const TOOLS: ToolSpec[] = [
     action: "UpdateInvoice",
     run: async (call, a) =>
       call("UpdateInvoice", { invoiceid: await resolveInvoiceId(call, a), status: a.estado }),
+  },
+  {
+    name: "whmcs_editar_factura",
+    description:
+      "Edita una factura de WHMCS (por su número, p. ej. CDIN-32794, o id): cambia el concepto, el importe o los impuestos de sus líneas, añade o borra líneas, y cambia fechas o notas. El total se recalcula solo. Si la factura tiene una sola línea no hace falta su id; si tiene varias, consulta antes whmcs_factura para ver los ids de línea.",
+    inputSchema: schema({
+      ...invoiceRef,
+      lineas: {
+        type: "array",
+        maxItems: 20,
+        description: "Líneas existentes a modificar (solo los campos que cambian)",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            id: { type: "integer", description: "Id de la línea (opcional si solo hay una)" },
+            descripcion: { type: "string", description: "Nuevo concepto" },
+            importe: { type: "number", description: "Nuevo importe sin impuestos" },
+            con_impuestos: { type: "boolean", description: "Aplicar impuestos a esta línea" },
+          },
+        },
+      },
+      nuevas_lineas: {
+        type: "array",
+        maxItems: 20,
+        description: "Líneas a añadir",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["descripcion", "importe"],
+          properties: {
+            descripcion: { type: "string", description: "Concepto" },
+            importe: { type: "number", description: "Importe sin impuestos" },
+            con_impuestos: { type: "boolean", description: "Aplicar impuestos a esta línea" },
+          },
+        },
+      },
+      borrar_lineas: {
+        type: "array",
+        maxItems: 20,
+        items: { type: "integer" },
+        description: "Ids de las líneas a borrar",
+      },
+      fecha: str("Fecha de la factura AAAA-MM-DD", { pattern: DATE_RE }),
+      vencimiento: str("Fecha de vencimiento AAAA-MM-DD", { pattern: DATE_RE }),
+      notas: str("Notas que verá el cliente en la factura"),
+      metodo_pago: str("Forma de pago (module)"),
+    }),
+    mode: "write",
+    action: "UpdateInvoice",
+    run: async (call, a) => {
+      const invoiceid = await resolveInvoiceId(call, a);
+      const inv = await call("GetInvoice", { invoiceid });
+      if (!inv.ok) return inv;
+      const current = invoiceItems(inv.data);
+      const params: Record<string, unknown> = {
+        invoiceid,
+        date: a.fecha,
+        duedate: a.vencimiento,
+        notes: a.notas,
+        paymentmethod: a.metodo_pago,
+      };
+
+      const edits =
+        (a.lineas as {
+          id?: number;
+          descripcion?: string;
+          importe?: number;
+          con_impuestos?: boolean;
+        }[]) ?? [];
+      for (const edit of edits) {
+        const line =
+          edit.id !== undefined
+            ? current.find((l) => l.id === edit.id)
+            : current.length === 1
+              ? current[0]
+              : undefined;
+        if (!line)
+          throw new NativeToolError(
+            edit.id !== undefined
+              ? `la factura no tiene una línea con id ${edit.id}`
+              : `la factura tiene ${current.length} líneas: indica el id de la que quieres cambiar (whmcs_factura las muestra)`,
+          );
+        // WHMCS rewrites description, amount and taxed together: send all three.
+        params[`itemdescription[${line.id}]`] = edit.descripcion ?? line.description;
+        params[`itemamount[${line.id}]`] = edit.importe ?? line.amount;
+        params[`itemtaxed[${line.id}]`] = edit.con_impuestos ?? line.taxed;
+      }
+      const added =
+        (a.nuevas_lineas as { descripcion: string; importe: number; con_impuestos?: boolean }[]) ??
+        [];
+      added.forEach((l, i) => {
+        params[`newitemdescription[${i}]`] = l.descripcion;
+        params[`newitemamount[${i}]`] = l.importe;
+        params[`newitemtaxed[${i}]`] = l.con_impuestos ?? false;
+      });
+      const removed = (a.borrar_lineas as number[]) ?? [];
+      removed.forEach((id, i) => {
+        if (!current.some((l) => l.id === id))
+          throw new NativeToolError(`la factura no tiene una línea con id ${id}`);
+        params[`deletelineids[${i}]`] = id;
+      });
+
+      const changes = Object.entries(params).filter(
+        ([k, v]) => k !== "invoiceid" && v !== undefined && v !== "",
+      );
+      if (!changes.length) throw new NativeToolError("indica al menos un cambio en la factura");
+
+      const updated = await call("UpdateInvoice", params);
+      if (!updated.ok) return updated;
+      const after = await call("GetInvoice", { invoiceid });
+      if (!after.ok) return after;
+      const data = after.data as { invoicenum?: string; status?: string; total?: string };
+      return {
+        ok: true,
+        truncated: false,
+        data: {
+          invoiceid,
+          numero: data.invoicenum || String(invoiceid),
+          estado: data.status,
+          total: data.total,
+          lineas: invoiceItems(after.data).map((l) => ({
+            id: l.id,
+            concepto: l.description,
+            importe: l.amount,
+            con_impuestos: l.taxed,
+          })),
+        },
+      };
+    },
   },
   {
     name: "whmcs_pdf_factura",

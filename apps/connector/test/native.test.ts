@@ -158,6 +158,15 @@ beforeAll(async () => {
               paymentmethod: "banktransfer",
               total: "650.00",
               balance: paidInvoices.has(form.get("invoiceid")!) ? "0.00" : "650.00",
+              items: {
+                item:
+                  form.get("invoiceid") === "77"
+                    ? [
+                        { id: 501, description: "Hosting", amount: "500.00", taxed: 1 },
+                        { id: 502, description: "Dominio", amount: "150.00", taxed: 0 },
+                      ]
+                    : [{ id: 401, description: "Hosting anual", amount: "650.00", taxed: 1 }],
+              },
             }),
           );
         if (action === "AddInvoicePayment") {
@@ -546,6 +555,50 @@ describe("WHMCS", () => {
     const range = twoDays.data as { resumen: { facturas: number }; facturas: unknown[] };
     expect(range.resumen.facturas).toBe(153); // counted across two pages
     expect(range.facturas).toHaveLength(10); // list capped by `limite`
+  });
+
+  it("edits an invoice line keeping the fields not given, adds and deletes lines", async () => {
+    const { ctx } = nativeCtx({ url: `${base}/whmcs/` }, { identifier: "id-ok", secret: "sec-ok" });
+    // A single line: no line id needed; amount and taxes are kept.
+    const res = await executeWhmcsTool(ctx, "whmcs_editar_factura", {
+      invoiceid: 32794,
+      lineas: [{ descripcion: "Hosting anual 2027" }],
+    });
+    const update = seen.find((r) => r.form.get("action") === "UpdateInvoice")!.form;
+    expect(Object.fromEntries(update)).toMatchObject({
+      invoiceid: "32794",
+      "itemdescription[401]": "Hosting anual 2027",
+      "itemamount[401]": "650.00",
+      "itemtaxed[401]": "true",
+    });
+    expect(res.ok).toBe(true);
+
+    // Several lines: an edit without id is refused; with ids, add and delete work.
+    await expect(
+      executeWhmcsTool(ctx, "whmcs_editar_factura", {
+        invoiceid: 77,
+        lineas: [{ descripcion: "x" }],
+      }),
+    ).rejects.toThrow("indica el id");
+    await executeWhmcsTool(ctx, "whmcs_editar_factura", {
+      invoiceid: 77,
+      lineas: [{ id: 502, importe: 12 }],
+      nuevas_lineas: [{ descripcion: "Soporte", importe: 30, con_impuestos: true }],
+      borrar_lineas: [501],
+    });
+    const second = seen.filter((r) => r.form.get("action") === "UpdateInvoice").at(-1)!.form;
+    expect(Object.fromEntries(second)).toMatchObject({
+      "itemdescription[502]": "Dominio",
+      "itemamount[502]": "12",
+      "itemtaxed[502]": "false",
+      "newitemdescription[0]": "Soporte",
+      "newitemamount[0]": "30",
+      "newitemtaxed[0]": "true",
+      "deletelineids[0]": "501",
+    });
+    await expect(executeWhmcsTool(ctx, "whmcs_editar_factura", { invoiceid: 77 })).rejects.toThrow(
+      "al menos un cambio",
+    );
   });
 
   it("updates only the client fields given and refuses an empty update", async () => {
