@@ -212,3 +212,26 @@ group by 1 order by first_audio_p50;
 - **Adjuntos de conversación:** los ficheros adjuntos en el chat se guardan **24 h** en `conversation_files` (RLS) y el agente recibe su `adjunto_id`, para poder usarlos después del turno (p. ej. subirlos a Drive). Los caducados se borran al llegar nuevos.
 - Los archivos generados por herramientas (PDF de facturas) se pueden subir por su enlace firmado; el conector solo acepta enlaces válidos de la **misma organización**.
 - Cliente OAuth de la plataforma en `GOOGLE_DRIVE_CLIENT_ID` / `GOOGLE_DRIVE_CLIENT_SECRET` (proyecto de Google Cloud «olabrain»).
+
+## ADR-016 — Holded, Factorial y Sesame HR: conectores nativos por clave de API (2026-10-22)
+
+**Contexto.** Pymes españolas: facturación (Holded) y RR. HH. (Factorial, Sesame). Las tres
+admiten una clave de API creada por el administrador, sin registrar apps ni verificaciones.
+
+**Decisión.** Conectores nativos con catálogo curado y el mismo flujo: el usuario pega la
+clave, la validamos contra el proveedor antes de guardarla (vault) y las herramientas que
+escriben piden confirmación. Llamadas JSON comunes en `adapters/native/rest.ts` (egress con
+anti-SSRF, errores legibles).
+
+- **Holded:** API **v2** (`Authorization: Bearer`, scopes por clave). La v1 (`key:` y
+  `docType`) está en desuso con fin en julio de 2027. Facturas por número visible con
+  `find-by-number` (búsqueda difusa: comprobamos coincidencia exacta).
+- **Factorial:** versión fijada `2026-10-01` (trimestral, un año de soporte: revisar antes
+  de oct. 2027). Cabecera `x-api-key`; una clave de otro entorno responde 200 vacío, así que
+  lo tratamos como clave no reconocida. Su documentación reserva las claves a uso interno y
+  pide OAuth para integraciones de marketplace: si publicamos en su marketplace, migrar a OAuth.
+- **Sesame:** API «legacy» `/core/v3` y `/schedule/v1` (la v4 aún no cubre empleados,
+  fichajes ni vacaciones). Host por región `api-{region}.sesametime.com` (validada con
+  `^[a-z]{2}\d{1,2}$`). Los datos sensibles del empleado (DNI, SS, cuenta) no llegan al modelo.
+
+**Pendiente.** PDF de facturas de Holded (binario) por enlace firmado, como en WHMCS.

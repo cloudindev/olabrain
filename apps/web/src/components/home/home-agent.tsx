@@ -91,7 +91,10 @@ export function HomeAgent({ maxMinutes }: { maxMinutes: number }) {
             stopGreeting();
             void call.hangUp();
           }}
-          className={cn(PILL, "border border-[#ff453a] text-[#ff453a] hover:bg-[#ff453a] hover:text-white")}
+          className={cn(
+            PILL,
+            "border border-[#ff453a] text-[#ff453a] hover:bg-[#ff453a] hover:text-white",
+          )}
           data-testid="home-hangup"
         >
           <PhoneOff className="size-4" />

@@ -5,7 +5,14 @@ import { z } from "zod";
  * definitions and execution live in apps/connector; this is the shared, secret-free
  * metadata the UI needs.
  */
-export const NATIVE_PROVIDERS = ["whmcs", "microsoft365", "googledrive"] as const;
+export const NATIVE_PROVIDERS = [
+  "whmcs",
+  "microsoft365",
+  "googledrive",
+  "holded",
+  "factorial",
+  "sesame",
+] as const;
 export const nativeProviderSchema = z.enum(NATIVE_PROVIDERS);
 export type NativeProvider = z.infer<typeof nativeProviderSchema>;
 
@@ -20,7 +27,30 @@ export const NATIVE_PROVIDER_INFO: Record<NativeProvider, NativeProviderInfo> = 
   whmcs: { id: "whmcs", name: "WHMCS", auth: "api_credentials" },
   microsoft365: { id: "microsoft365", name: "Outlook 365", auth: "oauth" },
   googledrive: { id: "googledrive", name: "Google Drive", auth: "oauth" },
+  holded: { id: "holded", name: "Holded", auth: "api_credentials" },
+  factorial: { id: "factorial", name: "Factorial", auth: "api_credentials" },
+  sesame: { id: "sesame", name: "Sesame HR", auth: "api_credentials" },
 };
+
+/** Native connectors that only need an API key pasted by the user. */
+export const API_KEY_PROVIDERS = ["holded", "factorial", "sesame"] as const;
+export type ApiKeyProvider = (typeof API_KEY_PROVIDERS)[number];
+
+export const apiKeyConnectionSchema = z.object({
+  name: z.string().trim().min(1).max(80),
+  apiKey: z.string().trim().min(8).max(4000),
+  /** Sesame data region (api-{region}.sesametime.com), e.g. eu1. */
+  region: z.preprocess(
+    (v) => (typeof v === "string" && v.trim() === "" ? undefined : v),
+    z
+      .string()
+      .trim()
+      .toLowerCase()
+      .regex(/^[a-z]{2}\d{1,2}$/, "Región no válida (p. ej. eu1)")
+      .optional(),
+  ),
+});
+export type ApiKeyConnectionInput = z.infer<typeof apiKeyConnectionSchema>;
 
 export const whmcsConnectionSchema = z.object({
   name: z.string().trim().min(1).max(80),

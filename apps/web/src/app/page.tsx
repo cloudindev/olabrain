@@ -76,14 +76,16 @@ const INTEGRATIONS: { name: string; tag: string; icon: string; soon?: boolean }[
   { name: "Gemini", tag: "LLM", icon: "/apps/gemini.svg" },
   { name: "ChatGPT", tag: "LLM", icon: "/apps/openai.svg" },
   { name: "WHMCS", tag: "Facturación", icon: "/apps/whmcs.png" },
+  { name: "Holded", tag: "ERP", icon: "/apps/holded.png" },
   { name: "Outlook", tag: "M365", icon: "/apps/outlook.svg" },
   { name: "Google Drive", tag: "Google", icon: "/apps/googledrive.svg" },
   { name: "MCP", tag: "Protocolo", icon: "/apps/mcp.svg" },
   { name: "OpenAPI", tag: "API", icon: "/apps/openapi.svg" },
   { name: "PostgreSQL", tag: "SQL", icon: "/apps/postgresql.svg" },
   { name: "MySQL", tag: "SQL", icon: "/apps/mysql.svg" },
+  { name: "Factorial", tag: "RR. HH.", icon: "/apps/factorial.png" },
+  { name: "Sesame HR", tag: "RR. HH.", icon: "/apps/sesame.png" },
   { name: "WhatsApp", tag: "Canal", icon: "/apps/whatsapp.svg", soon: true },
-  { name: "Holded", tag: "ERP", icon: "/apps/holded.png", soon: true },
 ];
 
 const FACTS = ["eu", "gdpr", "aes", "code"] as const;

@@ -280,6 +280,26 @@
         "connect": "Connect with Google",
         "help": "We'll take you to Google to sign in and accept the permission. OlaBrain only sees the files and folders it creates, not the rest of your Drive.",
         "account": "Account: {account}"
+      },
+      "holded": {
+        "name": "Holded",
+        "hint": "Invoices, contacts, products, payments and treasury from your Holded.",
+        "help": "In Holded: Settings › Developers (API) › create a key. Grant read and write on sales invoices and contacts, and read on products, taxes and bank accounts.",
+        "apiKey": "Holded API key"
+      },
+      "factorial": {
+        "name": "Factorial",
+        "hint": "Employees, time off, vacations and clock-ins from Factorial.",
+        "help": "In Factorial (as an admin): Settings › API Keys › New key. The key gives company-wide access; the agent asks for confirmation before recording time off or clock-ins.",
+        "apiKey": "Factorial API key"
+      },
+      "sesame": {
+        "name": "Sesame HR",
+        "hint": "Employees, vacations, absences and clock-ins from Sesame HR.",
+        "help": "In Sesame (as an admin): Settings › Integrations › API › Create token. The same screen shows your account's region (usually eu1).",
+        "apiKey": "Sesame API token",
+        "region": "Region",
+        "regionHint": "The one shown next to the token in Sesame, e.g. eu1."
       }
     },
     "reauthorize": "Authorize again",
@@ -377,7 +397,7 @@
       },
       "connect": {
         "title": "Connect",
-        "body": "Connect your apps (WHMCS, Outlook, Google Drive), any MCP server, APIs or databases.",
+        "body": "Connect your apps (Holded, WHMCS, Outlook, Google Drive, Factorial, Sesame), any MCP server, APIs or databases.",
         "metaLabel": "Connection",
         "metaValue": "no code"
       },

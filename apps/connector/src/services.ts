@@ -17,7 +17,11 @@ import type {
   microsoft365ConnectionSchema,
   whmcsConnectionSchema,
 } from "@brainagent/core";
-import { type NativeProvider } from "@brainagent/core";
+import {
+  type ApiKeyConnectionInput,
+  type ApiKeyProvider,
+  type NativeProvider,
+} from "@brainagent/core";
 import { agentTools, agents, connections, tools, withTenant, type Tx } from "@brainagent/db";
 import { and, eq, inArray, notInArray } from "drizzle-orm";
 import { z } from "zod";
@@ -40,6 +44,9 @@ import {
   type MicrosoftSecret,
 } from "./adapters/native/microsoft365";
 import { checkWhmcs, fetchWhmcsInvoicePdf } from "./adapters/native/whmcs";
+import { checkFactorial } from "./adapters/native/factorial";
+import { checkHolded } from "./adapters/native/holded";
+import { checkSesame } from "./adapters/native/sesame";
 import {
   beginGoogleAuth,
   completeGoogleAuth,
@@ -625,6 +632,44 @@ export async function createWhmcsConnection(
     secret,
   });
   await syncNativeTools(ctx, conn, "whmcs");
+  return { connectionId: conn.id, status: "active" as const };
+}
+
+/**
+ * Holded, Factorial and Sesame HR: the user pastes an API key. The key is checked against
+ * the vendor before saving, then stored in the vault; only the region (Sesame) is config.
+ */
+export async function createApiKeyConnection(
+  ctx: ConnectorContext,
+  tenantId: string,
+  provider: ApiKeyProvider,
+  input: ApiKeyConnectionInput,
+) {
+  const config: Record<string, unknown> = { provider };
+  if (provider === "sesame") config.region = input.region ?? "eu1";
+  const secret = { apiKey: input.apiKey };
+  const check = {
+    config,
+    secret,
+    saveSecret: async () => undefined,
+    fetcher: ctx.fetcher,
+    timeoutMs: 15_000,
+    maxBytes: 200_000,
+  };
+  try {
+    if (provider === "holded") await checkHolded(check);
+    else if (provider === "factorial") await checkFactorial(check);
+    else await checkSesame(check);
+  } catch (e) {
+    throw new ServiceError((e as Error).message);
+  }
+  const conn = await createConnection(ctx, tenantId, {
+    kind: "native",
+    name: input.name,
+    config,
+    secret,
+  });
+  await syncNativeTools(ctx, conn, provider);
   return { connectionId: conn.id, status: "active" as const };
 }
 

@@ -3,7 +3,14 @@ import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { AppIcon, type AppIconSource } from "./app-icon";
 
-export const APPS = ["whmcs", "microsoft365", "googledrive"] as const;
+export const APPS = [
+  "whmcs",
+  "holded",
+  "microsoft365",
+  "googledrive",
+  "factorial",
+  "sesame",
+] as const;
 export const CUSTOM = ["mcp", "openapi", "sql", "http"] as const;
 
 export const connectionGrid = "grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5";

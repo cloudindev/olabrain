@@ -9,6 +9,7 @@ import {
   createMcpConnection,
   createGoogleDriveConnection,
   createMicrosoft365Connection,
+  createApiKeyConnection,
   createWhmcsConnection,
   createOpenApiConnection,
   createSqlConnection,
@@ -16,7 +17,9 @@ import {
 } from "@/app/(app)/connections/actions";
 
 export type NewConnectionKind =
-  "mcp" | "openapi" | "sql" | "http" | "whmcs" | "microsoft365" | "googledrive";
+  "mcp" | "openapi" | "sql" | "http" | "whmcs" | "microsoft365" | "googledrive" | ApiKeyProvider;
+
+type ApiKeyProvider = "holded" | "factorial" | "sesame";
 type ApiAuthType = "none" | "bearer" | "api_key_header" | "api_key_query" | "basic";
 type Secret = { token?: string; apiKey?: string; username?: string; password?: string };
 
@@ -594,6 +597,63 @@ function WhmcsForm() {
   );
 }
 
+/** Holded, Factorial, Sesame HR: name + API key (+ region for Sesame), checked on connect. */
+function ApiKeyForm({ provider }: { provider: ApiKeyProvider }) {
+  const t = useTranslations("connections");
+  const { error, pending, submit } = useSubmit();
+  const [v, setV] = useState({
+    name: t(`providers.${provider}.name`),
+    apiKey: "",
+    region: "eu1",
+  });
+  const set = (k: keyof typeof v, value: string) => setV((prev) => ({ ...prev, [k]: value }));
+  return (
+    <FormCard
+      error={error}
+      onSubmit={(e) => {
+        e.preventDefault();
+        submit(() =>
+          createApiKeyConnection(provider, {
+            name: v.name,
+            apiKey: v.apiKey,
+            region: provider === "sesame" ? v.region : undefined,
+          }),
+        );
+      }}
+    >
+      <p className="text-sm text-ink-2">{t(`providers.${provider}.help`)}</p>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label={t("name")} htmlFor="k-name">
+          <Input id="k-name" value={v.name} onChange={(e) => set("name", e.target.value)} />
+        </Field>
+        {provider === "sesame" ? (
+          <Field
+            label={t("providers.sesame.region")}
+            htmlFor="k-region"
+            hint={t("providers.sesame.regionHint")}
+          >
+            <Input id="k-region" value={v.region} onChange={(e) => set("region", e.target.value)} />
+          </Field>
+        ) : null}
+        <div className="sm:col-span-2">
+          <Field label={t(`providers.${provider}.apiKey`)} htmlFor="k-key" hint={t("secretHint")}>
+            <Input
+              id="k-key"
+              type="password"
+              autoComplete="off"
+              value={v.apiKey}
+              onChange={(e) => set("apiKey", e.target.value)}
+            />
+          </Field>
+        </div>
+      </div>
+      <Button type="submit" disabled={pending || !v.name || v.apiKey.trim().length < 8}>
+        {t("connect")}
+      </Button>
+    </FormCard>
+  );
+}
+
 function Microsoft365Form() {
   const t = useTranslations("connections");
   const { error, pending, submit } = useSubmit();
@@ -644,6 +704,8 @@ export function NewConnectionForm({ kind }: { kind: NewConnectionKind }) {
   if (kind === "whmcs") return <WhmcsForm />;
   if (kind === "microsoft365") return <Microsoft365Form />;
   if (kind === "googledrive") return <GoogleDriveForm />;
+  if (kind === "holded" || kind === "factorial" || kind === "sesame")
+    return <ApiKeyForm provider={kind} />;
   if (kind === "mcp") return <McpForm />;
   if (kind === "openapi") return <OpenApiForm />;
   if (kind === "sql") return <SqlForm />;

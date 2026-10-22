@@ -280,6 +280,26 @@
         "connect": "Conectar con Google",
         "help": "Te llevaremos a Google para iniciar sesión y aceptar el permiso. OlaBrain solo verá los archivos y carpetas que cree él mismo, no el resto de tu Drive.",
         "account": "Cuenta: {account}"
+      },
+      "holded": {
+        "name": "Holded",
+        "hint": "Facturas, contactos, productos, cobros y tesorería de tu Holded.",
+        "help": "En Holded: Configuración › Desarrolladores (API) › crea una clave. Dale permisos de lectura y escritura de facturas de venta y contactos, y de lectura de productos, impuestos y cuentas bancarias.",
+        "apiKey": "Clave de API de Holded"
+      },
+      "factorial": {
+        "name": "Factorial",
+        "hint": "Empleados, ausencias, vacaciones y fichajes de Factorial.",
+        "help": "En Factorial (como administrador): Configuración › API Keys › Nueva clave. La clave da acceso a toda la empresa; el agente pedirá confirmación antes de registrar ausencias o fichajes.",
+        "apiKey": "Clave de API de Factorial"
+      },
+      "sesame": {
+        "name": "Sesame HR",
+        "hint": "Empleados, vacaciones, ausencias y fichajes de Sesame HR.",
+        "help": "En Sesame (como administrador): Configuración › Integraciones › API › Crear token. En esa misma pantalla verás la región de tu cuenta (normalmente eu1).",
+        "apiKey": "Token de API de Sesame",
+        "region": "Región",
+        "regionHint": "La que aparece junto al token en Sesame, p. ej. eu1."
       }
     },
     "reauthorize": "Volver a autorizar",
@@ -377,7 +397,7 @@
       },
       "connect": {
         "title": "Conectar",
-        "body": "Conecta tus apps (WHMCS, Outlook, Google Drive), cualquier servidor MCP, APIs o bases de datos.",
+        "body": "Conecta tus apps (Holded, WHMCS, Outlook, Google Drive, Factorial, Sesame), cualquier servidor MCP, APIs o bases de datos.",
         "metaLabel": "Conexión",
         "metaValue": "sin código"
       },

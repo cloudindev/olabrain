@@ -5,3 +5,5 @@ App icons shown next to each connection (nominative use, to identify the integra
 - claude.svg, gemini.svg, whatsapp.svg: simple-icons 16.34.0 (CC0), brand colours from its data
 - openai.svg: simple-icons 13.21.0 (CC0; later removed from the set), black
 - holded.png: apple-touch-icon from holded.com
+- factorial.png: apple-touch-icon from factorialhr.com
+- sesame.png: site icon (192 px) from sesamehr.es

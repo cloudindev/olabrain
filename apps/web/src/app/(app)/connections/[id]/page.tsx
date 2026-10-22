@@ -1,3 +1,4 @@
+import type { NativeProvider } from "@brainagent/core";
 import { connections, tools } from "@brainagent/db";
 import { Badge, Card } from "@brainagent/ui";
 import { asc, eq } from "drizzle-orm";
@@ -51,7 +52,7 @@ export default async function ConnectionPage({
           <span className="flex flex-wrap items-center gap-2">
             <Badge>
               {conn.kind === "native" && typeof config.provider === "string"
-                ? t(`providers.${config.provider as "whmcs" | "microsoft365" | "googledrive"}.name`)
+                ? t(`providers.${config.provider as NativeProvider}.name`)
                 : t(`kinds.${conn.kind}`)}
             </Badge>
             <Badge

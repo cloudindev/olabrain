@@ -43,6 +43,16 @@ export async function createWhmcsConnection(input: unknown) {
   );
 }
 
+export async function createApiKeyConnection(
+  provider: "holded" | "factorial" | "sesame",
+  input: unknown,
+) {
+  const p = z.enum(["holded", "factorial", "sesame"]).parse(provider);
+  return run((tenantId) =>
+    connectorFetch<CreateResult>(tenantId, `/v1/connections/native/${p}`, { body: input }),
+  );
+}
+
 export async function updateWhmcsAccessKey(connectionId: string, accessKey: string | null) {
   return run(async (tenantId) => {
     const res = await connectorFetch<{ ok: boolean; error?: string }>(
