@@ -22,15 +22,41 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: { absolute: t("metaTitle") }, robots: { index: true, follow: true } };
 }
 
-/** Six catalog personas (packages/db seed). Only Alba has a face and a live demo. */
-const GALLERY = [
-  { name: "Alba", role: "Agenda", code: "AGD-01", tilt: "-rotate-3", photo: "/alba/poster.jpg" },
-  { name: "Sara", role: "Atención al cliente", code: "CS-02", tilt: "rotate-2" },
-  { name: "Mateo", role: "Ventas", code: "VTA-03", tilt: "-rotate-1" },
-  { name: "Teo", role: "Finanzas", code: "FIN-04", tilt: "rotate-3" },
+/** Six catalog personas (packages/db seed). Only Alba has a live demo. */
+const GALLERY: {
+  name: string;
+  role: string;
+  code: string;
+  tilt: string;
+  photo?: string;
+  demo?: boolean;
+}[] = [
+  {
+    name: "Alba",
+    role: "Agenda",
+    code: "AGD-01",
+    tilt: "-rotate-3",
+    photo: "/alba/poster.jpg",
+    demo: true,
+  },
+  {
+    name: "Sara",
+    role: "Atención al cliente",
+    code: "CS-02",
+    tilt: "rotate-2",
+    photo: "/personas/sara.jpg",
+  },
+  {
+    name: "Mateo",
+    role: "Ventas",
+    code: "VTA-03",
+    tilt: "-rotate-1",
+    photo: "/personas/mateo.jpg",
+  },
+  { name: "Teo", role: "Finanzas", code: "FIN-04", tilt: "rotate-3", photo: "/personas/teo.jpg" },
   { name: "Nora", role: "Soporte", code: "SOP-05", tilt: "-rotate-2" },
   { name: "Lía", role: "Recepción", code: "REC-06", tilt: "rotate-1" },
-] as const;
+];
 
 const STEPS: { key: "create" | "connect" | "automate"; icon: LucideIcon }[] = [
   { key: "create", icon: Bot },
@@ -189,10 +215,18 @@ export default async function Home() {
         </section>
 
         {/* Live demo */}
-        <section id="demo" className="scroll-mt-16 border-y border-line bg-[#0e0e0e] px-4 py-16 sm:px-8 md:py-24">
+        <section
+          id="demo"
+          className="scroll-mt-16 border-y border-line bg-[#0e0e0e] px-4 py-16 sm:px-8 md:py-24"
+        >
           <div className="mx-auto grid max-w-6xl items-center gap-10 lg:grid-cols-[0.8fr_1.2fr] lg:gap-14">
             <div className="flex flex-col gap-4 text-center lg:text-left">
-              <p className={cn(label, "inline-flex items-center justify-center gap-2 text-signal lg:justify-start")}>
+              <p
+                className={cn(
+                  label,
+                  "inline-flex items-center justify-center gap-2 text-signal lg:justify-start",
+                )}
+              >
                 <span className="size-1.5 animate-pulse rounded-full bg-signal" />
                 {t("demoTag")}
               </p>
@@ -218,7 +252,7 @@ export default async function Home() {
           <div className="-mx-4 mt-8 overflow-x-auto px-4 [scrollbar-width:none] sm:-mx-8 sm:px-8">
             <ul className="mx-auto flex w-max items-center gap-2 px-4 pb-10 pt-6">
               {GALLERY.map((p, i) => {
-                const demo = "photo" in p;
+                const demo = p.demo === true;
                 return (
                   <li key={p.name} className={cn("shrink-0", i > 0 && "-ml-4")}>
                     <a
@@ -235,7 +269,7 @@ export default async function Home() {
                         className="absolute -top-3 left-1/2 z-10 h-4 w-14 -translate-x-1/2 -rotate-2 border border-black/5 bg-white/40 backdrop-blur-sm"
                       />
                       <span className="relative block h-48 overflow-hidden bg-[#1b1b1b] sm:h-56">
-                        {demo ? (
+                        {p.photo ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img
                             src={p.photo}
@@ -300,7 +334,10 @@ export default async function Home() {
         </section>
 
         {/* How it works */}
-        <section id="como-funciona" className="scroll-mt-16 border-t border-line px-4 py-16 sm:px-8 md:py-24">
+        <section
+          id="como-funciona"
+          className="scroll-mt-16 border-t border-line px-4 py-16 sm:px-8 md:py-24"
+        >
           <div className="mx-auto flex max-w-6xl flex-col gap-10">
             <SectionHead tag={t("howTag")} title={t("howTitle")} body={t("howBody")} />
             <ol className="grid gap-5 md:grid-cols-3">
@@ -314,10 +351,17 @@ export default async function Home() {
                     <Icon className="size-6 text-signal" />
                   </div>
                   <div>
-                    <h3 className="font-display text-2xl font-semibold">{t(`steps.${key}.title`)}</h3>
+                    <h3 className="font-display text-2xl font-semibold">
+                      {t(`steps.${key}.title`)}
+                    </h3>
                     <p className="mt-2 text-sm text-ink-2">{t(`steps.${key}.body`)}</p>
                   </div>
-                  <div className={cn(label, "mt-6 flex items-center justify-between border-t border-line pt-4 text-[10px] text-ink-3")}>
+                  <div
+                    className={cn(
+                      label,
+                      "mt-6 flex items-center justify-between border-t border-line pt-4 text-[10px] text-ink-3",
+                    )}
+                  >
                     <span>{t(`steps.${key}.metaLabel`)}</span>
                     <span className="text-ink">{t(`steps.${key}.metaValue`)}</span>
                   </div>
@@ -328,7 +372,10 @@ export default async function Home() {
         </section>
 
         {/* Integrations */}
-        <section id="integraciones" className="scroll-mt-16 border-t border-line bg-[#0e0e0e] px-4 py-16 sm:px-8 md:py-24">
+        <section
+          id="integraciones"
+          className="scroll-mt-16 border-t border-line bg-[#0e0e0e] px-4 py-16 sm:px-8 md:py-24"
+        >
           <div className="mx-auto flex max-w-6xl flex-col gap-8">
             <SectionHead tag={t("intTag")} title={t("intTitle")} body={t("intBody")} />
             <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
@@ -346,7 +393,9 @@ export default async function Home() {
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={app.icon} alt="" className="size-5 object-contain" />
                       ) : (
-                        <span className="font-display text-base font-bold text-black">{app.mark}</span>
+                        <span className="font-display text-base font-bold text-black">
+                          {app.mark}
+                        </span>
                       )}
                     </span>
                     <span className="rounded border border-line-strong bg-[#0e0e0e] px-1.5 py-0.5 font-mono text-[9px] uppercase text-signal">
