@@ -12,6 +12,7 @@ import {
   ArrowLeft,
   ArrowUp,
   AudioLines,
+  Download,
   FileText,
   Image as ImageIcon,
   Mic,
@@ -56,6 +57,8 @@ type Pending = Attachment & { size: number };
 const LABELLED: VoiceState[] = ["initializing", "listening", "thinking", "speaking"];
 let seq = 0;
 const nextId = () => `m${++seq}`;
+/** How long a new download link stays pinned above the messages. */
+const PIN_MS = 10_000;
 
 function readAsBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -153,6 +156,14 @@ export function AgentConsole({
   const fileInput = useRef<HTMLInputElement>(null);
   const textRef = useRef<HTMLTextAreaElement>(null);
   const lastElapsed = useRef(0);
+  // Download links a tool just produced, pinned on top for a while: on mobile only the
+  // last two messages show, so the reply carrying the link would scroll away at once.
+  const [pinned, setPinned] = useState<(SharedFile & { key: string })[]>([]);
+  const pin = useCallback((file: SharedFile) => {
+    const key = nextId();
+    setPinned((prev) => [...prev.filter((p) => p.url !== file.url), { ...file, key }]);
+    setTimeout(() => setPinned((prev) => prev.filter((p) => p.key !== key)), PIN_MS);
+  }, []);
 
   useEffect(() => {
     // Braces: newer browsers return a Promise from scrollIntoView (see agent-chat history).
@@ -200,18 +211,22 @@ export function AgentConsole({
 
   // Files a tool produced during a voice call (e.g. an invoice PDF): a download link in
   // the thread, since the agent doesn't read URLs aloud.
-  const onFile = useCallback((file: SharedFile) => {
-    setMessages((prev) => [
-      ...prev,
-      {
-        id: nextId(),
-        role: "assistant",
-        text: `📄 [${file.label.replace(/[[\]]/g, "")}](${file.url})`,
-        source: "voice",
-        tools: [],
-      },
-    ]);
-  }, []);
+  const onFile = useCallback(
+    (file: SharedFile) => {
+      pin(file);
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: nextId(),
+          role: "assistant",
+          text: `📄 [${file.label.replace(/[[\]]/g, "")}](${file.url})`,
+          source: "voice",
+          tools: [],
+        },
+      ]);
+    },
+    [pin],
+  );
 
   async function addFiles(list: FileList | File[]) {
     setError(null);
@@ -301,12 +316,13 @@ export function AgentConsole({
                   : tool,
               ),
             }));
-          else if (ev.type === "file")
+          else if (ev.type === "file") {
+            pin({ label: ev.label, url: ev.url });
             patchLast((m) => ({
               ...m,
               links: [...(m.links ?? []), { label: ev.label, url: ev.url }],
             }));
-          else if (ev.type === "done")
+          } else if (ev.type === "done")
             patchLast((m) => ({ ...m, stats: { first: ev.firstTokenMs, total: ev.totalMs } }));
           else if (ev.type === "error") setError(tc("error", { message: ev.message }));
         }
@@ -495,6 +511,26 @@ export function AgentConsole({
             {t("newConversation")}
           </button>
         </header>
+
+        {pinned.length ? (
+          <div
+            className="flex flex-col items-start gap-2 px-4 pb-3 lg:border-b lg:border-line lg:px-6 lg:py-3"
+            data-testid="pinned-files"
+          >
+            {pinned.map((link) => (
+              <a
+                key={link.key}
+                href={link.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex max-w-full items-center gap-2 rounded-xl border border-signal/50 bg-surface px-3 py-2 text-sm font-medium text-ink shadow-lg hover:border-signal"
+              >
+                <Download className="size-4 shrink-0 text-signal" />
+                <span className="truncate">{link.label} · PDF</span>
+              </a>
+            ))}
+          </div>
+        ) : null}
 
         <div
           className={cn(
