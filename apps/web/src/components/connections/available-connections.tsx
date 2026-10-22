@@ -4,12 +4,12 @@ import Link from "next/link";
 import { AppIcon, type AppIconSource } from "./app-icon";
 
 export const APPS = [
-  "whmcs",
   "holded",
   "microsoft365",
   "googledrive",
   "factorial",
   "sesame",
+  "whmcs",
 ] as const;
 export const CUSTOM = ["mcp", "openapi", "sql", "http"] as const;
 
