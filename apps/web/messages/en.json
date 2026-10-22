@@ -282,7 +282,10 @@
         "account": "Account: {account}"
       }
     },
-    "reauthorize": "Authorize again"
+    "reauthorize": "Authorize again",
+    "connected": "Connected",
+    "available": "Available to connect",
+    "toolCount": "{count, plural, one {# tool} other {# tools}}"
   },
   "studio": {
     "title": "Tool Studio",

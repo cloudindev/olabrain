@@ -3,7 +3,8 @@ import { Badge, Button, Card } from "@brainagent/ui";
 import { count, desc, eq } from "drizzle-orm";
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
-import { Monogram, PageHeader } from "@/components/page-header";
+import { DEFAULT_AVATAR } from "@/components/avatar/avatar-config";
+import { PageHeader } from "@/components/page-header";
 import { requireTenant, tenantTx } from "@/lib/tenant";
 
 export const metadata = { title: "Agentes" };
@@ -46,7 +47,13 @@ export default async function AgentsPage() {
           {rows.map((a) => (
             <Link key={a.id} href={`/agents/${a.id}`} className="group">
               <Card className="flex h-full items-start gap-4 p-5 transition-colors group-hover:border-line-strong">
-                <Monogram name={a.name} tone="signal" />
+                {/* The face the agent shows in its conversation (avatar face). */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={`${DEFAULT_AVATAR}/face.jpg`}
+                  alt=""
+                  className="size-14 shrink-0 rounded-2xl border border-line bg-white object-cover"
+                />
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-display text-lg font-semibold tracking-tight">
                     {a.name}

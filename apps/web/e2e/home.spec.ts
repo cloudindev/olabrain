@@ -22,7 +22,7 @@ test("legal pages are public and linked from the home footer", async ({ page }) 
     ["Aviso legal", "Aviso legal"],
     ["Política de privacidad", "Política de privacidad"],
     ["Política de cookies", "Política de cookies"],
-  ]) {
+  ] as const) {
     await page.locator("footer").getByRole("link", { name: link }).click();
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(heading);
   }

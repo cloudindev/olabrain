@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "@brainagent/ui";
+import { DEFAULT_AVATAR } from "./avatar-config";
 import { useCallback, useRef, useState, type ReactNode, type RefObject } from "react";
 
 export type AvatarClip = "idle" | "talking" | "greeting";
@@ -77,7 +78,7 @@ export function AvatarStage({
   greetingRef,
   className,
   children,
-  src = "/alba",
+  src = DEFAULT_AVATAR,
 }: {
   clip: AvatarClip;
   onGreetingEnd: () => void;

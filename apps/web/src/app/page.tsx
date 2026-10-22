@@ -46,22 +46,22 @@ const GALLERY: {
     demo: true,
   },
   {
-    name: "Sara",
-    role: "Atención al cliente",
-    code: "CS-02",
-    tilt: "rotate-2",
-    photo: "/personas/sara.jpg",
-  },
-  {
     name: "Mateo",
     role: "Ventas",
-    code: "VTA-03",
-    tilt: "-rotate-1",
+    code: "VTA-02",
+    tilt: "rotate-2",
     photo: "/personas/mateo.jpg",
   },
-  { name: "Teo", role: "Finanzas", code: "FIN-04", tilt: "rotate-3", photo: "/personas/teo.jpg" },
-  { name: "Nora", role: "Soporte", code: "SOP-05", tilt: "-rotate-2" },
-  { name: "Lía", role: "Recepción", code: "REC-06", tilt: "rotate-1" },
+  { name: "Lía", role: "Recepción", code: "REC-03", tilt: "-rotate-1" },
+  {
+    name: "Sara",
+    role: "Atención al cliente",
+    code: "CS-04",
+    tilt: "rotate-3",
+    photo: "/personas/sara.jpg",
+  },
+  { name: "Teo", role: "Finanzas", code: "FIN-05", tilt: "-rotate-2", photo: "/personas/teo.jpg" },
+  { name: "Nora", role: "Soporte", code: "SOP-06", tilt: "rotate-1" },
 ];
 
 const STEPS: { key: "create" | "connect" | "automate"; icon: LucideIcon }[] = [
@@ -71,21 +71,20 @@ const STEPS: { key: "create" | "connect" | "automate"; icon: LucideIcon }[] = [
 ];
 
 /** What the platform really connects to today; the rest is marked as coming soon. */
-const INTEGRATIONS: { name: string; tag: string; icon?: string; mark?: string; soon?: boolean }[] =
-  [
-    { name: "Claude", tag: "LLM", mark: "A" },
-    { name: "Gemini", tag: "LLM", mark: "G" },
-    { name: "ChatGPT", tag: "LLM", mark: "O" },
-    { name: "WHMCS", tag: "Facturación", icon: "/apps/whmcs.png" },
-    { name: "Outlook", tag: "M365", icon: "/apps/outlook.svg" },
-    { name: "Google Drive", tag: "Google", icon: "/apps/googledrive.svg" },
-    { name: "MCP", tag: "Protocolo", icon: "/apps/mcp.svg" },
-    { name: "OpenAPI", tag: "API", icon: "/apps/openapi.svg" },
-    { name: "PostgreSQL", tag: "SQL", icon: "/apps/postgresql.svg" },
-    { name: "MySQL", tag: "SQL", icon: "/apps/mysql.svg" },
-    { name: "WhatsApp", tag: "Canal", mark: "W", soon: true },
-    { name: "Holded", tag: "ERP", mark: "H", soon: true },
-  ];
+const INTEGRATIONS: { name: string; tag: string; icon: string; soon?: boolean }[] = [
+  { name: "Claude", tag: "LLM", icon: "/apps/claude.svg" },
+  { name: "Gemini", tag: "LLM", icon: "/apps/gemini.svg" },
+  { name: "ChatGPT", tag: "LLM", icon: "/apps/openai.svg" },
+  { name: "WHMCS", tag: "Facturación", icon: "/apps/whmcs.png" },
+  { name: "Outlook", tag: "M365", icon: "/apps/outlook.svg" },
+  { name: "Google Drive", tag: "Google", icon: "/apps/googledrive.svg" },
+  { name: "MCP", tag: "Protocolo", icon: "/apps/mcp.svg" },
+  { name: "OpenAPI", tag: "API", icon: "/apps/openapi.svg" },
+  { name: "PostgreSQL", tag: "SQL", icon: "/apps/postgresql.svg" },
+  { name: "MySQL", tag: "SQL", icon: "/apps/mysql.svg" },
+  { name: "WhatsApp", tag: "Canal", icon: "/apps/whatsapp.svg", soon: true },
+  { name: "Holded", tag: "ERP", icon: "/apps/holded.png", soon: true },
+];
 
 const FACTS = ["eu", "gdpr", "aes", "code"] as const;
 
@@ -216,11 +215,7 @@ export default async function Home() {
                       <span className="relative block h-48 overflow-hidden bg-[#1b1b1b] sm:h-56">
                         {p.photo ? (
                           // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={p.photo}
-                            alt=""
-                            className="h-full w-full object-cover grayscale transition-all duration-300 group-hover:grayscale-0"
-                          />
+                          <img src={p.photo} alt="" className="h-full w-full object-cover" />
                         ) : (
                           <span className="flex h-full w-full items-center justify-center bg-[radial-gradient(circle_at_30%_20%,#2a2a2a,#0e0e0e_70%)]">
                             <span className="font-display text-7xl font-bold text-white/90 transition-colors duration-300 group-hover:text-signal">
@@ -334,14 +329,8 @@ export default async function Home() {
                 >
                   <div className="flex items-center justify-between">
                     <span className="flex size-9 items-center justify-center rounded-lg bg-white">
-                      {app.icon ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={app.icon} alt="" className="size-5 object-contain" />
-                      ) : (
-                        <span className="font-display text-base font-bold text-black">
-                          {app.mark}
-                        </span>
-                      )}
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={app.icon} alt="" className="size-5 object-contain" />
                     </span>
                     <span className="rounded border border-line-strong bg-[#0e0e0e] px-1.5 py-0.5 font-mono text-[9px] uppercase text-signal">
                       {app.soon ? t("soon") : app.tag}
