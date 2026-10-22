@@ -4,9 +4,9 @@ import Link from "next/link";
 import { AppIcon, type AppIconSource } from "./app-icon";
 
 export const APPS = [
-  "holded",
   "microsoft365",
   "googledrive",
+  "holded",
   "factorial",
   "sesame",
   "whmcs",
