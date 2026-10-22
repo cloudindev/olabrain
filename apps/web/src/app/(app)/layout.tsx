@@ -13,7 +13,9 @@ import { ThemeToggle } from "@/components/shell/theme-toggle";
 import { db } from "@/lib/db";
 import { AuthError, requireTenant } from "@/lib/tenant";
 
-const SECTIONS = ["agents", "connections", "contacts", "lab"] as const;
+// /lab stays reachable by URL (provider latency tests) but is no longer in the menu: each
+// agent's own page covers talking to it.
+const SECTIONS = ["agents", "connections", "contacts"] as const;
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
   let ctx;
