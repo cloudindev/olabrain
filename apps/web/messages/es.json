@@ -30,7 +30,8 @@
     "emailNotVerified": "Confirma tu email antes de entrar. Te hemos reenviado el enlace.",
     "checkEmailTitle": "Revisa tu correo",
     "checkEmailBody": "Te hemos enviado un enlace a {email} para confirmar tu cuenta.",
-    "backToSignIn": "Volver a entrar"
+    "backToSignIn": "Volver a entrar",
+    "legalNotice": "Al crear la cuenta aceptas el <notice>aviso legal</notice> y la <privacy>política de privacidad</privacy>."
   },
   "onboarding": {
     "title": "Crea tu organización",
@@ -438,7 +439,14 @@
       "limit": "Has usado todas las demos de esta hora. Vuelve a intentarlo más tarde.",
       "unavailable": "La demo no está disponible ahora mismo. Inténtalo en unos minutos.",
       "generic": "No hemos podido iniciar la llamada. Inténtalo de nuevo."
-    }
+    },
+    "legal": {
+      "title": "Legal",
+      "notice": "Aviso legal",
+      "privacy": "Política de privacidad",
+      "cookies": "Política de cookies"
+    },
+    "operator": "Un servicio de Cloudin Hosting S.L."
   },
   "console": {
     "tabs": {

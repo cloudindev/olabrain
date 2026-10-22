@@ -11,11 +11,17 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import type { Metadata } from "next";
-import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { HomeAgent } from "@/components/home/home-agent";
+import {
+  SiteFooter,
+  SiteHeader,
+  ctaPrimary,
+  ctaSecondary,
+  label,
+  siteLinks,
+} from "@/components/marketing/site";
 import { env } from "@/lib/env";
-import { getSession } from "@/lib/tenant";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("home");
@@ -83,26 +89,6 @@ const INTEGRATIONS: { name: string; tag: string; icon?: string; mark?: string; s
 
 const FACTS = ["eu", "gdpr", "aes", "code"] as const;
 
-const label = "font-display text-xs font-semibold uppercase tracking-[0.12em]";
-const cta =
-  "inline-flex items-center justify-center gap-2 rounded-full font-display text-sm font-semibold uppercase tracking-wide transition-all duration-150";
-const ctaPrimary = cn(
-  cta,
-  "bg-signal text-signal-ink shadow-[0_0_24px_rgba(166,245,90,0.3)] hover:bg-white hover:text-black hover:shadow-[0_0_24px_rgba(255,255,255,0.35)]",
-);
-const ctaSecondary = cn(cta, "border border-line-strong text-ink hover:bg-surface-2");
-
-function Brand() {
-  return (
-    <span className="flex items-center gap-1.5">
-      <span className="font-display text-lg font-bold uppercase tracking-tight">Ola</span>
-      <span className="rounded border border-line-strong bg-surface-2 px-1 py-0.5 font-display text-[10px] font-bold uppercase leading-none tracking-[0.14em] text-signal">
-        brain
-      </span>
-    </span>
-  );
-}
-
 function SectionHead({ tag, title, body }: { tag: string; title: string; body: string }) {
   return (
     <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
@@ -120,53 +106,12 @@ function SectionHead({ tag, title, body }: { tag: string; title: string; body: s
 /** Public home (dark "Kinetic Autonomy" design): talk to Alba, browse personas, connect apps. */
 export default async function Home() {
   const t = await getTranslations("home");
-  const session = await getSession().catch(() => null);
-  const e = env();
-  const maxMinutes = Math.max(1, Math.round(e.HOME_VOICE_MAX_SECONDS / 60));
-  // Absolute: on the marketing domains the panel lives on APP_URL (see middleware), and a
-  // prefetched cross-domain redirect would fail CORS.
-  const app = e.APP_URL.replace(/\/$/, "");
-  const panelHref = `${app}${session ? "/panel" : "/login"}`;
-  const signupHref = session ? `${app}/panel` : `${app}/signup`;
+  const maxMinutes = Math.max(1, Math.round(env().HOME_VOICE_MAX_SECONDS / 60));
+  const { signupHref } = await siteLinks();
 
   return (
     <div className="theme-dark flex min-h-dvh flex-col bg-paper text-ink selection:bg-signal selection:text-signal-ink">
-      <header className="sticky top-0 z-40 border-b border-line bg-[rgba(19,19,19,0.85)] backdrop-blur-xl">
-        <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between gap-4 px-4 sm:px-8">
-          <Link href="/" aria-label="OlaBrain">
-            <Brand />
-          </Link>
-          <nav className="hidden items-center gap-7 md:flex">
-            {(
-              [
-                ["#demo", "demo"],
-                ["#agentes", "agents"],
-                ["#como-funciona", "how"],
-                ["#integraciones", "integrations"],
-              ] as const
-            ).map(([href, key]) => (
-              <a
-                key={key}
-                href={href}
-                className="font-display text-sm font-semibold tracking-wide text-ink-2 transition-colors hover:text-ink"
-              >
-                {t(`nav.${key}`)}
-              </a>
-            ))}
-          </nav>
-          <div className="flex items-center gap-2 sm:gap-3">
-            <a
-              href={panelHref}
-              className="hidden px-2 font-display text-sm font-semibold text-ink-2 hover:text-ink sm:block"
-            >
-              {session ? t("goToPanel") : t("signIn")}
-            </a>
-            <a href={signupHref} className={cn(ctaPrimary, "h-9 px-4 text-xs sm:px-5")}>
-              {session ? t("goToPanel") : t("startFree")}
-            </a>
-          </div>
-        </div>
-      </header>
+      <SiteHeader />
 
       <main className="flex flex-col">
         {/* Hero */}
@@ -468,34 +413,7 @@ export default async function Home() {
         </section>
       </main>
 
-      <footer className="border-t border-line bg-[#0e0e0e] px-4 py-10 sm:px-8">
-        <div className="mx-auto flex max-w-7xl flex-col items-start justify-between gap-6 md:flex-row md:items-center">
-          <div className="flex flex-col gap-2">
-            <Brand />
-            <p className="text-xs text-ink-2">{t("footerTag")}</p>
-          </div>
-          <nav className="flex flex-wrap items-center gap-6">
-            {(
-              [
-                ["#agentes", "agents"],
-                ["#como-funciona", "how"],
-                ["#integraciones", "integrations"],
-              ] as const
-            ).map(([href, key]) => (
-              <a
-                key={key}
-                href={href}
-                className="font-display text-xs font-semibold tracking-wide text-ink-2 hover:text-ink"
-              >
-                {t(`nav.${key}`)}
-              </a>
-            ))}
-          </nav>
-          <p className="text-xs text-ink-2">
-            © {new Date().getFullYear()} OlaBrain · {t("footer")}
-          </p>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

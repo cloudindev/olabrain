@@ -30,7 +30,8 @@
     "emailNotVerified": "Confirm your email before signing in. We sent the link again.",
     "checkEmailTitle": "Check your inbox",
     "checkEmailBody": "We sent a link to {email} to confirm your account.",
-    "backToSignIn": "Back to sign in"
+    "backToSignIn": "Back to sign in",
+    "legalNotice": "By creating an account you accept the <notice>legal notice</notice> and the <privacy>privacy policy</privacy>."
   },
   "onboarding": {
     "title": "Create your organization",
@@ -438,7 +439,14 @@
       "limit": "You have used all the demos for this hour. Please try again later.",
       "unavailable": "The demo is not available right now. Please try again in a few minutes.",
       "generic": "We couldn't start the call. Please try again."
-    }
+    },
+    "legal": {
+      "title": "Legal",
+      "notice": "Legal notice",
+      "privacy": "Privacy policy",
+      "cookies": "Cookie policy"
+    },
+    "operator": "A service by Cloudin Hosting S.L."
   },
   "console": {
     "tabs": {

@@ -26,6 +26,20 @@ export default async function SignUpPage() {
           {t("signIn")}
         </Link>
       </p>
+      <p className="mt-4 text-xs text-ink-3">
+        {t.rich("legalNotice", {
+          notice: (chunks) => (
+            <Link href="/aviso-legal" className="underline underline-offset-4 hover:text-ink">
+              {chunks}
+            </Link>
+          ),
+          privacy: (chunks) => (
+            <Link href="/privacidad" className="underline underline-offset-4 hover:text-ink">
+              {chunks}
+            </Link>
+          ),
+        })}
+      </p>
     </>
   );
 }

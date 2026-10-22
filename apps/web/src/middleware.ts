@@ -4,8 +4,17 @@ import { NextResponse, type NextRequest } from "next/server";
 // Cheap cookie presence check; real session + membership validation happens server-side.
 const PROTECTED = ["/lab", "/onboarding", "/agents", "/connections", "/contacts"];
 
-// Served on any domain (marketing site included): the home and what it needs.
-const PUBLIC_ANY_HOST = ["/", "/api/public/", "/alba/", "/favicon"];
+// Served on any domain (marketing site included): the home, the legal pages and what
+// they need.
+const PUBLIC_ANY_HOST = [
+  "/",
+  "/api/public/",
+  "/alba/",
+  "/favicon",
+  "/aviso-legal",
+  "/privacidad",
+  "/cookies",
+];
 
 function isPublicAnyHost(pathname: string): boolean {
   return PUBLIC_ANY_HOST.some((p) => (p === "/" ? pathname === "/" : pathname.startsWith(p)));
@@ -23,7 +32,7 @@ function appHost(): string | null {
 export function middleware(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
 
-  // The marketing domains (olabrain.com, www.) only show the home. Sign-in, the panel and
+  // The marketing domains (olabrain.com, www.) only show the home and the legal pages. Sign-in, the panel and
   // the APIs live on APP_URL, so the session cookie and Better Auth's origin check see
   // a single domain.
   const app = appHost();

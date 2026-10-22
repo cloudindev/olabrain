@@ -15,3 +15,17 @@ test("public home shows the agent and guards the voice endpoint", async ({ page,
   });
   expect(foreign.status()).toBe(403);
 });
+
+test("legal pages are public and linked from the home footer", async ({ page }) => {
+  await page.goto("/");
+  for (const [link, heading] of [
+    ["Aviso legal", "Aviso legal"],
+    ["Política de privacidad", "Política de privacidad"],
+    ["Política de cookies", "Política de cookies"],
+  ]) {
+    await page.locator("footer").getByRole("link", { name: link }).click();
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText(heading);
+  }
+  await page.goto("/privacidad");
+  await expect(page.getByText("auth/drive.file")).toBeVisible();
+});
