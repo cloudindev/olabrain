@@ -9,7 +9,7 @@ import { z } from "zod";
 import { AgentConnections } from "@/components/agents/agent-connections";
 import { AgentConsole } from "@/components/agents/agent-console";
 import { AgentCustomize } from "@/components/agents/agent-customize";
-import { Monogram } from "@/components/page-header";
+import { AgentFace } from "@/components/avatar/agent-face";
 import { modelCatalog } from "@/lib/models";
 import { requireTenant, tenantTx } from "@/lib/tenant";
 
@@ -106,7 +106,7 @@ export default async function AgentPage({
           >
             <ArrowLeft className="size-4" />
           </Link>
-          <Monogram name={agent.name} tone="signal" />
+          <AgentFace className="size-12 rounded-full" />
           <div className="min-w-0">
             <h1 className="flex items-center gap-2.5 truncate font-display text-2xl font-semibold tracking-tight">
               {agent.name}
