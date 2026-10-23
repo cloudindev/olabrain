@@ -11,6 +11,7 @@ import { AgentConsole } from "@/components/agents/agent-console";
 import { AgentCustomize } from "@/components/agents/agent-customize";
 import { AgentFace } from "@/components/avatar/agent-face";
 import { modelCatalog } from "@/lib/models";
+import { env } from "@/lib/env";
 import { requireTenant, tenantTx } from "@/lib/tenant";
 
 const TABS = ["chat", "customize", "connections"] as const;
@@ -184,6 +185,9 @@ export default async function AgentPage({
           }}
           personas={data.personaList}
           models={modelCatalog()}
+          canDelete={
+            (ctx.role === "owner" || ctx.role === "admin") && agent.id !== env().HOME_AGENT_ID
+          }
         />
       ) : null}
       {tab === "connections" ? (

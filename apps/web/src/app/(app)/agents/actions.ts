@@ -1,11 +1,20 @@
 "use server";
 
 import { agentInputSchema } from "@brainagent/core";
-import { agentTools, agents, personas, tools } from "@brainagent/db";
+import {
+  agentTools,
+  agents,
+  auditLog,
+  conversations,
+  pendingConfirmations,
+  personas,
+  tools,
+} from "@brainagent/db";
 import { and, eq, inArray, isNull, or } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { env } from "@/lib/env";
 import { requireTenant, tenantTx } from "@/lib/tenant";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
@@ -108,4 +117,41 @@ export async function setAgentTools(agentId: string, toolIds: string[]): Promise
   });
   revalidatePath(`/agents/${agentId}`);
   return { ok: true };
+}
+
+/**
+ * Deletes an agent (owners and admins). Its conversations stay — transcripts, metrics and
+ * usage are needed for costs and audit — detached from the agent; assigned tools and
+ * pending confirmations go with it. The agent of the public home can't be deleted.
+ */
+export async function deleteAgent(id: string, confirmName: string): Promise<ActionResult> {
+  const ctx = await requireTenant("admin");
+  if (!z.uuid().safeParse(id).success) return { ok: false, error: "Agente no válido" };
+  if (id === env().HOME_AGENT_ID)
+    return { ok: false, error: "Este agente atiende la demo de la web y no se puede borrar." };
+  const result = await tenantTx(ctx, async (tx) => {
+    const [agent] = await tx
+      .select({ id: agents.id, name: agents.name })
+      .from(agents)
+      .where(eq(agents.id, id))
+      .limit(1);
+    if (!agent) return "not_found" as const;
+    if (agent.name.trim() !== confirmName.trim()) return "mismatch" as const;
+    await tx.update(conversations).set({ agentId: null }).where(eq(conversations.agentId, id));
+    await tx.delete(pendingConfirmations).where(eq(pendingConfirmations.agentId, id));
+    await tx.delete(agents).where(eq(agents.id, id)); // agent_tools cascade
+    await tx.insert(auditLog).values({
+      tenantId: ctx.tenantId,
+      actorUserId: ctx.user.id,
+      action: "agent.delete",
+      targetType: "agent",
+      targetId: id,
+      data: { name: agent.name },
+    });
+    return "deleted" as const;
+  });
+  if (result === "not_found") return { ok: false, error: "Agente no encontrado" };
+  if (result === "mismatch") return { ok: false, error: "El nombre no coincide" };
+  revalidatePath("/agents");
+  redirect("/agents");
 }

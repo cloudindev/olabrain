@@ -534,7 +534,14 @@
     "unsaved": "Unsaved changes",
     "upToDate": "All saved",
     "discard": "Discard",
-    "voiceOf": "Voice of {name}"
+    "voiceOf": "Voice of {name}",
+    "deleteTitle": "Delete agent",
+    "deleteBody": "Deletes the agent and its assigned tools. Its conversations and usage stay in the history.",
+    "delete": "Delete agent",
+    "deleteConfirm": "Type “{name}” to confirm",
+    "deleteForever": "Delete permanently",
+    "deleting": "Deleting…",
+    "cancel": "Cancel"
   },
   "agentConnections": {
     "title": "Agent tools",

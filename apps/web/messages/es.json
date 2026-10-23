@@ -534,7 +534,14 @@
     "unsaved": "Cambios sin guardar",
     "upToDate": "Todo guardado",
     "discard": "Descartar",
-    "voiceOf": "Voz de {name}"
+    "voiceOf": "Voz de {name}",
+    "deleteTitle": "Borrar agente",
+    "deleteBody": "Se borra el agente y sus herramientas asignadas. Sus conversaciones y su consumo se conservan en el historial.",
+    "delete": "Borrar agente",
+    "deleteConfirm": "Escribe «{name}» para confirmar",
+    "deleteForever": "Borrar definitivamente",
+    "deleting": "Borrando…",
+    "cancel": "Cancelar"
   },
   "agentConnections": {
     "title": "Herramientas del agente",

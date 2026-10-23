@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { AgentFace } from "@/components/avatar/agent-face";
 import { useMemo, useState, useTransition, type ReactNode } from "react";
 import { updateAgent } from "@/app/(app)/agents/actions";
+import { DeleteAgent } from "./delete-agent";
 
 type AgentValues = {
   id: string;
@@ -71,10 +72,13 @@ export function AgentCustomize({
   agent,
   personas,
   models,
+  canDelete = false,
 }: {
   agent: AgentValues;
   personas: { id: string; name: string; role: string; avatarUrl: string | null }[];
   models: { id: string; label: string }[];
+  /** Owners and admins, and not the agent behind the public home demo. */
+  canDelete?: boolean;
 }) {
   const t = useTranslations("customize");
   const ta = useTranslations("agents");
@@ -368,6 +372,7 @@ export function AgentCustomize({
             ) : null}
           </div>
         </div>
+        {canDelete ? <DeleteAgent agentId={saved.id} agentName={saved.name} /> : null}
       </aside>
     </form>
   );
