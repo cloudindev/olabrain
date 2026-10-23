@@ -52,7 +52,13 @@ const GALLERY: {
     tilt: "rotate-2",
     photo: "/personas/mateo.jpg",
   },
-  { name: "Lía", role: "Recepción", code: "REC-03", tilt: "-rotate-1" },
+  {
+    name: "Lía",
+    role: "Recepción",
+    code: "REC-03",
+    tilt: "-rotate-1",
+    photo: "/personas/lia.jpg",
+  },
   {
     name: "Sara",
     role: "Atención al cliente",
