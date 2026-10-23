@@ -1,7 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
-import { agentTools, agents, connections, tools, withTenant } from "@brainagent/db";
+import { agents, connections, tools, withTenant } from "@brainagent/db";
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createApp } from "../src/app";
