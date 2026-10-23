@@ -9,6 +9,7 @@ import {
   pendingConfirmations,
   personas,
   tools,
+  usageEvents,
 } from "@brainagent/db";
 import { and, eq, inArray, isNull, or } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
@@ -19,9 +20,13 @@ import { requireTenant, tenantTx } from "@/lib/tenant";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
-const createSchema = z.object({ personaId: z.uuid(), name: z.string().trim().min(1).max(80) });
+const createSchema = z.object({
+  personaId: z.uuid(),
+  name: z.string().trim().min(1).max(80),
+  role: z.string().trim().max(80).default(""),
+});
 
-export async function createAgent(input: z.infer<typeof createSchema>): Promise<ActionResult> {
+export async function createAgent(input: z.input<typeof createSchema>): Promise<ActionResult> {
   const ctx = await requireTenant("builder");
   const parsed = createSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "Datos no válidos" };
@@ -44,6 +49,7 @@ export async function createAgent(input: z.infer<typeof createSchema>): Promise<
       .values({
         tenantId: ctx.tenantId,
         name: parsed.data.name,
+        role: parsed.data.role,
         personaId: persona.id,
         presenceMode: "voice",
       })
@@ -76,6 +82,7 @@ export async function updateAgent(id: string, input: unknown): Promise<ActionRes
       .update(agents)
       .set({
         name: parsed.data.name,
+        role: parsed.data.role,
         personaId: parsed.data.personaId,
         instructions: parsed.data.instructions,
         model: parsed.data.model,
@@ -120,9 +127,10 @@ export async function setAgentTools(agentId: string, toolIds: string[]): Promise
 }
 
 /**
- * Deletes an agent (owners and admins). Its conversations stay — transcripts, metrics and
- * usage are needed for costs and audit — detached from the agent; assigned tools and
- * pending confirmations go with it. The agent of the public home can't be deleted.
+ * Deletes an agent (owners and admins) with its conversations (messages, metrics, files),
+ * assigned tools and pending confirmations. Usage records stay for billing, detached from
+ * the deleted conversations, and the tool call log stays as audit trail (append-only, its
+ * payloads are redacted). The public home's agent is protected.
  */
 export async function deleteAgent(id: string, confirmName: string): Promise<ActionResult> {
   const ctx = await requireTenant("admin");
@@ -137,7 +145,20 @@ export async function deleteAgent(id: string, confirmName: string): Promise<Acti
       .limit(1);
     if (!agent) return "not_found" as const;
     if (agent.name.trim() !== confirmName.trim()) return "mismatch" as const;
-    await tx.update(conversations).set({ agentId: null }).where(eq(conversations.agentId, id));
+    const ids = (
+      await tx
+        .select({ id: conversations.id })
+        .from(conversations)
+        .where(eq(conversations.agentId, id))
+    ).map((c) => c.id);
+    if (ids.length) {
+      await tx
+        .update(usageEvents)
+        .set({ conversationId: null })
+        .where(inArray(usageEvents.conversationId, ids));
+      // Messages, turn metrics and files cascade with the conversation.
+      await tx.delete(conversations).where(inArray(conversations.id, ids));
+    }
     await tx.delete(pendingConfirmations).where(eq(pendingConfirmations.agentId, id));
     await tx.delete(agents).where(eq(agents.id, id)); // agent_tools cascade
     await tx.insert(auditLog).values({
@@ -146,7 +167,7 @@ export async function deleteAgent(id: string, confirmName: string): Promise<Acti
       action: "agent.delete",
       targetType: "agent",
       targetId: id,
-      data: { name: agent.name },
+      data: { name: agent.name, conversations: ids.length },
     });
     return "deleted" as const;
   });

@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { signUpAndCreateOrg } from "./helpers";
 
-test("an admin deletes an agent from Personalizar and its conversations are kept", async ({
+test("an admin deletes an agent and its conversations from Personalizar", async ({
   page,
 }) => {
   test.setTimeout(90_000);
@@ -13,7 +13,7 @@ test("an admin deletes an agent from Personalizar and its conversations are kept
   await expect(page).toHaveURL(/\/agents\/[0-9a-f-]{36}$/);
   const agentId = page.url().split("/").at(-1)!;
 
-  // A conversation with this agent (voice session) must survive the deletion.
+  // It has a conversation (voice session): deleting the agent must not be blocked by it.
   const session = await page.request.post("/api/lab/token", {
     data: { config: { agent_id: agentId } },
   });

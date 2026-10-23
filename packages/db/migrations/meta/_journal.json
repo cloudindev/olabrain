@@ -71,6 +71,13 @@
       "when": 1792787563632,
       "tag": "0009_persona_avatars",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1792788687009,
+      "tag": "0010_agent_role",
+      "breakpoints": true
     }
   ]
 }

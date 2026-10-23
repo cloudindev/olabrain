@@ -72,6 +72,8 @@ export const agents = pgTable(
     tenantId: tenantId(),
     personaId: uuid("persona_id").references(() => personas.id, { onDelete: "set null" }),
     name: text("name").notNull(),
+    /** What the agent does, written by the user (e.g. "Asistente personal", "Soporte"). */
+    role: text("role").notNull().default(""),
     instructions: text("instructions").notNull().default(""),
     model: text("model"),
     presenceMode: presenceMode("presence_mode").notNull().default("voice"),

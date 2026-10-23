@@ -19,14 +19,14 @@ export default async function AgentsPage() {
         name: agents.name,
         status: agents.status,
         presenceMode: agents.presenceMode,
-        personaRole: personas.role,
+        role: agents.role,
         personaAvatar: personas.avatarUrl,
         tools: count(agentTools.toolId),
       })
       .from(agents)
       .leftJoin(personas, eq(personas.id, agents.personaId))
       .leftJoin(agentTools, eq(agentTools.agentId, agents.id))
-      .groupBy(agents.id, personas.role, personas.avatarUrl)
+      .groupBy(agents.id, personas.avatarUrl)
       .orderBy(desc(agents.updatedAt)),
   );
 
@@ -57,7 +57,7 @@ export default async function AgentsPage() {
                   <p className="truncate font-display text-lg font-semibold tracking-tight">
                     {a.name}
                   </p>
-                  <p className="text-sm text-ink-2">{a.personaRole ?? "—"}</p>
+                  <p className="text-sm text-ink-2">{a.role || "—"}</p>
                   <div className="mt-3 flex flex-wrap gap-1.5">
                     <Badge tone={a.status === "active" ? "ok" : "neutral"}>
                       {t(

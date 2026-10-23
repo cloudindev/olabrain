@@ -98,6 +98,11 @@ def name_note(agent_name: str, persona_name: str | None) -> str:
     )
 
 
+def role_note(role: str | None) -> str:
+    """What the agent does, as the user wrote it (e.g. "Soporte", "Asistente personal")."""
+    return f"Tu función: {role.strip()}." if role and role.strip() else ""
+
+
 def own_greeting(greeting: str | None, agent_name: str, persona_name: str | None) -> str | None:
     """The persona's greeting with the agent's name ("Hola, soy Alba" -> "Hola, soy Claudia")."""
     if not greeting or not persona_name or persona_name == agent_name:
@@ -128,6 +133,7 @@ class RuntimeAgent:
         parts = [
             persona.get("basePrompt") or f"Eres {agent['name']}, un asistente de la empresa.",
             name_note(agent["name"], persona.get("name")),
+            role_note(agent.get("role")),
             agent.get("instructions") or "",
             AI_DISCLOSURE,
             date_context(),

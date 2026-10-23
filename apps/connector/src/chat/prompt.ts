@@ -69,10 +69,16 @@ export function nameNote(agentName: string, personaName?: string | null): string
   return `Te llamas ${agentName}. Preséntate siempre como ${agentName}, nunca como ${personaName}.`;
 }
 
+/** What the agent does, as the user wrote it (e.g. "Soporte", "Asistente personal"). */
+export function roleNote(role?: string | null): string {
+  return role?.trim() ? `Tu función: ${role.trim()}.` : "";
+}
+
 export function buildInstructions(cfg: RuntimeConfig, now?: Date): string {
   const parts = [
     cfg.persona?.basePrompt || `Eres ${cfg.agent.name}, un asistente de la empresa.`,
     nameNote(cfg.agent.name, cfg.persona?.name),
+    roleNote(cfg.agent.role),
     cfg.agent.instructions ?? "",
     AI_DISCLOSURE,
     dateContext(now),

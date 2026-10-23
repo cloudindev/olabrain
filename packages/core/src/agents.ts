@@ -14,6 +14,8 @@ export type AgentPolicy = z.infer<typeof agentPolicySchema>;
 
 export const agentInputSchema = z.object({
   name: z.string().trim().min(1).max(80),
+  /** What the agent does (free text): goes into its instructions. */
+  role: z.string().trim().max(80).default(""),
   personaId: z.uuid().nullable(),
   instructions: z.string().max(20_000).default(""),
   /** "<provider>:<model>" from the model catalog in configuration; null = platform default. */

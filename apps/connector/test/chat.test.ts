@@ -236,6 +236,7 @@ describe("chat helpers", () => {
       agent: {
         id: "a",
         name: "Claudia",
+        role: "Asistente personal",
         instructions: "",
         model: null,
         presenceMode: "voice",
@@ -256,6 +257,8 @@ describe("chat helpers", () => {
     } as never);
     expect(system).toContain("Te llamas Claudia");
     expect(system).toContain("nunca como Alba");
+    // The role is the agent's (set by the user), not the persona's.
+    expect(system).toContain("Tu función: Asistente personal.");
   });
 
   it("includes known memory in the instructions", () => {

@@ -15,7 +15,6 @@ export default async function NewAgentPage() {
       .select({
         id: personas.id,
         name: personas.name,
-        role: personas.role,
         greeting: personas.greeting,
         avatarUrl: personas.avatarUrl,
       })

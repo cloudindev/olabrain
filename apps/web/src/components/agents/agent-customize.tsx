@@ -11,6 +11,7 @@ import { DeleteAgent } from "./delete-agent";
 type AgentValues = {
   id: string;
   name: string;
+  role: string;
   personaId: string | null;
   instructions: string;
   model: string | null;
@@ -75,7 +76,7 @@ export function AgentCustomize({
   canDelete = false,
 }: {
   agent: AgentValues;
-  personas: { id: string; name: string; role: string; avatarUrl: string | null }[];
+  personas: { id: string; name: string; avatarUrl: string | null }[];
   models: { id: string; label: string }[];
   /** Owners and admins, and not the agent behind the public home demo. */
   canDelete?: boolean;
@@ -139,6 +140,17 @@ export function AgentCustomize({
             />
           </div>
           <div>
+            <Label htmlFor="a-role">{ta("role")}</Label>
+            <Input
+              id="a-role"
+              value={values.role}
+              onChange={(e) => set("role", e.target.value)}
+              placeholder={ta("rolePlaceholder")}
+              maxLength={80}
+              className="max-w-md"
+            />
+          </div>
+          <div>
             <Label>{ta("persona")}</Label>
             <div
               role="radiogroup"
@@ -168,7 +180,6 @@ export function AgentCustomize({
                     />
                     <span className="min-w-0">
                       <span className="block truncate text-sm font-medium text-ink">{p.name}</span>
-                      <span className="block truncate text-xs text-ink-2">{p.role}</span>
                     </span>
                     {selected ? <Check className="ml-auto size-4 shrink-0 text-ink" /> : null}
                   </button>

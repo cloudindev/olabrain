@@ -45,7 +45,6 @@ export default async function AgentPage({
       .select({
         id: personas.id,
         name: personas.name,
-        role: personas.role,
         avatarUrl: personas.avatarUrl,
         avatarVideo: personas.avatarVideo,
       })
@@ -134,7 +133,7 @@ export default async function AgentPage({
                 {statusLabel}
               </span>
             </h1>
-            {persona ? <p className="truncate text-sm text-ink-2">{persona.role}</p> : null}
+            {agent.role ? <p className="truncate text-sm text-ink-2">{agent.role}</p> : null}
           </div>
         </div>
         <nav
@@ -165,7 +164,7 @@ export default async function AgentPage({
           agent={{
             id: agent.id,
             name: agent.name,
-            role: persona?.role ?? null,
+            role: agent.role || null,
             status: agent.status,
             avatar: { image: persona?.avatarUrl ?? null, video: persona?.avatarVideo ?? null },
           }}
@@ -176,6 +175,7 @@ export default async function AgentPage({
           agent={{
             id: agent.id,
             name: agent.name,
+            role: agent.role,
             personaId: agent.personaId,
             instructions: agent.instructions,
             model: agent.model,

@@ -46,11 +46,12 @@ export function DeleteAgent({ agentId, agentName }: { agentId: string; agentName
               {error}
             </p>
           ) : null}
-          <div className="flex gap-2">
+          <div className="flex flex-col gap-2">
             <Button
               type="button"
               variant="danger"
               size="sm"
+              className="w-full whitespace-nowrap"
               disabled={pending || typed.trim() !== agentName.trim()}
               onClick={() =>
                 start(async () => {
@@ -67,6 +68,7 @@ export function DeleteAgent({ agentId, agentName }: { agentId: string; agentName
               type="button"
               variant="ghost"
               size="sm"
+              className="w-full"
               onClick={() => {
                 setOpen(false);
                 setTyped("");

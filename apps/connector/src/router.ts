@@ -210,6 +210,7 @@ export async function agentRuntimeConfig(
     agent: {
       id: row.agent.id,
       name: row.agent.name,
+      role: row.agent.role,
       instructions: row.agent.instructions,
       model: row.agent.model,
       presenceMode: row.agent.presenceMode,

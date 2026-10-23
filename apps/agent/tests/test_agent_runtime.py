@@ -14,6 +14,7 @@ CONFIG = {
     "agent": {
         "id": "agent-1",
         "name": "Hugo",
+        "role": "Operaciones",
         "instructions": "Trabajas para Talleres Ruiz.",
         "model": "anthropic:claude-haiku-5-5",
         "policy": {"maxToolSteps": 3},
@@ -56,6 +57,7 @@ class FakeConnector:
 def test_instructions_combine_persona_agent_disclosure_and_tool_guidance() -> None:
     agent = RuntimeAgent.from_config("t-1", CONFIG)
     assert agent.instructions.startswith("Eres Hugo, de operaciones.")
+    assert "Tu función: Operaciones." in agent.instructions
     assert "Talleres Ruiz" in agent.instructions
     assert AI_DISCLOSURE in agent.instructions
     assert "confirmación" in agent.instructions

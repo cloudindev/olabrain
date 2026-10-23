@@ -154,7 +154,9 @@
     "testVoice": "Test by voice",
     "testVoiceHint": "Opens the lab with this agent and measures latency.",
     "memory": "Memory per contact",
-    "memoryHint": "Remembers facts about each person across conversations. View and delete them in Contacts."
+    "memoryHint": "Remembers facts about each person across conversations. View and delete them in Contacts.",
+    "role": "Role",
+    "rolePlaceholder": "Personal assistant, Support, Sales, Operations…"
   },
   "chat": {
     "placeholder": "Type a message…",
@@ -536,7 +538,7 @@
     "discard": "Discard",
     "voiceOf": "Voice of {name}",
     "deleteTitle": "Delete agent",
-    "deleteBody": "Deletes the agent and its assigned tools. Its conversations and usage stay in the history.",
+    "deleteBody": "Deletes the agent, its conversations and its assigned tools. Only the usage history is kept.",
     "delete": "Delete agent",
     "deleteConfirm": "Type “{name}” to confirm",
     "deleteForever": "Delete permanently",

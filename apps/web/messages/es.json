@@ -154,7 +154,9 @@
     "testVoice": "Probar por voz",
     "testVoiceHint": "Abre el laboratorio con este agente y mide las latencias.",
     "memory": "Memoria por contacto",
-    "memoryHint": "Recuerda datos de cada persona entre conversaciones. Puedes verlos y borrarlos en Contactos."
+    "memoryHint": "Recuerda datos de cada persona entre conversaciones. Puedes verlos y borrarlos en Contactos.",
+    "role": "Función",
+    "rolePlaceholder": "Asistente personal, Soporte, Ventas, Operaciones…"
   },
   "chat": {
     "placeholder": "Escribe un mensaje…",
@@ -536,7 +538,7 @@
     "discard": "Descartar",
     "voiceOf": "Voz de {name}",
     "deleteTitle": "Borrar agente",
-    "deleteBody": "Se borra el agente y sus herramientas asignadas. Sus conversaciones y su consumo se conservan en el historial.",
+    "deleteBody": "Se borran el agente, sus conversaciones y sus herramientas asignadas. Solo se conserva el historial de consumo.",
     "delete": "Borrar agente",
     "deleteConfirm": "Escribe «{name}» para confirmar",
     "deleteForever": "Borrar definitivamente",

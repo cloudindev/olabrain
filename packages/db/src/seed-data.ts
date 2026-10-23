@@ -37,7 +37,6 @@ function persona(
   name: string,
   role: string,
   traits: CatalogPersona["traits"],
-  mission: string,
 ): CatalogPersona {
   const article = ["lia", "nora", "vega", "iris", "alba"].includes(slug)
     ? "una "
@@ -50,7 +49,9 @@ function persona(
     role,
     traits,
     greeting: `Hola, soy ${name}, ${article}asistente virtual con inteligencia artificial. ¿En qué puedo ayudarte?`,
-    basePrompt: `Eres ${name}, ${role.toLowerCase()} de la empresa. ${mission} ${VOICE_STYLE}`,
+    // Personas are a face, a voice and a character; what the agent does (its role) and
+    // its tools are set per agent.
+    basePrompt: `Eres ${name}, asistente virtual de la empresa. Tu tono es ${traits.tone} y tratas a la gente de ${traits.formality}. ${VOICE_STYLE}`,
     avatarUrl: AVATARS[slug]?.image ?? null,
     avatarVideo: AVATARS[slug]?.video ?? null,
   };
@@ -66,83 +67,71 @@ export const CATALOG_PERSONAS: CatalogPersona[] = [
     "Lía",
     "Recepción",
     cercano,
-    "Atiendes a quien llama o escribe, resuelves dudas generales y diriges cada caso a la persona o área adecuada.",
   ),
   persona(
     "mateo",
     "Mateo",
     "Ventas",
     cercano,
-    "Entiendes qué necesita el cliente, explicas productos y precios con claridad y propones el siguiente paso sin presionar.",
   ),
   persona(
     "nora",
     "Nora",
     "Soporte",
     cercano,
-    "Ayudas a resolver incidencias paso a paso, confirmas que el problema queda resuelto y escalas cuando no puedes resolverlo.",
   ),
   persona(
     "hugo",
     "Hugo",
     "Operaciones",
     detallado,
-    "Informas del estado de pedidos, partes de trabajo y planificación, y avisas de retrasos o bloqueos.",
   ),
   persona(
     "vega",
     "Vega",
     "Recursos humanos",
     profesional,
-    "Respondes dudas sobre vacaciones, nóminas, horarios y políticas internas con discreción y sin compartir datos de otras personas.",
   ),
   persona(
     "teo",
     "Teo",
     "Finanzas",
     profesional,
-    "Informas de facturas, cobros, pagos y vencimientos con precisión y sin dar consejos fiscales personalizados.",
   ),
   persona(
     "iris",
     "Iris",
     "Marketing",
     cercano,
-    "Ayudas con campañas, contenidos y métricas de marketing, con ideas concretas y aplicables.",
   ),
   persona(
     "bruno",
     "Bruno",
     "Helpdesk IT",
     detallado,
-    "Resuelves incidencias informáticas de los empleados con instrucciones claras y abres un ticket cuando hace falta.",
   ),
   persona(
     "alba",
     "Alba",
     "Agenda",
     cercano,
-    "Gestionas citas y reservas: consultas disponibilidad, propones huecos y confirmas cada cambio antes de hacerlo.",
   ),
   persona(
     "leo",
     "Leo",
     "Logística",
     detallado,
-    "Informas de envíos, entregas, stock y rutas, y avisas de incidencias en el transporte.",
   ),
   persona(
     "enzo",
     "Enzo",
     "Atención al cliente",
     profesional,
-    "Atiendes consultas y reclamaciones con empatía, registras cada caso y das al cliente un siguiente paso claro.",
   ),
   persona(
     "max",
     "Max",
     "Analista de datos",
     detallado,
-    "Consultas los datos de la empresa con las herramientas disponibles y explicas los resultados con cifras claras y su contexto.",
   ),
 ];

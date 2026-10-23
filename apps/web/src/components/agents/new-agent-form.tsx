@@ -9,7 +9,6 @@ import { AgentFace } from "@/components/avatar/agent-face";
 type PersonaOption = {
   id: string;
   name: string;
-  role: string;
   greeting: string;
   avatarUrl: string | null;
 };
@@ -18,6 +17,7 @@ export function NewAgentForm({ personas }: { personas: PersonaOption[] }) {
   const t = useTranslations("agents");
   const [selected, setSelected] = useState<PersonaOption | null>(null);
   const [name, setName] = useState("");
+  const [role, setRole] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
 
@@ -49,10 +49,7 @@ export function NewAgentForm({ personas }: { personas: PersonaOption[] }) {
               )}
             >
               <AgentFace src={p.avatarUrl} name={p.name} className="size-12 rounded-full" />
-              <div>
-                <p className="font-display font-semibold tracking-tight">{p.name}</p>
-                <p className="text-sm text-ink-2">{p.role}</p>
-              </div>
+              <p className="self-center font-display font-semibold tracking-tight">{p.name}</p>
             </Card>
           </button>
         ))}
@@ -66,7 +63,7 @@ export function NewAgentForm({ personas }: { personas: PersonaOption[] }) {
               e.preventDefault();
               setError(null);
               start(async () => {
-                const res = await createAgent({ personaId: selected.id, name });
+                const res = await createAgent({ personaId: selected.id, name, role });
                 if (res && !res.ok) setError(res.error);
               });
             }}
@@ -78,6 +75,15 @@ export function NewAgentForm({ personas }: { personas: PersonaOption[] }) {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
+                maxLength={80}
+              />
+            </Field>
+            <Field label={t("role")} htmlFor="agent-role">
+              <Input
+                id="agent-role"
+                value={role}
+                onChange={(e) => setRole(e.target.value)}
+                placeholder={t("rolePlaceholder")}
                 maxLength={80}
               />
             </Field>

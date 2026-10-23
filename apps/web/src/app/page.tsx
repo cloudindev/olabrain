@@ -31,7 +31,6 @@ export async function generateMetadata(): Promise<Metadata> {
 /** Six catalog personas (packages/db seed). Only Alba has a live demo. */
 const GALLERY: {
   name: string;
-  role: string;
   code: string;
   tilt: string;
   photo?: string;
@@ -39,38 +38,33 @@ const GALLERY: {
 }[] = [
   {
     name: "Alba",
-    role: "Agenda",
-    code: "AGD-01",
+    code: "OLA-01",
     tilt: "-rotate-3",
     photo: "/alba/poster.jpg",
     demo: true,
   },
   {
     name: "Mateo",
-    role: "Ventas",
-    code: "VTA-02",
+    code: "OLA-02",
     tilt: "rotate-2",
     photo: "/personas/mateo.jpg",
   },
   {
     name: "Lía",
-    role: "Recepción",
-    code: "REC-03",
+    code: "OLA-03",
     tilt: "-rotate-1",
     photo: "/personas/lia.jpg",
   },
   {
     name: "Enzo",
-    role: "Atención al cliente",
-    code: "CS-04",
+    code: "OLA-04",
     tilt: "rotate-3",
     photo: "/personas/enzo.jpg",
   },
-  { name: "Teo", role: "Finanzas", code: "FIN-05", tilt: "-rotate-2", photo: "/personas/teo.jpg" },
+  { name: "Teo", code: "OLA-05", tilt: "-rotate-2", photo: "/personas/teo.jpg" },
   {
     name: "Nora",
-    role: "Soporte",
-    code: "SOP-06",
+    code: "OLA-06",
     tilt: "rotate-1",
     photo: "/personas/nora.jpg",
   },
@@ -247,9 +241,6 @@ export default async function Home() {
                       <span className="mt-3 block text-center">
                         <span className="block font-display text-lg font-semibold leading-tight tracking-tight text-black">
                           {p.name}
-                        </span>
-                        <span className="block font-display text-[11px] font-semibold uppercase tracking-wider text-zinc-600">
-                          {p.role}
                         </span>
                       </span>
                       <span className="absolute -bottom-3 left-1/2 w-max -translate-x-1/2 rounded-full bg-black px-3 py-1 font-display text-[10px] font-bold uppercase tracking-wider text-signal opacity-0 shadow-md transition-opacity duration-200 group-hover:opacity-100 group-focus-visible:opacity-100">
