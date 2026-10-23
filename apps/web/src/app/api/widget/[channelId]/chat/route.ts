@@ -1,5 +1,6 @@
 import { WIDGET_LIMITS } from "@brainagent/core";
-import { conversations, messages, usageEvents, withTenant } from "@brainagent/db";
+import { conversations, messages, withTenant } from "@brainagent/db";
+import { chargeChatReply, hasBalance } from "@/lib/billing";
 import { and, asc, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/lib/db";
@@ -45,6 +46,7 @@ export async function POST(
   const { tenantId, agentId } = channel;
 
   const setup = await withTenant(db(), tenantId, async (tx) => {
+    if (!(await hasBalance(tx, tenantId))) return { error: "no_balance" as const };
     const usage = await visitorUsage(tx, channel.id, visitor);
     if (usage.messages >= WIDGET_LIMITS.messagesPerVisitorHour) return { error: "limit" as const };
     let conversationId = parsed.data.conversationId ?? null;
@@ -87,7 +89,11 @@ export async function POST(
       .orderBy(asc(messages.createdAt));
     return { conversationId, history: history.slice(-40) };
   });
-  if ("error" in setup) return Response.json({ error: setup.error }, { status: 429 });
+  if ("error" in setup)
+    return Response.json(
+      { error: setup.error },
+      { status: setup.error === "no_balance" ? 402 : 429 },
+    );
 
   let upstream: Response;
   try {
@@ -120,23 +126,7 @@ export async function POST(
           role: "assistant",
           content: done.text,
         });
-      const provider = done.model ?? "default";
-      const base = { tenantId, conversationId: setup.conversationId, provider };
-      await tx.insert(usageEvents).values([
-        { ...base, kind: "chat_message", quantity: "1", unit: "message" },
-        {
-          ...base,
-          kind: "llm_input",
-          quantity: String(done.usage?.prompt_tokens ?? 0),
-          unit: "token",
-        },
-        {
-          ...base,
-          kind: "llm_output",
-          quantity: String(done.usage?.completion_tokens ?? 0),
-          unit: "token",
-        },
-      ]);
+      await chargeChatReply(tx, tenantId, setup.conversationId, done, "Mensaje del widget web");
     });
   };
 

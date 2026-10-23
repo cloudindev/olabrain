@@ -10,6 +10,7 @@
  */
 import { createHash } from "node:crypto";
 import {
+  priceVoice,
   redactSecrets,
   widgetConfigSchema,
   type Tool,
@@ -19,6 +20,7 @@ import {
 import {
   agentTools,
   agents,
+  chargeUsage,
   channels,
   connections,
   contactMemories,
@@ -33,6 +35,7 @@ import {
 import Ajv from "ajv";
 import addFormats from "ajv-formats";
 import { and, desc, eq, gt, isNull, lt, max } from "drizzle-orm";
+import { pricing, signupCredit } from "./billing";
 import type { ConnectorContext } from "./context";
 import { executeTool, limitsOf, type ConnectionRow, type ToolRow } from "./execute";
 
@@ -192,18 +195,43 @@ export async function appendConversationMessages(
   });
 }
 
-/** Marks a conversation as ended (first call wins). */
+/** Calls from the public home demo are ours: not charged to the organization. */
+const UNBILLED_CHANNELS = new Set(["home"]);
+
+/**
+ * Marks a conversation as ended (first call wins) and, for voice calls, charges their
+ * minutes to the organization's wallet (ADR-007).
+ */
 export async function endConversation(
   ctx: ConnectorContext,
   tenantId: string,
   conversationId: string,
 ) {
-  await withTenant(ctx.db, tenantId, (tx) =>
-    tx
+  await withTenant(ctx.db, tenantId, async (tx) => {
+    const now = new Date();
+    const [ended] = await tx
       .update(conversations)
-      .set({ endedAt: new Date() })
-      .where(and(eq(conversations.id, conversationId), isNull(conversations.endedAt))),
-  );
+      .set({ endedAt: now })
+      .where(and(eq(conversations.id, conversationId), isNull(conversations.endedAt)))
+      .returning({ startedAt: conversations.startedAt, channel: conversations.channel });
+    if (!ended || UNBILLED_CHANNELS.has(ended.channel)) return;
+    const seconds = Math.max(0, (now.getTime() - ended.startedAt.getTime()) / 1000);
+    const price = priceVoice(pricing(), seconds);
+    await chargeUsage(tx, tenantId, {
+      conversationId,
+      description: ended.channel === "widget" ? "Llamada de voz (widget web)" : "Llamada de voz",
+      signupCreditEur: signupCredit(),
+      items: [
+        {
+          kind: "voice_minutes",
+          provider: "gemini-live+livekit",
+          quantity: Math.round((seconds / 60) * 1000) / 1000,
+          unit: "minute",
+          ...price,
+        },
+      ],
+    });
+  });
   return { ok: true };
 }
 

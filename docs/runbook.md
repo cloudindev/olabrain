@@ -144,6 +144,10 @@ Reglas:
 ```bash
 brew install postgresql@16 redis livekit
 # Postgres en el puerto 5433 con el usuario brainagent_owner, o ajusta DATABASE_URL*/TEST_* en .env.
+# Clúster local fuera de /tmp (macOS limpia /tmp y lo corrompe):
+#   /opt/homebrew/opt/postgresql@16/bin/initdb -D ~/.brainagent/pgdata -U brainagent_owner -W
+#   /opt/homebrew/opt/postgresql@16/bin/pg_ctl -D ~/.brainagent/pgdata -o "-p 5433" -l ~/.brainagent/pg.log start
+#   después: pnpm db:migrate && pnpm db:seed && pnpm --filter @brainagent/db demo
 createdb brainagent && createdb brainagent_test
 livekit-server --dev --bind 127.0.0.1
 ```
@@ -176,3 +180,13 @@ infra/deploy/agent.sh secrets   # tras cambiar .env.agent
 
 Home pública: en Vercel, `HOME_AGENT_TENANT_ID` y `HOME_AGENT_ID` con la organización y el
 agente que atienden la demo (límites: `HOME_VOICE_*`).
+
+## Saldo (monedero prepago)
+
+Precios en `config/pricing.json` (coste de proveedor × margen). Añadir saldo a mano
+(uso interno o correcciones), con las variables de producción cargadas:
+
+```bash
+set -a; . ./.env.production; set +a
+pnpm --filter @brainagent/db wallet:grant <tenantId> <euros> "Motivo"
+```

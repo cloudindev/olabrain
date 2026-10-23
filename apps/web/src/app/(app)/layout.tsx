@@ -11,7 +11,9 @@ import { OrgSwitcher } from "@/components/shell/org-switcher";
 import { SignOutButton } from "@/components/shell/sign-out-button";
 import { ThemeToggle } from "@/components/shell/theme-toggle";
 import { db } from "@/lib/db";
-import { AuthError, requireTenant } from "@/lib/tenant";
+import { walletBalance } from "@/lib/billing";
+import { AuthError, requireTenant, tenantTx } from "@/lib/tenant";
+import { BalancePill } from "@/components/shell/balance-pill";
 
 // /lab stays reachable by URL (provider latency tests) but is no longer in the menu: each
 // agent's own page covers talking to it.
@@ -34,6 +36,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     .innerJoin(tenants, eq(tenants.id, memberships.organizationId))
     .where(eq(memberships.userId, ctx.user.id))
     .orderBy(asc(tenants.name));
+  const balance = await tenantTx(ctx, (tx) => walletBalance(tx, ctx.tenantId));
 
   return (
     <div className="min-h-dvh">
@@ -54,6 +57,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
             ))}
           </nav>
           <div className="ml-auto flex min-w-0 items-center gap-1 whitespace-nowrap">
+            <BalancePill balance={balance} label={t("balance")} />
             <OrgSwitcher orgs={orgs} activeId={ctx.tenantId} />
             <div className="hidden items-center gap-1 md:flex">
               <LocaleSwitch />

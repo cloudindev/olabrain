@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { WIDGET_LIMITS, type LabConfig } from "@brainagent/core";
 import { auditLog, conversations, withTenant } from "@brainagent/db";
 import { z } from "zod";
+import { hasBalance } from "@/lib/billing";
 import { db } from "@/lib/db";
 import { env } from "@/lib/env";
 import { createLabToken, labRoomName } from "@/lib/livekit";
@@ -31,6 +32,7 @@ export async function POST(
     max_session_seconds: WIDGET_LIMITS.callSeconds,
   };
   const started = await withTenant(db(), channel.tenantId, async (tx) => {
+    if (!(await hasBalance(tx, channel.tenantId))) return { error: "no_balance" as const };
     const usage = await visitorUsage(tx, channel.id, visitor);
     if (usage.calls >= WIDGET_LIMITS.callsPerVisitorHour) return { error: "limit" as const };
     const [conversation] = await tx
@@ -50,7 +52,11 @@ export async function POST(
     });
     return { conversationId: conversation!.id };
   });
-  if ("error" in started) return Response.json({ error: started.error }, { status: 429 });
+  if ("error" in started)
+    return Response.json(
+      { error: started.error },
+      { status: started.error === "no_balance" ? 402 : 429 },
+    );
 
   const token = await createLabToken({
     apiKey: e.LIVEKIT_API_KEY,

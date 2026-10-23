@@ -150,6 +150,8 @@ export const usageEvents = pgTable(
     quantity: numeric("quantity", { precision: 18, scale: 6 }).notNull(),
     unit: text("unit").notNull(),
     costUsd: numeric("cost_usd", { precision: 14, scale: 6 }),
+    /** Sale price charged to the wallet (cost × margin, in euros). */
+    priceEur: numeric("price_eur", { precision: 14, scale: 6 }),
     createdAt: createdAt(),
   },
   (t) => [
@@ -482,4 +484,45 @@ export const channels = pgTable(
       foreignColumns: [agents.id, agents.tenantId],
     }).onDelete("cascade"),
   ],
+);
+
+/**
+ * Prepaid balance of an organization (ADR-007), in euros. Created on first use with the
+ * signup credit; every use is charged against it through wallet_ledger.
+ */
+export const wallets = pgTable("wallets", {
+  tenantId: uuid("tenant_id")
+    .primaryKey()
+    .references(() => tenants.id, { onDelete: "cascade" }),
+  balanceEur: numeric("balance_eur", { precision: 14, scale: 6 }).notNull().default("0"),
+  /** Auto top-up when the balance drops below this (active once payments exist). */
+  autoRechargeThresholdEur: numeric("auto_recharge_threshold_eur", { precision: 10, scale: 2 }),
+  autoRechargeAmountEur: numeric("auto_recharge_amount_eur", { precision: 10, scale: 2 }),
+  createdAt: createdAt(),
+  updatedAt: updatedAt(),
+});
+
+export const walletEntryKind = pgEnum("wallet_entry_kind", [
+  "grant",
+  "usage",
+  "topup",
+  "adjustment",
+]);
+
+/** Immutable record of every balance change (append-only: no UPDATE/DELETE grant). */
+export const walletLedger = pgTable(
+  "wallet_ledger",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: tenantId(),
+    kind: walletEntryKind("kind").notNull(),
+    /** Signed: negative for usage, positive for credit. */
+    amountEur: numeric("amount_eur", { precision: 14, scale: 6 }).notNull(),
+    balanceAfterEur: numeric("balance_after_eur", { precision: 14, scale: 6 }).notNull(),
+    conversationId: uuid("conversation_id"),
+    description: text("description").notNull(),
+    data: jsonb("data").$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: createdAt(),
+  },
+  (t) => [index("wallet_ledger_tenant_created_idx").on(t.tenantId, t.createdAt)],
 );

@@ -337,7 +337,9 @@ export function AgentConsole({
         }
       }
     } catch (err) {
-      setError(tc("error", { message: String((err as Error).message ?? err) }));
+      const message = String((err as Error).message ?? err);
+      // Prepaid (ADR-007): out of balance -> say so and where to top up.
+      setError(message === "no_balance" ? t("errors.no_balance") : tc("error", { message }));
     } finally {
       setBusy(false);
     }

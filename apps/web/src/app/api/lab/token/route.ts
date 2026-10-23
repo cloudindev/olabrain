@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 import { env } from "@/lib/env";
 import { ensurePanelContact } from "@/lib/contacts";
 import { createLabToken, labRoomName } from "@/lib/livekit";
+import { hasBalance } from "@/lib/billing";
 import { authErrorResponse, requireTenant, tenantTx } from "@/lib/tenant";
 
 export const runtime = "nodejs";
@@ -24,6 +25,8 @@ export async function POST(request: Request) {
     const { contact_id: _clientContact, ...config } = parsed.data;
 
     const created = await tenantTx(ctx, async (tx) => {
+      // Prepaid (ADR-007): no balance, no new call.
+      if (!(await hasBalance(tx, ctx.tenantId))) return "no_balance" as const;
       let contactId: string | null = null;
       if (config.agent_id) {
         const [agent] = await tx
@@ -54,6 +57,7 @@ export async function POST(request: Request) {
       });
       return { id: conversation!.id, contactId };
     });
+    if (created === "no_balance") return Response.json({ error: "no_balance" }, { status: 402 });
     if (!created) return Response.json({ error: "agent_not_found" }, { status: 404 });
     const conversationId = created.id;
 

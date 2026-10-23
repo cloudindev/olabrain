@@ -1,4 +1,5 @@
-import { agents, conversationFiles, conversations, messages, usageEvents } from "@brainagent/db";
+import { agents, conversationFiles, conversations, messages } from "@brainagent/db";
+import { chargeChatReply, hasBalance } from "@/lib/billing";
 import { and, asc, eq, lt } from "drizzle-orm";
 import { z } from "zod";
 import { attachmentsSchema } from "@brainagent/core";
@@ -42,33 +43,7 @@ async function persistReply(ctx: TenantContext, conversationId: string, done: Do
         .insert(messages)
         .values({ tenantId: ctx.tenantId, conversationId, role: "assistant", content: done.text });
     }
-    const provider = done.model ?? "default";
-    await tx.insert(usageEvents).values([
-      {
-        tenantId: ctx.tenantId,
-        conversationId,
-        kind: "chat_message",
-        provider,
-        quantity: "1",
-        unit: "message",
-      },
-      {
-        tenantId: ctx.tenantId,
-        conversationId,
-        kind: "llm_input",
-        provider,
-        quantity: String(done.usage?.prompt_tokens ?? 0),
-        unit: "token",
-      },
-      {
-        tenantId: ctx.tenantId,
-        conversationId,
-        kind: "llm_output",
-        provider,
-        quantity: String(done.usage?.completion_tokens ?? 0),
-        unit: "token",
-      },
-    ]);
+    await chargeChatReply(tx, ctx.tenantId, conversationId, done, "Mensaje de chat");
   });
 }
 
@@ -90,6 +65,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   // The user message is stored BEFORE calling the runtime: write confirmations are only
   // accepted after a stored user message (see apps/connector router).
   const setup = await tenantTx(ctx, async (tx) => {
+    // Prepaid (ADR-007): no balance, no new turn.
+    if (!(await hasBalance(tx, ctx.tenantId))) return "no_balance" as const;
     const [agent] = await tx
       .select({ id: agents.id })
       .from(agents)
@@ -152,6 +129,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       .orderBy(asc(messages.createdAt));
     return { conversationId, contactId, history: history.slice(-40) };
   });
+  if (setup === "no_balance") return Response.json({ error: "no_balance" }, { status: 402 });
   if (!setup) return Response.json({ error: "agent_not_found" }, { status: 404 });
 
   const e = env();

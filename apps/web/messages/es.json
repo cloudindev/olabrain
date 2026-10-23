@@ -50,7 +50,8 @@
     "organization": "Organización",
     "menu": "Menú",
     "openMenu": "Abrir menú",
-    "closeMenu": "Cerrar menú"
+    "closeMenu": "Cerrar menú",
+    "balance": "Saldo"
   },
   "lab": {
     "title": "Laboratorio de voz",
@@ -471,7 +472,8 @@
       "mic": "Necesitamos permiso para usar el micrófono. Actívalo en tu navegador y vuelve a intentarlo.",
       "limit": "Has usado todas las demos de esta hora. Vuelve a intentarlo más tarde.",
       "unavailable": "La demo no está disponible ahora mismo. Inténtalo en unos minutos.",
-      "generic": "No hemos podido iniciar la llamada. Inténtalo de nuevo."
+      "generic": "No hemos podido iniciar la llamada. Inténtalo de nuevo.",
+      "no_balance": "La demo no está disponible ahora mismo."
     },
     "legal": {
       "title": "Legal",
@@ -523,7 +525,8 @@
       "unavailable": "La voz no está disponible ahora mismo.",
       "fileType": "{name}: tipo de archivo no admitido.",
       "fileSize": "Los archivos superan {mb} MB en total.",
-      "fileCount": "Máximo {count} archivos por mensaje."
+      "fileCount": "Máximo {count} archivos por mensaje.",
+      "no_balance": "Te has quedado sin saldo. Recarga en Saldo para seguir usando tus agentes."
     },
     "opening": "Hola. ¿En qué te puedo ayudar?"
   },
@@ -608,7 +611,8 @@
     "errors": {
       "generic": "No se ha podido completar. Inténtalo de nuevo.",
       "limit": "Has alcanzado el límite de uso por ahora. Inténtalo más tarde.",
-      "mic": "Necesitamos permiso para usar el micrófono."
+      "mic": "Necesitamos permiso para usar el micrófono.",
+      "no_balance": "Este asistente no está disponible ahora mismo."
     }
   },
   "publish": {
@@ -646,5 +650,33 @@
     "save": "Guardar",
     "saving": "Guardando…",
     "saved": "Guardado"
+  },
+  "billing": {
+    "title": "Saldo",
+    "subtitle": "Tu saldo prepago: cada mensaje y cada minuto de voz de tus agentes se descuentan de aquí.",
+    "balance": "Saldo disponible",
+    "empty": "Sin saldo: tus agentes no podrán atender hasta que recargues.",
+    "covers": "Te alcanza para unos {minutes} min de voz o unos {messages} mensajes.",
+    "topupTitle": "Recargar saldo",
+    "topupHint": "Elige un importe. Se añade al momento a tu saldo.",
+    "paymentsSoon": "El pago con tarjeta se activa en breve. Mientras tanto, escríbenos a hola@cloudin.pro si necesitas saldo.",
+    "movements": "Movimientos",
+    "noMovements": "Aún no hay movimientos.",
+    "date": "Fecha",
+    "concept": "Concepto",
+    "amount": "Importe",
+    "after": "Saldo",
+    "autoTitle": "Recarga automática",
+    "autoHint": "Cuando el saldo baje del mínimo, recargamos el importe elegido con tu tarjeta guardada.",
+    "autoEnabled": "Activar recarga automática",
+    "threshold": "Si el saldo baja de (€)",
+    "rechargeAmount": "Recargar (€)",
+    "save": "Guardar",
+    "saved": "Guardado. Se aplicará cuando el pago con tarjeta esté activo.",
+    "pricesTitle": "Tarifas",
+    "pricesHint": "Precio por uso, con impuestos aparte.",
+    "voiceMinute": "Minuto de voz",
+    "typicalMessage": "Mensaje de chat típico",
+    "perModel": "Por cada millón de tokens (entrada / salida):"
   }
 }

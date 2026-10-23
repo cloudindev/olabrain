@@ -13,7 +13,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { VoiceState } from "@/components/avatar/avatar-stage";
 
 export type CallStatus = "idle" | "connecting" | "live" | "ended" | "error";
-export type CallError = "mic" | "limit" | "unavailable" | "generic";
+export type CallError = "mic" | "limit" | "unavailable" | "no_balance" | "generic";
 export type CallSession = { serverUrl: string; token: string; maxSeconds?: number };
 export type VoiceLine = { id: string; who: "user" | "agent"; text: string; final: boolean };
 
@@ -26,7 +26,13 @@ export class CallStartError extends Error {
 
 /** Maps a token endpoint response to a CallStartError code. */
 export function callErrorFor(status: number): CallError {
-  return status === 429 ? "limit" : status === 503 ? "unavailable" : "generic";
+  return status === 402
+    ? "no_balance"
+    : status === 429
+      ? "limit"
+      : status === 503
+        ? "unavailable"
+        : "generic";
 }
 
 /**

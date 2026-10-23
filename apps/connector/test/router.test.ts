@@ -557,6 +557,22 @@ describe("voice transcripts", () => {
       tx.select().from(conversations).where(eq(conversations.id, conversationId)),
     );
     expect(conv!.endedAt).toBeInstanceOf(Date);
+
+    // The call's minutes are charged to the wallet (created with the signup credit).
+    const { walletLedger } = await import("@brainagent/db");
+    const ledger = await withTenant(appDb.db, tenantA, (tx) =>
+      tx.select().from(walletLedger).where(eq(walletLedger.tenantId, tenantA)),
+    );
+    expect(ledger.map((l) => l.kind).sort()).toEqual(["grant", "usage"]);
+    const usage = ledger.find((l) => l.kind === "usage")!;
+    expect(usage.conversationId).toBe(conversationId);
+    expect(Number(usage.amountEur)).toBeLessThan(0);
+    // Ending twice charges once.
+    await req(`/v1/conversations/${conversationId}/end`, { body: {} });
+    const again = await withTenant(appDb.db, tenantA, (tx) =>
+      tx.select().from(walletLedger).where(eq(walletLedger.tenantId, tenantA)),
+    );
+    expect(again).toHaveLength(2);
   });
 });
 

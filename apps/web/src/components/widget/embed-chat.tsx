@@ -92,7 +92,10 @@ export function EmbedChat({
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ message: text, conversationId }),
       });
-      if (!res.ok || !res.body) throw new Error(res.status === 429 ? "limit" : "generic");
+      if (!res.ok || !res.body)
+        throw new Error(
+          res.status === 402 ? "no_balance" : res.status === 429 ? "limit" : "generic",
+        );
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
@@ -117,7 +120,8 @@ export function EmbedChat({
         }
       }
     } catch (e) {
-      setError(t(`errors.${(e as Error).message === "limit" ? "limit" : "generic"}`));
+      const code = (e as Error).message;
+      setError(t(`errors.${code === "limit" || code === "no_balance" ? code : "generic"}`));
       setMessages((prev) => (prev.at(-1)?.text ? prev : prev.slice(0, -1)));
     } finally {
       setBusy(false);
@@ -156,7 +160,9 @@ export function EmbedChat({
   const close = () => window.parent?.postMessage({ type: "olabrain:close" }, "*");
   const speaking = live && agentState === "speaking";
   const callError = call.error
-    ? t(`errors.${call.error === "limit" ? "limit" : call.error === "mic" ? "mic" : "generic"}`)
+    ? t(
+        `errors.${call.error === "limit" || call.error === "mic" || call.error === "no_balance" ? call.error : "generic"}`,
+      )
     : null;
 
   return (

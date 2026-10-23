@@ -50,7 +50,8 @@
     "organization": "Organization",
     "menu": "Menu",
     "openMenu": "Open menu",
-    "closeMenu": "Close menu"
+    "closeMenu": "Close menu",
+    "balance": "Balance"
   },
   "lab": {
     "title": "Voice lab",
@@ -471,7 +472,8 @@
       "mic": "We need permission to use your microphone. Allow it in your browser and try again.",
       "limit": "You have used all the demos for this hour. Please try again later.",
       "unavailable": "The demo is not available right now. Please try again in a few minutes.",
-      "generic": "We couldn't start the call. Please try again."
+      "generic": "We couldn't start the call. Please try again.",
+      "no_balance": "The demo is not available right now."
     },
     "legal": {
       "title": "Legal",
@@ -523,7 +525,8 @@
       "unavailable": "Voice is not available right now.",
       "fileType": "{name}: file type not supported.",
       "fileSize": "Files exceed {mb} MB in total.",
-      "fileCount": "Up to {count} files per message."
+      "fileCount": "Up to {count} files per message.",
+      "no_balance": "You're out of balance. Top up in Balance to keep using your agents."
     },
     "opening": "Hi. How can I help you?"
   },
@@ -608,7 +611,8 @@
     "errors": {
       "generic": "That didn't work. Please try again.",
       "limit": "You've reached the usage limit for now. Please try later.",
-      "mic": "We need permission to use your microphone."
+      "mic": "We need permission to use your microphone.",
+      "no_balance": "This assistant is not available right now."
     }
   },
   "publish": {
@@ -646,5 +650,33 @@
     "save": "Save",
     "saving": "Saving…",
     "saved": "Saved"
+  },
+  "billing": {
+    "title": "Balance",
+    "subtitle": "Your prepaid balance: every message and voice minute of your agents is deducted from here.",
+    "balance": "Available balance",
+    "empty": "No balance: your agents can't serve until you top up.",
+    "covers": "Enough for about {minutes} voice minutes or {messages} messages.",
+    "topupTitle": "Top up",
+    "topupHint": "Choose an amount. It's added to your balance at once.",
+    "paymentsSoon": "Card payments are coming very soon. Meanwhile, write to hola@cloudin.pro if you need balance.",
+    "movements": "Movements",
+    "noMovements": "No movements yet.",
+    "date": "Date",
+    "concept": "Concept",
+    "amount": "Amount",
+    "after": "Balance",
+    "autoTitle": "Auto top-up",
+    "autoHint": "When the balance drops below the minimum, we top up the chosen amount with your saved card.",
+    "autoEnabled": "Enable auto top-up",
+    "threshold": "If balance drops below (€)",
+    "rechargeAmount": "Top up (€)",
+    "save": "Save",
+    "saved": "Saved. It will apply once card payments are active.",
+    "pricesTitle": "Prices",
+    "pricesHint": "Price per use, taxes not included.",
+    "voiceMinute": "Voice minute",
+    "typicalMessage": "Typical chat message",
+    "perModel": "Per million tokens (input / output):"
   }
 }

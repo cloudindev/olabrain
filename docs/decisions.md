@@ -235,3 +235,20 @@ anti-SSRF, errores legibles).
   `^[a-z]{2}\d{1,2}$`). Los datos sensibles del empleado (DNI, SS, cuenta) no llegan al modelo.
 
 **Pendiente.** PDF de facturas de Holded (binario) por enlace firmado, como en WHMCS.
+
+## ADR-017 — Cada conexión pertenece a un agente (2026-10-24)
+
+**Contexto.** Las conexiones eran de la organización y cada agente nuevo recibía todas sus herramientas: un agente creado después heredaba el acceso a WHMCS, Outlook… de otro.
+
+**Decisión.** `connections.agent_id`: una conexión se crea para un agente y solo ese agente recibe (y puede llamar) sus herramientas; el dueño no cambia. Los agentes nuevos empiezan sin herramientas. El conector filtra por dueño al cargar y al ejecutar herramientas, sean cuales sean las asignaciones. Las conexiones existentes pasaron al primer agente que las usaba; las que no tenían uso quedan «sin agente» y cualquier agente puede adoptarlas. Borrar un agente borra sus conexiones y sus credenciales.
+
+## ADR-018 — Monedero prepago y precios por coste real (2026-10-24)
+
+Implementa ADR-007 sin pagos (Stripe pendiente).
+
+- **Saldo en euros** por organización (`wallets`) y libro de movimientos inmutable (`wallet_ledger`, sin UPDATE/DELETE para la app).
+- **Precio = coste del proveedor × 1,30**, con las tarifas oficiales en `config/pricing.json` (fuentes y fecha dentro del fichero). Texto: tokens de entrada/salida del modelo que respondió. Voz: por segundo, 0,035 USD/min de coste (Gemini Live con escucha continua + LiveKit Cloud, con colchón por la re-facturación del historial de audio en llamadas largas; medir y ajustar).
+- **Saldo de bienvenida:** 5 min de voz + 200 mensajes típicos (8.000 tokens de entrada, 250 de salida) a precio de venta = 0,42 €. Se crea al primer uso de cada organización.
+- **Sin saldo** no empiezan turnos de chat ni llamadas (panel y widget, HTTP 402); una llamada en curso no se corta, el saldo puede quedar ligeramente negativo. La demo de la home no se cobra.
+- Ajustes manuales: `pnpm --filter @brainagent/db wallet:grant <tenantId> <eur> "<motivo>"`.
+- Las tarifas de referencia de CLAUDE.md (voz 0,35 €/min, mensaje 0,01 €) quedan sustituidas por coste × 1,30 por decisión del usuario.
