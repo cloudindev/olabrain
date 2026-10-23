@@ -24,7 +24,7 @@ const NEUTRAL = ["enzo"];
 
 /** Portraits (apps/web/public) and video avatars of the catalog personas. */
 const AVATARS: Record<string, { image: string; video?: string }> = {
-  alba: { image: "/alba/face.jpg", video: "/alba" },
+  alba: { image: "/personas/alba.jpg", video: "/alba" },
   mateo: { image: "/personas/mateo.jpg" },
   lia: { image: "/personas/lia.jpg" },
   enzo: { image: "/personas/enzo.jpg" },
