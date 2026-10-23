@@ -7,7 +7,7 @@ export default async function AuthLayout({ children }: { children: ReactNode }) 
   return (
     <main className="grid min-h-dvh lg:grid-cols-[1fr_1.1fr]">
       <section className="flex flex-col justify-between bg-ink px-8 py-10 text-paper max-lg:hidden">
-        <Logo inverted />
+        <Logo inverted className="self-start" />
         <div className="max-w-md">
           <Waveform />
           <p className="mt-8 font-display text-4xl leading-tight font-semibold tracking-tight">

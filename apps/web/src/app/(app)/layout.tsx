@@ -39,7 +39,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     <div className="min-h-dvh">
       <header className="sticky top-0 z-10 border-b border-line bg-paper/85 backdrop-blur">
         <div className="mx-auto flex h-14 max-w-7xl items-center gap-3 px-4 sm:gap-6 sm:px-6">
-          <Link href="/agents" aria-label="BrainAgent">
+          <Link href="/agents" aria-label="OlaBrain">
             <Logo compact />
           </Link>
           <nav className="hidden items-center gap-1 text-sm md:flex">

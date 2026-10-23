@@ -43,7 +43,7 @@ const schema = z.object({
   SMTP_PORT: z.coerce.number().int().default(1025),
   SMTP_USER: optional,
   SMTP_PASSWORD: optional,
-  EMAIL_FROM: z.string().default("BrainAgent <no-reply@brainagent.local>"),
+  EMAIL_FROM: z.string().default("OlaBrain <no-reply@olabrain.local>"),
   LIVEKIT_URL: z.string().min(1).default("ws://localhost:7880"),
   LIVEKIT_API_KEY: z.string().min(1).default("devkey"),
   LIVEKIT_API_SECRET: z.string().min(1).default("secret"),

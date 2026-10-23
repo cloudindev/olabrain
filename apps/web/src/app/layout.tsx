@@ -33,7 +33,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: { default: "BrainAgent", template: "%s · BrainAgent" },
+  title: { default: "OlaBrain", template: "%s · OlaBrain" },
   description: "Empleados digitales con voz y chat para tu empresa.",
   robots: { index: false, follow: false },
 };

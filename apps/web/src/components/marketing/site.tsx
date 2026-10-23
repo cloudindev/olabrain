@@ -1,5 +1,6 @@
 import { cn } from "@brainagent/ui";
 import Link from "next/link";
+import { Logo } from "@/components/logo";
 import { getTranslations } from "next-intl/server";
 import { env } from "@/lib/env";
 import { getSession } from "@/lib/tenant";
@@ -21,14 +22,7 @@ export const LEGAL_PAGES = [
 ] as const;
 
 export function Brand() {
-  return (
-    <span className="flex items-center gap-1.5">
-      <span className="font-display text-lg font-bold uppercase tracking-tight">Ola</span>
-      <span className="rounded border border-line-strong bg-surface-2 px-1 py-0.5 font-display text-[10px] font-bold uppercase leading-none tracking-[0.14em] text-signal">
-        brain
-      </span>
-    </span>
-  );
+  return <Logo className="h-6" />;
 }
 
 /**

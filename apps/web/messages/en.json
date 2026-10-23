@@ -1,6 +1,6 @@
 {
   "common": {
-    "appName": "BrainAgent",
+    "appName": "OlaBrain",
     "loading": "Loading…",
     "error": "Something went wrong. Please try again.",
     "or": "or",
@@ -12,7 +12,7 @@
     "language": "Language"
   },
   "auth": {
-    "signInTitle": "Sign in to BrainAgent",
+    "signInTitle": "Sign in to OlaBrain",
     "signInSubtitle": "Digital employees with voice and chat for your company.",
     "signUpTitle": "Create your account",
     "signUpSubtitle": "You will create your organization next.",
@@ -258,7 +258,7 @@
         "secret": "API secret",
         "help": "In WHMCS: Configuration › System Settings › API Credentials (an admin with the “API Access” permission). As our servers have no fixed IP, also add an API access key (below).",
         "accessKey": "API access key (optional)",
-        "accessKeyHint": "The value of $api_access_key in your WHMCS configuration.php. Lets BrainAgent call the API without relying on the IP allowlist (our servers have no fixed IP).",
+        "accessKeyHint": "The value of $api_access_key in your WHMCS configuration.php. Lets OlaBrain call the API without relying on the IP allowlist (our servers have no fixed IP).",
         "accessKeyTitle": "API access key",
         "accessKeyBody": "Our cloud servers have no fixed IP, so the WHMCS IP allowlist will block them sooner or later. Add the line $api_access_key = 'a-long-key'; to your WHMCS configuration.php and paste the same key here.",
         "accessKeySave": "Save and test",

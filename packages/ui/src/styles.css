@@ -24,6 +24,10 @@
   --bad: #b42318;
   --bad-soft: #f8dedb;
   --focus: #2f5bd3;
+  --logo-primary: #131313;
+  --logo-accent: #3a6a00;
+  --logo-primary-inv: #9afc5b;
+  --logo-accent-inv: #ffff00;
   color-scheme: light;
 }
 
@@ -47,6 +51,10 @@
     --bad: #f47067;
     --bad-soft: #351513;
     --focus: #7aa2ff;
+    --logo-primary: #9afc5b;
+    --logo-accent: #ffff00;
+    --logo-primary-inv: #131313;
+    --logo-accent-inv: #3a6a00;
     color-scheme: dark;
   }
 }
@@ -71,6 +79,10 @@
   --bad: #f47067;
   --bad-soft: #351513;
   --focus: #7aa2ff;
+  --logo-primary: #9afc5b;
+  --logo-accent: #ffff00;
+  --logo-primary-inv: #131313;
+  --logo-accent-inv: #3a6a00;
   color-scheme: dark;
 }
 

@@ -50,7 +50,7 @@ async function defaultOrganizationFor(userId: string): Promise<string | null> {
 function createAuth() {
   const e = env();
   return betterAuth({
-    appName: "BrainAgent",
+    appName: "OlaBrain",
     baseURL: e.BETTER_AUTH_URL,
     secret: e.BETTER_AUTH_SECRET,
     database: drizzleAdapter(db(), {
@@ -77,8 +77,8 @@ function createAuth() {
       sendVerificationEmail: async ({ user, url }) => {
         await sendEmail(
           user.email,
-          "Confirma tu email en BrainAgent",
-          `Hola ${user.name},\n\nConfirma tu email para entrar en BrainAgent:\n${url}\n\nSi no has creado esta cuenta, ignora este mensaje.`,
+          "Confirma tu email en OlaBrain",
+          `Hola ${user.name},\n\nConfirma tu email para entrar en OlaBrain:\n${url}\n\nSi no has creado esta cuenta, ignora este mensaje.`,
         );
       },
     },
@@ -110,8 +110,8 @@ function createAuth() {
           const url = `${e.APP_URL}/invitations/${id}`;
           await sendEmail(
             email,
-            `Invitación a ${org.name} en BrainAgent`,
-            `${inviter.user.name} te ha invitado a unirte a ${org.name} en BrainAgent:\n${url}`,
+            `Invitación a ${org.name} en OlaBrain`,
+            `${inviter.user.name} te ha invitado a unirte a ${org.name} en OlaBrain:\n${url}`,
           );
         },
       }),

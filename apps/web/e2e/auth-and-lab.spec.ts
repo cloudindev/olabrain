@@ -62,5 +62,5 @@ test("a tenant cannot write metrics into another tenant's conversation", async (
 test("unauthenticated visitors are sent to login", async ({ page }) => {
   await page.goto("/lab");
   await expect(page).toHaveURL(/\/login\?next=%2Flab$/);
-  await expect(page.getByRole("heading", { name: "Entra en BrainAgent" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Entra en OlaBrain" })).toBeVisible();
 });
