@@ -60,14 +60,20 @@ const GALLERY: {
     photo: "/personas/lia.jpg",
   },
   {
-    name: "Sara",
+    name: "Enzo",
     role: "Atención al cliente",
     code: "CS-04",
     tilt: "rotate-3",
-    photo: "/personas/sara.jpg",
+    photo: "/personas/enzo.jpg",
   },
   { name: "Teo", role: "Finanzas", code: "FIN-05", tilt: "-rotate-2", photo: "/personas/teo.jpg" },
-  { name: "Nora", role: "Soporte", code: "SOP-06", tilt: "rotate-1" },
+  {
+    name: "Nora",
+    role: "Soporte",
+    code: "SOP-06",
+    tilt: "rotate-1",
+    photo: "/personas/nora.jpg",
+  },
 ];
 
 const STEPS: { key: "create" | "connect" | "automate"; icon: LucideIcon }[] = [
