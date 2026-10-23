@@ -47,6 +47,7 @@ export default async function AgentPage({
         name: personas.name,
         avatarUrl: personas.avatarUrl,
         avatarVideo: personas.avatarVideo,
+        tenantId: personas.tenantId,
       })
       .from(personas)
       .where(or(isNull(personas.tenantId), eq(personas.tenantId, ctx.tenantId)))
@@ -183,7 +184,10 @@ export default async function AgentPage({
             status: agent.status,
             policy: agent.policy as { maxToolSteps?: number; memoryEnabled?: boolean },
           }}
-          personas={data.personaList}
+          // Catalog personas without a portrait are hidden, unless this agent uses one.
+          personas={data.personaList.filter(
+            (p) => p.avatarUrl || p.tenantId || p.id === agent.personaId,
+          )}
           models={modelCatalog()}
           canDelete={
             (ctx.role === "owner" || ctx.role === "admin") && agent.id !== env().HOME_AGENT_ID

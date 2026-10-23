@@ -24,7 +24,7 @@ test("create an agent, connect the demo database tools and use them", async ({ p
 
   // Create the agent from the catalog.
   await page.goto("/agents/new", { waitUntil: "networkidle" });
-  await page.getByRole("radio", { name: /Hugo/ }).click();
+  await page.getByRole("radio", { name: /Mateo/ }).click();
   await page.getByLabel("Nombre del agente").fill("Hugo de operaciones");
   await page.getByRole("button", { name: "Crear agente" }).click();
   await expect(page).toHaveURL(/\/agents\/[0-9a-f-]{36}$/);

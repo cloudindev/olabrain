@@ -155,7 +155,7 @@ export function AgentCustomize({
             <div
               role="radiogroup"
               aria-label={ta("persona")}
-              className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-3"
+              className="grid grid-cols-3 gap-3 sm:grid-cols-4 xl:grid-cols-6"
             >
               {personas.map((p) => {
                 const selected = values.personaId === p.id;
@@ -165,23 +165,25 @@ export function AgentCustomize({
                     type="button"
                     role="radio"
                     aria-checked={selected}
+                    aria-label={p.name}
                     onClick={() => set("personaId", p.id)}
                     className={cn(
-                      "group relative flex items-center gap-3 rounded-2xl border px-3 py-2.5 text-left transition",
+                      "group relative overflow-hidden rounded-2xl border bg-surface text-left transition",
                       selected
-                        ? "border-ink bg-surface-2 ring-1 ring-ink"
-                        : "border-line hover:border-line-strong hover:bg-surface-2/60",
+                        ? "border-ink ring-2 ring-ink"
+                        : "border-line hover:border-line-strong",
                     )}
                   >
                     <AgentFace
                       src={p.avatarUrl}
                       name={p.name}
-                      className="size-10 rounded-full text-sm"
+                      className="aspect-[3/4] w-full rounded-none border-0 text-3xl"
                     />
-                    <span className="min-w-0">
-                      <span className="block truncate text-sm font-medium text-ink">{p.name}</span>
-                    </span>
-                    {selected ? <Check className="ml-auto size-4 shrink-0 text-ink" /> : null}
+                    {selected ? (
+                      <span className="absolute right-2 top-2 flex size-6 items-center justify-center rounded-full bg-ink text-paper shadow">
+                        <Check className="size-3.5" />
+                      </span>
+                    ) : null}
                   </button>
                 );
               })}
@@ -191,7 +193,7 @@ export function AgentCustomize({
                 aria-checked={values.personaId === null}
                 onClick={() => set("personaId", null)}
                 className={cn(
-                  "flex items-center gap-3 rounded-2xl border border-dashed px-3 py-2.5 text-left text-sm transition",
+                  "flex items-center justify-center rounded-2xl border border-dashed p-3 text-center text-sm transition",
                   values.personaId === null
                     ? "border-ink text-ink"
                     : "border-line text-ink-2 hover:border-line-strong",

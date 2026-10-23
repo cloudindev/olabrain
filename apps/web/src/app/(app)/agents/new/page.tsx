@@ -1,5 +1,5 @@
 import { personas } from "@brainagent/db";
-import { asc, eq, isNull, or } from "drizzle-orm";
+import { and, asc, eq, isNotNull, isNull, or } from "drizzle-orm";
 import { getTranslations } from "next-intl/server";
 import { PageHeader } from "@/components/page-header";
 import { NewAgentForm } from "@/components/agents/new-agent-form";
@@ -19,7 +19,13 @@ export default async function NewAgentPage() {
         avatarUrl: personas.avatarUrl,
       })
       .from(personas)
-      .where(or(isNull(personas.tenantId), eq(personas.tenantId, ctx.tenantId)))
+      // Catalog personas with a portrait, plus the organization's own personas.
+      .where(
+        or(
+          and(isNull(personas.tenantId), isNotNull(personas.avatarUrl)),
+          eq(personas.tenantId, ctx.tenantId),
+        ),
+      )
       .orderBy(asc(personas.name)),
   );
   return (

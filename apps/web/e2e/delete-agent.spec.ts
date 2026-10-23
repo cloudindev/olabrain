@@ -7,7 +7,7 @@ test("an admin deletes an agent and its conversations from Personalizar", async 
   test.setTimeout(90_000);
   await signUpAndCreateOrg(page, `Borrar ${Date.now()}`);
   await page.goto("/agents/new", { waitUntil: "networkidle" });
-  await page.getByRole("radio", { name: /Hugo/ }).click();
+  await page.getByRole("radio", { name: /Mateo/ }).click();
   await page.getByLabel("Nombre del agente").fill("Hugo temporal");
   await page.getByRole("button", { name: "Crear agente" }).click();
   await expect(page).toHaveURL(/\/agents\/[0-9a-f-]{36}$/);

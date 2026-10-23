@@ -1,6 +1,7 @@
 "use client";
 
 import { Button, Card, Field, Input, cn } from "@brainagent/ui";
+import { Check } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import { createAgent } from "@/app/(app)/agents/actions";
@@ -23,13 +24,12 @@ export function NewAgentForm({ personas }: { personas: PersonaOption[] }) {
 
   function choose(p: PersonaOption) {
     setSelected(p);
-    setName((current) => (current && current !== selected?.name ? current : p.name));
   }
 
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
       <div
-        className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3"
+        className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4"
         role="radiogroup"
         aria-label={t("choosePersona")}
       >
@@ -39,18 +39,26 @@ export function NewAgentForm({ personas }: { personas: PersonaOption[] }) {
             type="button"
             role="radio"
             aria-checked={selected?.id === p.id}
+            aria-label={p.name}
             onClick={() => choose(p)}
-            className="text-left"
+            className={cn(
+              "group relative overflow-hidden rounded-[22px] border bg-surface text-left transition",
+              selected?.id === p.id
+                ? "border-ink ring-2 ring-ink"
+                : "border-line hover:-translate-y-0.5 hover:border-line-strong hover:shadow-[0_18px_40px_-28px_rgba(22,24,28,0.45)]",
+            )}
           >
-            <Card
-              className={cn(
-                "flex h-full gap-3 p-4 transition-colors hover:border-line-strong",
-                selected?.id === p.id && "border-ink ring-1 ring-ink",
-              )}
-            >
-              <AgentFace src={p.avatarUrl} name={p.name} className="size-12 rounded-full" />
-              <p className="self-center font-display font-semibold tracking-tight">{p.name}</p>
-            </Card>
+            {/* The portrait is what people choose by: large, 3:4. */}
+            <AgentFace
+              src={p.avatarUrl}
+              name={p.name}
+              className="aspect-[3/4] w-full rounded-none border-0 text-5xl"
+            />
+            {selected?.id === p.id ? (
+              <span className="absolute right-3 top-3 flex size-7 items-center justify-center rounded-full bg-ink text-paper shadow">
+                <Check className="size-4" />
+              </span>
+            ) : null}
           </button>
         ))}
       </div>
@@ -63,7 +71,12 @@ export function NewAgentForm({ personas }: { personas: PersonaOption[] }) {
               e.preventDefault();
               setError(null);
               start(async () => {
-                const res = await createAgent({ personaId: selected.id, name, role });
+                const res = await createAgent({
+                  personaId: selected.id,
+                  // Empty name: the persona's, shown as placeholder.
+                  name: name.trim() || selected.name,
+                  role,
+                });
                 if (res && !res.ok) setError(res.error);
               });
             }}
@@ -74,7 +87,7 @@ export function NewAgentForm({ personas }: { personas: PersonaOption[] }) {
                 id="agent-name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                required
+                placeholder={selected.name}
                 maxLength={80}
               />
             </Field>
@@ -88,7 +101,7 @@ export function NewAgentForm({ personas }: { personas: PersonaOption[] }) {
               />
             </Field>
             {error ? <p className="text-sm text-bad">{error}</p> : null}
-            <Button type="submit" disabled={pending || !name.trim()}>
+            <Button type="submit" disabled={pending}>
               {t("create")}
             </Button>
           </form>
