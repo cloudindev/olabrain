@@ -476,10 +476,10 @@ describe("WHMCS", () => {
       sendinvoice: "true",
       itemdescription1: "Soporte marzo",
       itemamount1: "120",
-      itemtaxed1: "true",
+      itemtaxed1: "1",
       itemdescription2: "Migración",
       itemamount2: "80",
-      itemtaxed2: "false",
+      itemtaxed2: "0",
     });
   });
 
@@ -569,7 +569,7 @@ describe("WHMCS", () => {
       invoiceid: "32794",
       "itemdescription[401]": "Hosting anual 2027",
       "itemamount[401]": "650.00",
-      "itemtaxed[401]": "true",
+      "itemtaxed[401]": "1",
     });
     expect(res.ok).toBe(true);
 
@@ -590,10 +590,10 @@ describe("WHMCS", () => {
     expect(Object.fromEntries(second)).toMatchObject({
       "itemdescription[502]": "Dominio",
       "itemamount[502]": "12",
-      "itemtaxed[502]": "false",
+      "itemtaxed[502]": "0",
       "newitemdescription[0]": "Soporte",
       "newitemamount[0]": "30",
-      "newitemtaxed[0]": "true",
+      "newitemtaxed[0]": "1",
       "deletelineids[0]": "501",
     });
     await expect(executeWhmcsTool(ctx, "whmcs_editar_factura", { invoiceid: 77 })).rejects.toThrow(

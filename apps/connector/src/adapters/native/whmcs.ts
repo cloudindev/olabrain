@@ -54,6 +54,20 @@ const invoiceRef = {
   numero: str("Número de factura tal como lo ve el cliente, p. ej. CDIN-32794"),
 };
 
+/** WHMCS reads line tax flags as integers: "true" would be cast to 0 (not taxed). */
+function taxedFlag(taxed: boolean): number {
+  return taxed ? 1 : 0;
+}
+
+/** Optional override of the invoice tax rate (by default WHMCS uses its tax rules). */
+const TAX_RATE = {
+  type: "number",
+  minimum: 0,
+  maximum: 100,
+  description:
+    "Porcentaje de impuesto de la factura (p. ej. 21). Solo si piden un tipo distinto del configurado en WHMCS",
+};
+
 type InvoiceItem = { id: number; description: string; amount: string; taxed: boolean };
 
 /** Line items of a GetInvoice response (`items.item`, absent when the invoice is empty). */
@@ -334,7 +348,7 @@ const TOOLS: ToolSpec[] = [
   {
     name: "whmcs_editar_factura",
     description:
-      "Edita una factura de WHMCS (por su número, p. ej. CDIN-32794, o id): cambia el concepto, el importe o los impuestos de sus líneas, añade o borra líneas, y cambia fechas o notas. El total se recalcula solo. Si la factura tiene una sola línea no hace falta su id; si tiene varias, consulta antes whmcs_factura para ver los ids de línea.",
+      "Edita una factura de WHMCS (por su número, p. ej. CDIN-32794, o id): cambia el concepto, el importe o los impuestos de sus líneas, añade o borra líneas, y cambia fechas o notas. Para añadir o quitar el IVA marca con_impuestos en las líneas (WHMCS aplica su tipo configurado, p. ej. 21 %; iva fuerza otro porcentaje). El total se recalcula solo. Si la factura tiene una sola línea no hace falta su id; si tiene varias, consulta antes whmcs_factura para ver los ids de línea.",
     inputSchema: schema({
       ...invoiceRef,
       lineas: {
@@ -348,7 +362,10 @@ const TOOLS: ToolSpec[] = [
             id: { type: "integer", description: "Id de la línea (opcional si solo hay una)" },
             descripcion: { type: "string", description: "Nuevo concepto" },
             importe: { type: "number", description: "Nuevo importe sin impuestos" },
-            con_impuestos: { type: "boolean", description: "Aplicar impuestos a esta línea" },
+            con_impuestos: {
+              type: "boolean",
+              description: "Aplicar impuestos (IVA) a esta línea",
+            },
           },
         },
       },
@@ -363,7 +380,10 @@ const TOOLS: ToolSpec[] = [
           properties: {
             descripcion: { type: "string", description: "Concepto" },
             importe: { type: "number", description: "Importe sin impuestos" },
-            con_impuestos: { type: "boolean", description: "Aplicar impuestos a esta línea" },
+            con_impuestos: {
+              type: "boolean",
+              description: "Aplicar impuestos (IVA) a esta línea",
+            },
           },
         },
       },
@@ -377,6 +397,7 @@ const TOOLS: ToolSpec[] = [
       vencimiento: str("Fecha de vencimiento AAAA-MM-DD", { pattern: DATE_RE }),
       notas: str("Notas que verá el cliente en la factura"),
       metodo_pago: str("Forma de pago (module)"),
+      iva: TAX_RATE,
     }),
     mode: "write",
     action: "UpdateInvoice",
@@ -391,6 +412,7 @@ const TOOLS: ToolSpec[] = [
         duedate: a.vencimiento,
         notes: a.notas,
         paymentmethod: a.metodo_pago,
+        taxrate: a.iva,
       };
 
       const edits =
@@ -416,7 +438,7 @@ const TOOLS: ToolSpec[] = [
         // WHMCS rewrites description, amount and taxed together: send all three.
         params[`itemdescription[${line.id}]`] = edit.descripcion ?? line.description;
         params[`itemamount[${line.id}]`] = edit.importe ?? line.amount;
-        params[`itemtaxed[${line.id}]`] = edit.con_impuestos ?? line.taxed;
+        params[`itemtaxed[${line.id}]`] = taxedFlag(edit.con_impuestos ?? line.taxed);
       }
       const added =
         (a.nuevas_lineas as { descripcion: string; importe: number; con_impuestos?: boolean }[]) ??
@@ -424,7 +446,7 @@ const TOOLS: ToolSpec[] = [
       added.forEach((l, i) => {
         params[`newitemdescription[${i}]`] = l.descripcion;
         params[`newitemamount[${i}]`] = l.importe;
-        params[`newitemtaxed[${i}]`] = l.con_impuestos ?? false;
+        params[`newitemtaxed[${i}]`] = taxedFlag(l.con_impuestos ?? false);
       });
       const removed = (a.borrar_lineas as number[]) ?? [];
       removed.forEach((id, i) => {
@@ -714,7 +736,7 @@ const TOOLS: ToolSpec[] = [
   {
     name: "whmcs_crear_factura",
     description:
-      "Crea una factura manual en WHMCS para un cliente con una o varias líneas (descripción e importe). Por defecto queda pendiente de pago y se envía al cliente.",
+      "Crea una factura manual en WHMCS para un cliente con una o varias líneas (descripción e importe). Por defecto queda pendiente de pago y se envía al cliente. Si piden IVA o impuestos, marca con_impuestos en las líneas: WHMCS aplica su tipo configurado (p. ej. 21 %); usa iva solo para forzar otro porcentaje.",
     inputSchema: schema(
       {
         clientid: int("ID del cliente"),
@@ -730,7 +752,10 @@ const TOOLS: ToolSpec[] = [
             properties: {
               descripcion: { type: "string", description: "Concepto" },
               importe: { type: "number", description: "Importe sin impuestos" },
-              con_impuestos: { type: "boolean", description: "Aplicar impuestos a esta línea" },
+              con_impuestos: {
+                type: "boolean",
+                description: "Aplicar impuestos (IVA) a esta línea",
+              },
             },
           },
         },
@@ -739,6 +764,7 @@ const TOOLS: ToolSpec[] = [
         borrador: { type: "boolean", description: "Crear como borrador sin enviar" },
         enviar: { type: "boolean", description: "Enviar la factura por email (por defecto sí)" },
         notas: str("Notas que verá el cliente en la factura"),
+        iva: TAX_RATE,
       },
       ["clientid", "lineas"],
     ),
@@ -751,7 +777,7 @@ const TOOLS: ToolSpec[] = [
       lines.forEach((l, i) => {
         items[`itemdescription${i + 1}`] = l.descripcion;
         items[`itemamount${i + 1}`] = l.importe;
-        items[`itemtaxed${i + 1}`] = l.con_impuestos ?? false;
+        items[`itemtaxed${i + 1}`] = taxedFlag(l.con_impuestos ?? false);
       });
       return {
         userid: a.clientid,
@@ -761,6 +787,7 @@ const TOOLS: ToolSpec[] = [
         paymentmethod: a.metodo_pago,
         duedate: a.vencimiento,
         notes: a.notas,
+        taxrate: a.iva,
         ...items,
       };
     },

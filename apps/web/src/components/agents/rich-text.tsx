@@ -2,7 +2,7 @@ import { Fragment, type ReactNode } from "react";
 
 /**
  * Minimal, safe Markdown for agent replies: paragraphs, bullet and numbered lists,
- * **bold**, *italic* and `code`. Builds React nodes (never HTML), so model output
+ * ``` code blocks ```, **bold**, *italic* and `code`. Builds React nodes (never HTML), so model output
  * can't inject markup.
  */
 export function RichText({ text }: { text: string }) {
@@ -41,8 +41,32 @@ export function RichText({ text }: { text: string }) {
     }
   };
 
+  let code: string[] | null = null;
   for (const raw of text.split("\n")) {
     const line = raw.trimEnd();
+    // Fenced code: shown as is, scrolling sideways instead of widening the bubble.
+    if (/^\s*```/.test(line)) {
+      if (code) {
+        blocks.push(
+          <pre
+            key={blocks.length}
+            className="max-h-80 overflow-auto rounded-lg bg-ink/5 p-3 font-mono text-xs leading-relaxed whitespace-pre"
+          >
+            {code.join("\n")}
+          </pre>,
+        );
+        code = null;
+      } else {
+        flushParagraph();
+        flushList();
+        code = [];
+      }
+      continue;
+    }
+    if (code) {
+      code.push(raw);
+      continue;
+    }
     const bullet = /^\s*[-*•]\s+(.*)$/.exec(line);
     const numbered = /^\s*\d+[.)]\s+(.*)$/.exec(line);
     if (bullet || numbered) {
@@ -59,9 +83,10 @@ export function RichText({ text }: { text: string }) {
       paragraph.push(line.replace(/^#{1,6}\s+/, ""));
     }
   }
+  if (code) paragraph.push(...code); // unclosed fence: plain text
   flushParagraph();
   flushList();
-  return <div className="flex flex-col gap-2">{blocks}</div>;
+  return <div className="flex min-w-0 flex-col gap-2">{blocks}</div>;
 }
 
 /** **bold**, *italic*, `code`, [links](https://…) and bare https:// URLs. */

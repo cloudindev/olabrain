@@ -20,6 +20,19 @@ describe("RichText", () => {
     expect(out).toContain('<ol class="list-decimal pl-5">');
   });
 
+  it("shows fenced code as an escaped, scrollable block", () => {
+    const out = html(
+      'Aquí va:\n```html\n<footer class="py-24">\n  - no es lista\n</footer>\n```\nFin',
+    );
+    expect(out).toContain("<pre");
+    expect(out).toContain("overflow-auto");
+    expect(out).toContain(
+      "&lt;footer class=&quot;py-24&quot;&gt;\n  - no es lista\n&lt;/footer&gt;</pre>",
+    );
+    expect(out).not.toContain("<ul");
+    expect(out).toContain("<p>Fin</p>");
+  });
+
   it("never injects HTML from the model", () => {
     const out = html('<img src=x onerror="alert(1)"> **<b>hola</b>**');
     expect(out).not.toContain("<img");

@@ -560,7 +560,7 @@ export function AgentConsole({
             >
               <div
                 className={cn(
-                  "flex max-w-[85%] flex-col gap-2",
+                  "flex min-w-0 max-w-[85%] flex-col gap-2",
                   m.role === "user" ? "items-end" : "items-start",
                 )}
               >
@@ -585,7 +585,9 @@ export function AgentConsole({
                 {m.text || (m.role === "assistant" && busy && m === messages.at(-1)) ? (
                   <div
                     className={cn(
-                      "text-[15px] leading-relaxed",
+                      // Long tokens (URLs, code) wrap inside the bubble; on the phone a long
+                      // reply scrolls instead of covering the avatar.
+                      "max-w-full text-[15px] leading-relaxed [overflow-wrap:anywhere] max-lg:max-h-[45dvh] max-lg:overflow-y-auto",
                       m.role === "user" && "whitespace-pre-wrap",
                       m.role === "user"
                         ? "rounded-2xl rounded-br-md bg-ink px-4 py-2.5 text-paper max-lg:bg-[#1f4f8f] max-lg:text-white max-lg:shadow-lg"
