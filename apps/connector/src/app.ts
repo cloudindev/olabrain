@@ -134,11 +134,14 @@ export function createApp(ctx: ConnectorContext, serviceToken: string, opts: App
   // --- Runtime ---------------------------------------------------------------
   app.get("/v1/agents/:agentId/config", async (c) => {
     const contact = c.req.query("contactId");
+    const conversation = c.req.query("conversationId");
     const config = await agentRuntimeConfig(
       ctx,
       c.var.tenantId,
       uuid.parse(c.req.param("agentId")),
       contact ? uuid.parse(contact) : undefined,
+      // Widget conversations only see the tools made public in the channel.
+      conversation ? uuid.parse(conversation) : undefined,
     );
     return config ? c.json(config) : c.json({ error: "agent_not_found" }, 404);
   });
@@ -217,6 +220,7 @@ export function createApp(ctx: ConnectorContext, serviceToken: string, opts: App
       tenantId,
       input.agentId,
       input.contactId ?? undefined,
+      input.conversationId,
     );
     if (!cfg) return c.json({ error: "agent_not_found" }, 404);
     const req = { tenantId, conversationId: input.conversationId, messages: input.messages };

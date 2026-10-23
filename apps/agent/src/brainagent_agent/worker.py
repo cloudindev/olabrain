@@ -155,7 +155,9 @@ async def load_runtime_agent(
     if not cfg.agent_id or not cfg.tenant_id:
         return None
     client = ConnectorClient()
-    agent_cfg = await client.agent_config(cfg.tenant_id, cfg.agent_id, cfg.contact_id)
+    agent_cfg = await client.agent_config(
+        cfg.tenant_id, cfg.agent_id, cfg.contact_id, cfg.conversation_id
+    )
     runtime_agent = RuntimeAgent.from_config(cfg.tenant_id, agent_cfg)
     bridge = ToolBridge(
         client=client, agent=runtime_agent, conversation_id=cfg.conversation_id, channel="voice"

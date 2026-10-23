@@ -9,10 +9,17 @@
  * Every call is logged in tool_calls with secrets redacted and payloads size-capped.
  */
 import { createHash } from "node:crypto";
-import { redactSecrets, type Tool, type ToolCallResult, type ToolLimits } from "@brainagent/core";
+import {
+  redactSecrets,
+  widgetConfigSchema,
+  type Tool,
+  type ToolCallResult,
+  type ToolLimits,
+} from "@brainagent/core";
 import {
   agentTools,
   agents,
+  channels,
   connections,
   contactMemories,
   conversations,
@@ -78,12 +85,49 @@ async function loadAgentTools(
   );
 }
 
+/** Conversations started by anonymous visitors through the web widget. */
+export const WIDGET_CHANNEL = "widget";
+
+/**
+ * Tools an anonymous widget visitor may use: only those the admin made public in the
+ * channel (none by default). null = not a widget conversation (no extra restriction).
+ * Enforced here, server-side, both when listing tools and when calling them.
+ */
+export async function visitorToolFilter(
+  ctx: ConnectorContext,
+  tenantId: string,
+  conversationId: string | null | undefined,
+): Promise<Set<string> | null> {
+  if (!conversationId) return null;
+  return withTenant(ctx.db, tenantId, async (tx) => {
+    const [conv] = await tx
+      .select({ channel: conversations.channel, config: conversations.config })
+      .from(conversations)
+      .where(eq(conversations.id, conversationId))
+      .limit(1);
+    if (!conv || conv.channel !== WIDGET_CHANNEL) return null;
+    const channelId = (conv.config as { channelId?: string }).channelId;
+    if (!channelId) return new Set<string>();
+    const [channel] = await tx
+      .select({ config: channels.config })
+      .from(channels)
+      .where(eq(channels.id, channelId))
+      .limit(1);
+    const parsed = widgetConfigSchema.safeParse(channel?.config ?? {});
+    return new Set(parsed.success ? parsed.data.publicToolIds : []);
+  });
+}
+
 export async function listTools(
   ctx: ConnectorContext,
   tenantId: string,
   agentId: string,
+  conversationId?: string | null,
 ): Promise<Tool[]> {
-  const rows = await loadAgentTools(ctx, tenantId, agentId);
+  const allowed = await visitorToolFilter(ctx, tenantId, conversationId);
+  const rows = (await loadAgentTools(ctx, tenantId, agentId)).filter(
+    (t) => !allowed || allowed.has(t.id),
+  );
   return rows.map((t) => ({
     id: t.id,
     name: t.name,
@@ -196,6 +240,7 @@ export async function agentRuntimeConfig(
   tenantId: string,
   agentId: string,
   contactId?: string,
+  conversationId?: string | null,
 ) {
   const [row] = await withTenant(ctx.db, tenantId, (tx) =>
     tx
@@ -228,7 +273,7 @@ export async function agentRuntimeConfig(
           voiceRef: row.persona.voiceRef,
         }
       : null,
-    tools: await listTools(ctx, tenantId, agentId),
+    tools: await listTools(ctx, tenantId, agentId, conversationId),
     memory:
       contactId && (row.agent.policy as { memoryEnabled?: boolean }).memoryEnabled !== false
         ? {
@@ -279,7 +324,10 @@ export async function callTool(
 ): Promise<ToolCallResult> {
   const started = performance.now();
   const elapsed = () => Math.round(performance.now() - started);
-  const all = await loadAgentTools(ctx, input.tenantId, input.agentId);
+  const allowed = await visitorToolFilter(ctx, input.tenantId, input.conversationId);
+  const all = (await loadAgentTools(ctx, input.tenantId, input.agentId)).filter(
+    (t) => !allowed || allowed.has(t.id),
+  );
   const tool = all.find((t) => t.name === input.toolName);
 
   const log = async (

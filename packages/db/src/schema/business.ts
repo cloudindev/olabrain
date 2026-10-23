@@ -446,3 +446,31 @@ export const conversationFiles = pgTable(
     }).onDelete("cascade"),
   ],
 );
+
+/**
+ * Channels through which an agent is reachable outside the panel. v1: the web widget
+ * (kind "web_widget"), one per agent; its id is public (it goes in the embed snippet).
+ * config: position, halo colour, allowed origins and the tools usable by anonymous visitors.
+ */
+export const channels = pgTable(
+  "channels",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: tenantId(),
+    agentId: uuid("agent_id").notNull(),
+    kind: text("kind").notNull(),
+    config: jsonb("config").$type<Record<string, unknown>>().notNull().default({}),
+    enabled: boolean("enabled").notNull().default(true),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique("channels_agent_kind_uq").on(t.agentId, t.kind),
+    index("channels_tenant_idx").on(t.tenantId),
+    foreignKey({
+      name: "channels_agent_fk",
+      columns: [t.agentId, t.tenantId],
+      foreignColumns: [agents.id, agents.tenantId],
+    }).onDelete("cascade"),
+  ],
+);

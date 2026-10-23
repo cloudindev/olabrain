@@ -128,3 +128,15 @@
     outline-offset: 2px;
   }
 }
+
+/* Widget neon halo (agent «Publicar» preview). */
+@keyframes ob-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  [class*="ob-spin"] {
+    animation: none !important;
+  }
+}

@@ -477,7 +477,8 @@
     "tabs": {
       "chat": "Conversación",
       "customize": "Personalizar",
-      "connections": "Conexiones"
+      "connections": "Conexiones",
+      "publish": "Publicar"
     },
     "back": "Agentes",
     "title": "Conversación",
@@ -577,5 +578,63 @@
     "notFound": "Esta conexión ya no existe.",
     "cardTools": "{on}/{total} herramientas",
     "noneEnabled": "Sin herramientas activas"
+  },
+  "widget": {
+    "empty": "Hola, soy {name}. Escríbeme o pulsa el micrófono para hablar.",
+    "placeholder": "Escribe un mensaje…",
+    "inCall": "En llamada…",
+    "send": "Enviar",
+    "call": "Llamar por voz",
+    "hangUp": "Colgar",
+    "close": "Cerrar",
+    "ai": "Asistente con IA",
+    "notice": "Agente de inteligencia artificial · OlaBrain",
+    "state": {
+      "listening": "Te escucha",
+      "thinking": "Pensando…",
+      "speaking": "Hablando"
+    },
+    "errors": {
+      "generic": "No se ha podido completar. Inténtalo de nuevo.",
+      "limit": "Has alcanzado el límite de uso por ahora. Inténtalo más tarde.",
+      "mic": "Necesitamos permiso para usar el micrófono."
+    }
+  },
+  "publish": {
+    "introTitle": "Publica a {name} en tu web",
+    "introBody": "Crea el widget y pega una línea de código en tu web: aparecerá el avatar con un halo neón que abre el chat y la llamada de voz.",
+    "create": "Crear widget",
+    "creating": "Creando…",
+    "snippetTitle": "Código para tu web",
+    "snippetHint": "Pégalo al final del HTML de cada página donde quieras el widget, justo antes de cerrar el body.",
+    "copy": "Copiar",
+    "copied": "Copiado",
+    "lookTitle": "Aspecto",
+    "position": "Posición en la web",
+    "positions": {
+      "left": "Izquierda",
+      "right": "Derecha"
+    },
+    "halo": "Halo neón alrededor del avatar",
+    "haloModes": {
+      "multicolor": "Multicolor",
+      "tone": "Un tono"
+    },
+    "baseColor": "Color base",
+    "haloHint": "Con «Un tono» creamos el efecto neón con varias tonalidades de tu color.",
+    "domainsTitle": "Dominios autorizados",
+    "domainsHint": "Solo estas webs podrán mostrar el widget. Uno por línea.",
+    "domainsAny": "Sin dominios, cualquier web puede mostrarlo. Añade los tuyos.",
+    "toolsTitle": "Herramientas para visitantes",
+    "toolsHint": "Los visitantes son anónimos: solo podrán usar las que actives aquí (ninguna por defecto).",
+    "noTools": "Este agente no tiene herramientas: solo conversará con sus instrucciones.",
+    "writes": "Escribe",
+    "previewAt": "Así se verá, abajo a la {side}.",
+    "voice": "Llamada de voz",
+    "enabled": "Widget activo",
+    "limits": "Límite provisional por visitante: 60 mensajes y 6 llamadas de 5 min por hora.",
+    "save": "Guardar",
+    "saving": "Guardando…",
+    "saved": "Guardado"
   }
 }

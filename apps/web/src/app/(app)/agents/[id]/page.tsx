@@ -1,24 +1,31 @@
-import { agentTools, agents, connections, personas, tools } from "@brainagent/db";
+import { WEB_WIDGET } from "@brainagent/core";
+import { agentTools, agents, channels, connections, personas, tools } from "@brainagent/db";
 import { cn } from "@brainagent/ui";
-import { asc, eq, isNull, or } from "drizzle-orm";
-import { ArrowLeft, MessageCircle, Plug, SlidersHorizontal } from "lucide-react";
+import { and, asc, eq, isNull, or } from "drizzle-orm";
+import { ArrowLeft, MessageCircle, Plug, SlidersHorizontal, Code2 } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 import { AgentConnections } from "@/components/agents/agent-connections";
 import { AgentConsole } from "@/components/agents/agent-console";
+import { AgentPublish } from "@/components/agents/agent-publish";
 import { AgentCustomize } from "@/components/agents/agent-customize";
 import { AgentFace } from "@/components/avatar/agent-face";
 import { modelCatalog } from "@/lib/models";
 import { env } from "@/lib/env";
 import { requireTenant, tenantTx } from "@/lib/tenant";
 
-const TABS = ["chat", "customize", "connections"] as const;
+const TABS = ["chat", "customize", "connections", "publish"] as const;
 type Tab = (typeof TABS)[number];
 /** Old links (?tab=general|tools|test) keep working. */
 const LEGACY: Record<string, Tab> = { general: "customize", tools: "connections", test: "chat" };
-const TAB_ICONS = { chat: MessageCircle, customize: SlidersHorizontal, connections: Plug };
+const TAB_ICONS = {
+  chat: MessageCircle,
+  customize: SlidersHorizontal,
+  connections: Plug,
+  publish: Code2,
+};
 
 export default async function AgentPage({
   params,
@@ -78,6 +85,11 @@ export default async function AgentPage({
       .select({ toolId: agentTools.toolId })
       .from(agentTools)
       .where(eq(agentTools.agentId, id));
+    const [widget] = await tx
+      .select({ id: channels.id, enabled: channels.enabled, config: channels.config })
+      .from(channels)
+      .where(and(eq(channels.agentId, id), eq(channels.kind, WEB_WIDGET)))
+      .limit(1);
     // Only what the UI shows: never send connection config (URLs, hosts) to the client.
     const connectionList = connectionRows.map(({ config, ...c }) => {
       const cfg = (config ?? {}) as { provider?: string; dialect?: string };
@@ -89,6 +101,7 @@ export default async function AgentPage({
       toolList,
       connectionList,
       assigned: assigned.map((a) => a.toolId),
+      widget: widget ?? null,
     };
   });
   if (!data) notFound();
@@ -192,6 +205,14 @@ export default async function AgentPage({
           canDelete={
             (ctx.role === "owner" || ctx.role === "admin") && agent.id !== env().HOME_AGENT_ID
           }
+        />
+      ) : null}
+      {tab === "publish" ? (
+        <AgentPublish
+          agent={{ id: agent.id, name: agent.name, avatar: persona?.avatarUrl ?? null }}
+          widget={data.widget}
+          tools={data.toolList.filter((t) => data.assigned.includes(t.id))}
+          appUrl={env().APP_URL.replace(/\/$/, "")}
         />
       ) : null}
       {tab === "connections" ? (

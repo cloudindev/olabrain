@@ -461,6 +461,59 @@ describe("contact memory", () => {
   });
 });
 
+describe("web widget visitors", () => {
+  it("only see and call the tools made public in the widget", async () => {
+    const { channels, conversations } = await import("@brainagent/db");
+    // Make public one of the agent's tools (not cerrar_parte).
+    const agentTools = ((await (await req(`/v1/agents/${agentA}/config`)).json()) as Json)
+      .tools as { id: string; name: string }[];
+    const read = agentTools.find((t) => t.name !== "cerrar_parte");
+    expect(agentTools.some((t) => t.name === "cerrar_parte")).toBe(true);
+    const { conversationId, readId } = await withTenant(appDb.db, tenantA, async (tx) => {
+      const [channel] = await tx
+        .insert(channels)
+        .values({
+          tenantId: tenantA,
+          agentId: agentA,
+          kind: "web_widget",
+          config: { publicToolIds: [read!.id] },
+        })
+        .onConflictDoUpdate({
+          target: [channels.agentId, channels.kind],
+          set: { config: { publicToolIds: [read!.id] } },
+        })
+        .returning();
+      const [c] = await tx
+        .insert(conversations)
+        .values({
+          tenantId: tenantA,
+          agentId: agentA,
+          channel: "widget",
+          config: { channelId: channel!.id, visitor: "v1" },
+        })
+        .returning();
+      return { conversationId: c!.id, readId: read!.id };
+    });
+
+    const config = (await (
+      await req(`/v1/agents/${agentA}/config?conversationId=${conversationId}`)
+    ).json()) as Json;
+    expect(config.tools.map((t: { id: string }) => t.id)).toEqual([readId]);
+
+    // A tool that isn't public is unknown to the visitor's conversation, even if named.
+    const blocked = (await (
+      await req("/v1/tools/call", {
+        body: { agentId: agentA, conversationId, toolName: "cerrar_parte", args: { id: 1 } },
+      })
+    ).json()) as Json;
+    expect(blocked.status).toBe("error");
+
+    // The panel (no widget conversation) still sees every tool of the agent.
+    const panel = (await (await req(`/v1/agents/${agentA}/config`)).json()) as Json;
+    expect(panel.tools.length).toBeGreaterThan(1);
+  });
+});
+
 describe("voice transcripts", () => {
   it("appends lines in order, ends the conversation and stays within the tenant", async () => {
     const { conversations, messages } = await import("@brainagent/db");

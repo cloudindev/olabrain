@@ -477,7 +477,8 @@
     "tabs": {
       "chat": "Conversation",
       "customize": "Customize",
-      "connections": "Connections"
+      "connections": "Connections",
+      "publish": "Publish"
     },
     "back": "Agents",
     "title": "Conversation",
@@ -577,5 +578,63 @@
     "notFound": "This connection no longer exists.",
     "cardTools": "{on}/{total} tools",
     "noneEnabled": "No tools enabled"
+  },
+  "widget": {
+    "empty": "Hi, I'm {name}. Write to me or tap the microphone to talk.",
+    "placeholder": "Type a message…",
+    "inCall": "In a call…",
+    "send": "Send",
+    "call": "Voice call",
+    "hangUp": "Hang up",
+    "close": "Close",
+    "ai": "AI assistant",
+    "notice": "Artificial intelligence agent · OlaBrain",
+    "state": {
+      "listening": "Listening",
+      "thinking": "Thinking…",
+      "speaking": "Speaking"
+    },
+    "errors": {
+      "generic": "That didn't work. Please try again.",
+      "limit": "You've reached the usage limit for now. Please try later.",
+      "mic": "We need permission to use your microphone."
+    }
+  },
+  "publish": {
+    "introTitle": "Publish {name} on your website",
+    "introBody": "Create the widget and paste one line of code on your site: the avatar appears with a neon halo that opens the chat and voice call.",
+    "create": "Create widget",
+    "creating": "Creating…",
+    "snippetTitle": "Code for your website",
+    "snippetHint": "Paste it at the end of the HTML of every page where you want the widget, right before the body closes.",
+    "copy": "Copy",
+    "copied": "Copied",
+    "lookTitle": "Look",
+    "position": "Position on the page",
+    "positions": {
+      "left": "Left",
+      "right": "Right"
+    },
+    "halo": "Neon halo around the avatar",
+    "haloModes": {
+      "multicolor": "Multicolor",
+      "tone": "One tone"
+    },
+    "baseColor": "Base colour",
+    "haloHint": "With «One tone» we build the neon effect from shades of your colour.",
+    "domainsTitle": "Allowed domains",
+    "domainsHint": "Only these sites can show the widget. One per line.",
+    "domainsAny": "With no domains, any site can show it. Add yours.",
+    "toolsTitle": "Tools for visitors",
+    "toolsHint": "Visitors are anonymous: they can only use the tools you enable here (none by default).",
+    "noTools": "This agent has no tools: it will only chat with its instructions.",
+    "writes": "Writes",
+    "previewAt": "This is how it looks, bottom {side}.",
+    "voice": "Voice call",
+    "enabled": "Widget active",
+    "limits": "Provisional limit per visitor: 60 messages and 6 five-minute calls per hour.",
+    "save": "Save",
+    "saving": "Saving…",
+    "saved": "Saved"
   }
 }

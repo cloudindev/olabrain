@@ -29,11 +29,19 @@ class ConnectorClient:
         return {"authorization": f"Bearer {self._token}", "x-tenant-id": tenant_id}
 
     async def agent_config(
-        self, tenant_id: str, agent_id: str, contact_id: str | None = None
+        self,
+        tenant_id: str,
+        agent_id: str,
+        contact_id: str | None = None,
+        conversation_id: str | None = None,
     ) -> dict[str, Any]:
+        # The conversation lets the connector restrict tools (web widget visitors).
+        params = {
+            k: v for k, v in (("contactId", contact_id), ("conversationId", conversation_id)) if v
+        }
         res = await self._http.get(
             f"/v1/agents/{agent_id}/config",
-            params={"contactId": contact_id} if contact_id else None,
+            params=params or None,
             headers=self._headers(tenant_id),
         )
         if res.status_code == 404:

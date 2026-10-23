@@ -1,10 +1,11 @@
 "use server";
 
-import { agentInputSchema } from "@brainagent/core";
+import { WEB_WIDGET, agentInputSchema, widgetConfigSchema } from "@brainagent/core";
 import {
   agentTools,
   agents,
   auditLog,
+  channels,
   conversations,
   pendingConfirmations,
   personas,
@@ -175,4 +176,58 @@ export async function deleteAgent(id: string, confirmName: string): Promise<Acti
   if (result === "mismatch") return { ok: false, error: "El nombre no coincide" };
   revalidatePath("/agents");
   redirect("/agents");
+}
+
+/**
+ * Creates or updates the agent's web widget (one per agent). Public tools must be tools
+ * the agent has; the connector enforces them again for every widget conversation.
+ */
+export async function saveWidget(
+  agentId: string,
+  input: { enabled: boolean; config: unknown },
+): Promise<ActionResult> {
+  const ctx = await requireTenant("builder");
+  const parsed = widgetConfigSchema.safeParse(input.config);
+  if (!z.uuid().safeParse(agentId).success || !parsed.success)
+    return {
+      ok: false,
+      error: parsed.success ? "Agente no válido" : parsed.error.issues[0]!.message,
+    };
+  const saved = await tenantTx(ctx, async (tx) => {
+    const [agent] = await tx
+      .select({ id: agents.id })
+      .from(agents)
+      .where(eq(agents.id, agentId))
+      .limit(1);
+    if (!agent) return false;
+    const own = new Set(
+      (
+        await tx
+          .select({ toolId: agentTools.toolId })
+          .from(agentTools)
+          .where(eq(agentTools.agentId, agentId))
+      ).map((r) => r.toolId),
+    );
+    const config = {
+      ...parsed.data,
+      publicToolIds: parsed.data.publicToolIds.filter((id) => own.has(id)),
+    };
+    await tx
+      .insert(channels)
+      .values({
+        tenantId: ctx.tenantId,
+        agentId,
+        kind: WEB_WIDGET,
+        config,
+        enabled: input.enabled,
+      })
+      .onConflictDoUpdate({
+        target: [channels.agentId, channels.kind],
+        set: { config, enabled: input.enabled, updatedAt: new Date() },
+      });
+    return true;
+  });
+  if (!saved) return { ok: false, error: "Agente no encontrado" };
+  revalidatePath(`/agents/${agentId}`);
+  return { ok: true };
 }

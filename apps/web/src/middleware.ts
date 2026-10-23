@@ -29,8 +29,28 @@ function appHost(): string | null {
   }
 }
 
-export function middleware(request: NextRequest) {
+/**
+ * The widget panel may only be framed by the sites its admin allowed (any site while the
+ * list is empty). The list comes from the widget's public config.
+ */
+async function embedResponse(request: NextRequest, channelId: string) {
+  let origins: string[] = [];
+  try {
+    const res = await fetch(new URL(`/api/widget/${channelId}/config`, request.url));
+    if (res.ok) origins = ((await res.json()) as { origins?: string[] }).origins ?? [];
+  } catch {
+    // config unreachable: the page itself will 404 if the widget doesn't exist
+  }
+  const ancestors = origins.length ? `'self' ${origins.join(" ")}` : "*";
+  const response = NextResponse.next();
+  response.headers.set("content-security-policy", `frame-ancestors ${ancestors}`);
+  return response;
+}
+
+export async function middleware(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
+  const embed = /^\/embed\/([0-9a-f-]{36})$/.exec(pathname);
+  if (embed) return embedResponse(request, embed[1]!);
 
   // The marketing domains (olabrain.com, www.) only show the home and the legal pages. Sign-in, the panel and
   // the APIs live on APP_URL, so the session cookie and Better Auth's origin check see
