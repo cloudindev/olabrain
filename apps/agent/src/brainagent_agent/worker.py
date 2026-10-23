@@ -45,6 +45,7 @@ from .connector_client import ConnectorClient
 from .memory import remember_after
 from .persona import LIA
 from .providers import build_llm, build_realtime, build_stt, build_tts, describe
+from .transcript import TranscriptRecorder
 from .turn_metrics import TurnBreakdown, TurnMetricsCollector
 
 # Monorepo root .env (apps/agent/src/brainagent_agent -> ../../../../.env), then local.
@@ -257,18 +258,30 @@ async def entrypoint(ctx: JobContext) -> None:
             )
 
         bridge.on_file = _share_file
+        runtime_agent = runtime[0]
+
+        # Voice transcripts are always kept: every finished line goes to the conversation.
+        recorder = (
+            TranscriptRecorder(client, runtime_agent.tenant_id, cfg.conversation_id)
+            if cfg.conversation_id
+            else None
+        )
 
         @session.on("conversation_item_added")
         def _on_item(ev: ConversationItemAddedEvent) -> None:
+            role = getattr(ev.item, "role", None)
             # Write confirmations need a new user turn (see agent_runtime.ToolBridge).
-            if getattr(ev.item, "role", None) == "user":
+            if role == "user":
                 bridge.user_message_received()
-
-        runtime_agent = runtime[0]
+            if recorder and isinstance(ev.item, llm.ChatMessage):
+                recorder.add(ev.item.role, ev.item.text_content)
 
         async def _remember_and_close() -> None:
-            # Learn from the call (memory per contact), then release the client.
+            # Save the rest of the transcript, learn from the call (memory per contact),
+            # then release the client.
             try:
+                if recorder:
+                    await recorder.close()
                 if runtime_agent.contact_id:
                     turns = [
                         {"role": item.role, "content": item.text_content or ""}

@@ -23,8 +23,10 @@ import type { ConnectorContext } from "./context";
 import {
   addContactMemories,
   agentRuntimeConfig,
+  appendConversationMessages,
   callTool,
   contactMemoryList,
+  endConversation,
   listTools,
 } from "./router";
 import {
@@ -143,6 +145,34 @@ export function createApp(ctx: ConnectorContext, serviceToken: string, opts: App
 
   app.get("/v1/agents/:agentId/tools", async (c) =>
     c.json({ tools: await listTools(ctx, c.var.tenantId, uuid.parse(c.req.param("agentId"))) }),
+  );
+
+  // Voice transcripts: the voice worker saves every line as soon as it is transcribed.
+  app.post("/v1/conversations/:conversationId/messages", async (c) => {
+    const input = await body(
+      c,
+      z.object({
+        items: z
+          .array(
+            z.object({
+              role: z.enum(["user", "assistant"]),
+              content: z.string().max(20_000),
+            }),
+          )
+          .min(1)
+          .max(50),
+      }),
+    );
+    const res = await appendConversationMessages(
+      ctx,
+      c.var.tenantId,
+      uuid.parse(c.req.param("conversationId")),
+      input.items,
+    );
+    return res.found ? c.json(res) : c.json({ error: "conversation_not_found" }, 404);
+  });
+  app.post("/v1/conversations/:conversationId/end", async (c) =>
+    c.json(await endConversation(ctx, c.var.tenantId, uuid.parse(c.req.param("conversationId")))),
   );
 
   app.get("/v1/contacts/:contactId/memories", async (c) =>

@@ -461,6 +461,47 @@ describe("contact memory", () => {
   });
 });
 
+describe("voice transcripts", () => {
+  it("appends lines in order, ends the conversation and stays within the tenant", async () => {
+    const { conversations, messages } = await import("@brainagent/db");
+    const conversationId = await withTenant(appDb.db, tenantA, async (tx) => {
+      const [c] = await tx
+        .insert(conversations)
+        .values({ tenantId: tenantA, agentId: agentA, channel: "voice" })
+        .returning();
+      return c!.id;
+    });
+    const post = (items: unknown, tenant = tenantA) =>
+      req(`/v1/conversations/${conversationId}/messages`, { body: { items }, tenant });
+
+    expect((await (await post([{ role: "user", content: "Hola" }])).json()) as Json).toEqual({
+      added: 1,
+      found: true,
+    });
+    await post([
+      { role: "assistant", content: "Hola. ¿En qué te puedo ayudar?" },
+      { role: "user", content: "   " },
+    ]);
+    // Another organization can't write into (or detect) this conversation.
+    expect((await post([{ role: "user", content: "intruso" }], tenantB)).status).toBe(404);
+
+    const stored = await withTenant(appDb.db, tenantA, (tx) =>
+      tx
+        .select({ role: messages.role, content: messages.content })
+        .from(messages)
+        .where(eq(messages.conversationId, conversationId)),
+    );
+    expect(stored).toHaveLength(2);
+    expect(stored.map((m) => m.content).sort()).toEqual(["Hola", "Hola. ¿En qué te puedo ayudar?"]);
+
+    await req(`/v1/conversations/${conversationId}/end`, { body: {} });
+    const [conv] = await withTenant(appDb.db, tenantA, (tx) =>
+      tx.select().from(conversations).where(eq(conversations.id, conversationId)),
+    );
+    expect(conv!.endedAt).toBeInstanceOf(Date);
+  });
+});
+
 describe("default tool assignment", () => {
   it("new tools of a connection are assigned to every existing agent", async () => {
     const otherAgent = await withTenant(appDb.db, tenantA, async (tx) => {

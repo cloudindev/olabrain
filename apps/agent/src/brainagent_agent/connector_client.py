@@ -88,5 +88,23 @@ class ConnectorClient:
         res.raise_for_status()
         return res.json()
 
+    async def add_messages(
+        self, tenant_id: str, conversation_id: str, items: list[dict[str, str]]
+    ) -> None:
+        res = await self._http.post(
+            f"/v1/conversations/{conversation_id}/messages",
+            json={"items": items},
+            headers=self._headers(tenant_id),
+        )
+        res.raise_for_status()
+
+    async def end_conversation(self, tenant_id: str, conversation_id: str) -> None:
+        res = await self._http.post(
+            f"/v1/conversations/{conversation_id}/end",
+            json={},
+            headers=self._headers(tenant_id),
+        )
+        res.raise_for_status()
+
     async def aclose(self) -> None:
         await self._http.aclose()

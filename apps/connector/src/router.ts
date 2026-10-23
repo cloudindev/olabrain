@@ -15,6 +15,7 @@ import {
   agents,
   connections,
   contactMemories,
+  conversations,
   messages,
   pendingConfirmations,
   personas,
@@ -116,6 +117,47 @@ export async function contactMemoryList(
       .limit(MEMORY_LIMIT),
   );
   return rows.reverse();
+}
+
+/**
+ * Voice transcripts (the voice worker saves each line as it is transcribed). The
+ * conversation must belong to the tenant (RLS): other ids simply match no row.
+ */
+export async function appendConversationMessages(
+  ctx: ConnectorContext,
+  tenantId: string,
+  conversationId: string,
+  items: { role: "user" | "assistant"; content: string }[],
+) {
+  return withTenant(ctx.db, tenantId, async (tx) => {
+    const [conv] = await tx
+      .select({ id: conversations.id })
+      .from(conversations)
+      .where(eq(conversations.id, conversationId))
+      .limit(1);
+    if (!conv) return { added: 0, found: false };
+    const rows = items
+      .map((i) => ({ ...i, content: i.content.trim() }))
+      .filter((i) => i.content)
+      .map((i) => ({ tenantId, conversationId, role: i.role, content: i.content }));
+    if (rows.length) await tx.insert(messages).values(rows);
+    return { added: rows.length, found: true };
+  });
+}
+
+/** Marks a conversation as ended (first call wins). */
+export async function endConversation(
+  ctx: ConnectorContext,
+  tenantId: string,
+  conversationId: string,
+) {
+  await withTenant(ctx.db, tenantId, (tx) =>
+    tx
+      .update(conversations)
+      .set({ endedAt: new Date() })
+      .where(and(eq(conversations.id, conversationId), isNull(conversations.endedAt))),
+  );
+  return { ok: true };
 }
 
 export async function addContactMemories(
