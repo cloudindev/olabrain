@@ -31,40 +31,34 @@ export async function generateMetadata(): Promise<Metadata> {
 /** Six catalog personas (packages/db seed). Only Alba has a live demo. */
 const GALLERY: {
   name: string;
-  code: string;
   tilt: string;
   photo?: string;
   demo?: boolean;
 }[] = [
   {
     name: "Alba",
-    code: "OLA-01",
     tilt: "-rotate-3",
     photo: "/alba/poster.jpg",
     demo: true,
   },
   {
     name: "Mateo",
-    code: "OLA-02",
     tilt: "rotate-2",
     photo: "/personas/mateo.jpg",
   },
   {
     name: "Lía",
-    code: "OLA-03",
     tilt: "-rotate-1",
     photo: "/personas/lia.jpg",
   },
   {
     name: "Enzo",
-    code: "OLA-04",
     tilt: "rotate-3",
     photo: "/personas/enzo.jpg",
   },
-  { name: "Teo", code: "OLA-05", tilt: "-rotate-2", photo: "/personas/teo.jpg" },
+  { name: "Teo", tilt: "-rotate-2", photo: "/personas/teo.jpg" },
   {
     name: "Nora",
-    code: "OLA-06",
     tilt: "rotate-1",
     photo: "/personas/nora.jpg",
   },
@@ -231,12 +225,6 @@ export default async function Home() {
                             </span>
                           </span>
                         )}
-                        <span className="absolute right-2 top-2 flex items-center gap-1 rounded-full bg-black/70 px-2 py-0.5 backdrop-blur-sm">
-                          <span className="size-1.5 rounded-full bg-signal" />
-                          <span className="font-display text-[9px] font-bold uppercase text-white">
-                            {p.code}
-                          </span>
-                        </span>
                       </span>
                       <span className="mt-3 block text-center">
                         <span className="block font-display text-lg font-semibold leading-tight tracking-tight text-black">
@@ -333,15 +321,15 @@ export default async function Home() {
                   )}
                 >
                   <div className="flex items-center justify-between">
-                    <span className="flex size-9 items-center justify-center rounded-lg bg-white">
+                    <span className="flex size-14 items-center justify-center rounded-xl bg-white">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={app.icon} alt="" className="size-5 object-contain" />
+                      <img src={app.icon} alt="" className="size-9 object-contain" />
                     </span>
                     <span className="rounded border border-line-strong bg-[#0e0e0e] px-1.5 py-0.5 font-mono text-[9px] uppercase text-signal">
                       {app.soon ? t("soon") : app.tag}
                     </span>
                   </div>
-                  <p className="mt-3 font-display text-sm font-semibold transition-colors group-hover:text-signal">
+                  <p className="mt-4 font-display text-base font-semibold transition-colors group-hover:text-signal">
                     {app.name}
                   </p>
                 </li>

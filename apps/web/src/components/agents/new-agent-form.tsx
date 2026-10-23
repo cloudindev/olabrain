@@ -29,7 +29,7 @@ export function NewAgentForm({ personas }: { personas: PersonaOption[] }) {
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
       <div
-        className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4"
+        className="grid grid-cols-3 gap-3 sm:gap-4"
         role="radiogroup"
         aria-label={t("choosePersona")}
       >
