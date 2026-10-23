@@ -64,6 +64,13 @@
       "when": 1792625626696,
       "tag": "0008_conversation_files_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1792787563632,
+      "tag": "0009_persona_avatars",
+      "breakpoints": true
     }
   ]
 }

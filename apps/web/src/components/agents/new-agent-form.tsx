@@ -4,9 +4,15 @@ import { Button, Card, Field, Input, cn } from "@brainagent/ui";
 import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import { createAgent } from "@/app/(app)/agents/actions";
-import { Monogram } from "@/components/page-header";
+import { AgentFace } from "@/components/avatar/agent-face";
 
-type PersonaOption = { id: string; name: string; role: string; greeting: string };
+type PersonaOption = {
+  id: string;
+  name: string;
+  role: string;
+  greeting: string;
+  avatarUrl: string | null;
+};
 
 export function NewAgentForm({ personas }: { personas: PersonaOption[] }) {
   const t = useTranslations("agents");
@@ -42,7 +48,7 @@ export function NewAgentForm({ personas }: { personas: PersonaOption[] }) {
                 selected?.id === p.id && "border-ink ring-1 ring-ink",
               )}
             >
-              <Monogram name={p.name} tone={selected?.id === p.id ? "signal" : "ink"} />
+              <AgentFace src={p.avatarUrl} name={p.name} className="size-12 rounded-full" />
               <div>
                 <p className="font-display font-semibold tracking-tight">{p.name}</p>
                 <p className="text-sm text-ink-2">{p.role}</p>

@@ -3,6 +3,7 @@
 import { Button, Input, Select, Switch, cn } from "@brainagent/ui";
 import { Brain, Check, MessageSquareText, Mic, Sparkles, UserRound } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { AgentFace } from "@/components/avatar/agent-face";
 import { useMemo, useState, useTransition, type ReactNode } from "react";
 import { updateAgent } from "@/app/(app)/agents/actions";
 
@@ -65,15 +66,6 @@ function Label({
   );
 }
 
-function initials(name: string) {
-  return name
-    .split(/\s+/)
-    .map((w) => w[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
-}
-
 /** "Personalizar": identity, instructions, behaviour and publishing, with a sticky save bar. */
 export function AgentCustomize({
   agent,
@@ -81,7 +73,7 @@ export function AgentCustomize({
   models,
 }: {
   agent: AgentValues;
-  personas: { id: string; name: string; role: string }[];
+  personas: { id: string; name: string; role: string; avatarUrl: string | null }[];
   models: { id: string; label: string }[];
 }) {
   const t = useTranslations("customize");
@@ -165,16 +157,11 @@ export function AgentCustomize({
                         : "border-line hover:border-line-strong hover:bg-surface-2/60",
                     )}
                   >
-                    <span
-                      className={cn(
-                        "flex size-9 shrink-0 items-center justify-center rounded-full font-display text-sm font-semibold",
-                        selected
-                          ? "bg-signal text-signal-ink"
-                          : "bg-surface-2 text-ink group-hover:bg-paper",
-                      )}
-                    >
-                      {initials(p.name)}
-                    </span>
+                    <AgentFace
+                      src={p.avatarUrl}
+                      name={p.name}
+                      className="size-10 rounded-full text-sm"
+                    />
                     <span className="min-w-0">
                       <span className="block truncate text-sm font-medium text-ink">{p.name}</span>
                       <span className="block truncate text-xs text-ink-2">{p.role}</span>

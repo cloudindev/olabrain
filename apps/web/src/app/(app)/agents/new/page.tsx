@@ -17,6 +17,7 @@ export default async function NewAgentPage() {
         name: personas.name,
         role: personas.role,
         greeting: personas.greeting,
+        avatarUrl: personas.avatarUrl,
       })
       .from(personas)
       .where(or(isNull(personas.tenantId), eq(personas.tenantId, ctx.tenantId)))

@@ -43,6 +43,8 @@ try {
           basePrompt: sql`excluded.base_prompt`,
           voiceProvider: sql`excluded.voice_provider`,
           voiceRef: sql`excluded.voice_ref`,
+          avatarUrl: sql`excluded.avatar_url`,
+          avatarVideo: sql`excluded.avatar_video`,
         },
       });
   }

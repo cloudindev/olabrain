@@ -20,12 +20,13 @@ export default async function AgentsPage() {
         status: agents.status,
         presenceMode: agents.presenceMode,
         personaRole: personas.role,
+        personaAvatar: personas.avatarUrl,
         tools: count(agentTools.toolId),
       })
       .from(agents)
       .leftJoin(personas, eq(personas.id, agents.personaId))
       .leftJoin(agentTools, eq(agentTools.agentId, agents.id))
-      .groupBy(agents.id, personas.role)
+      .groupBy(agents.id, personas.role, personas.avatarUrl)
       .orderBy(desc(agents.updatedAt)),
   );
 
@@ -47,7 +48,11 @@ export default async function AgentsPage() {
           {rows.map((a) => (
             <Link key={a.id} href={`/agents/${a.id}`} className="group">
               <Card className="flex h-full items-start gap-4 p-5 transition-colors group-hover:border-line-strong">
-                <AgentFace className="size-14 rounded-2xl" />
+                <AgentFace
+                  src={a.personaAvatar}
+                  name={a.name}
+                  className="size-14 rounded-2xl text-lg"
+                />
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-display text-lg font-semibold tracking-tight">
                     {a.name}

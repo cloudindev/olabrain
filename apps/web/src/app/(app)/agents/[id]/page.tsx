@@ -41,7 +41,13 @@ export default async function AgentPage({
     const [agent] = await tx.select().from(agents).where(eq(agents.id, id)).limit(1);
     if (!agent) return null;
     const personaList = await tx
-      .select({ id: personas.id, name: personas.name, role: personas.role })
+      .select({
+        id: personas.id,
+        name: personas.name,
+        role: personas.role,
+        avatarUrl: personas.avatarUrl,
+        avatarVideo: personas.avatarVideo,
+      })
       .from(personas)
       .where(or(isNull(personas.tenantId), eq(personas.tenantId, ctx.tenantId)))
       .orderBy(asc(personas.name));
@@ -106,7 +112,11 @@ export default async function AgentPage({
           >
             <ArrowLeft className="size-4" />
           </Link>
-          <AgentFace className="size-12 rounded-full" />
+          <AgentFace
+            src={persona?.avatarUrl}
+            name={agent.name}
+            className="size-12 rounded-full text-base"
+          />
           <div className="min-w-0">
             <h1 className="flex items-center gap-2.5 truncate font-display text-2xl font-semibold tracking-tight">
               {agent.name}
@@ -156,6 +166,7 @@ export default async function AgentPage({
             name: agent.name,
             role: persona?.role ?? null,
             status: agent.status,
+            avatar: { image: persona?.avatarUrl ?? null, video: persona?.avatarVideo ?? null },
           }}
         />
       ) : null}

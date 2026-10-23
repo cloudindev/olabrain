@@ -9,6 +9,8 @@ type CatalogPersona = {
   traits: { tone: string; formality: "tú" | "usted"; length: "corta" | "media" };
   greeting: string;
   basePrompt: string;
+  avatarUrl: string | null;
+  avatarVideo: string | null;
 };
 
 const VOICE_STYLE =
@@ -17,6 +19,19 @@ const VOICE_STYLE =
   "Si no sabes algo o no tienes una herramienta para comprobarlo, dilo y ofrece tomar nota. " +
   "Nunca inventes datos. Eres una inteligencia artificial y lo dices si te lo preguntan.";
 
+/** Greeting without article ("soy Enzo, asistente virtual…"). */
+const NEUTRAL = ["enzo"];
+
+/** Portraits (apps/web/public) and video avatars of the catalog personas. */
+const AVATARS: Record<string, { image: string; video?: string }> = {
+  alba: { image: "/alba/face.jpg", video: "/alba" },
+  mateo: { image: "/personas/mateo.jpg" },
+  lia: { image: "/personas/lia.jpg" },
+  enzo: { image: "/personas/enzo.jpg" },
+  teo: { image: "/personas/teo.jpg" },
+  nora: { image: "/personas/nora.jpg" },
+};
+
 function persona(
   slug: string,
   name: string,
@@ -24,14 +39,20 @@ function persona(
   traits: CatalogPersona["traits"],
   mission: string,
 ): CatalogPersona {
-  const article = ["lia", "nora", "vega", "iris", "alba", "sara"].includes(slug) ? "una" : "un";
+  const article = ["lia", "nora", "vega", "iris", "alba"].includes(slug)
+    ? "una "
+    : NEUTRAL.includes(slug)
+      ? ""
+      : "un ";
   return {
     slug,
     name,
     role,
     traits,
-    greeting: `Hola, soy ${name}, ${article} asistente virtual con inteligencia artificial. ¿En qué puedo ayudarte?`,
+    greeting: `Hola, soy ${name}, ${article}asistente virtual con inteligencia artificial. ¿En qué puedo ayudarte?`,
     basePrompt: `Eres ${name}, ${role.toLowerCase()} de la empresa. ${mission} ${VOICE_STYLE}`,
+    avatarUrl: AVATARS[slug]?.image ?? null,
+    avatarVideo: AVATARS[slug]?.video ?? null,
   };
 }
 
@@ -111,8 +132,8 @@ export const CATALOG_PERSONAS: CatalogPersona[] = [
     "Informas de envíos, entregas, stock y rutas, y avisas de incidencias en el transporte.",
   ),
   persona(
-    "sara",
-    "Sara",
+    "enzo",
+    "Enzo",
     "Atención al cliente",
     profesional,
     "Atiendes consultas y reclamaciones con empatía, registras cada caso y das al cliente un siguiente paso claro.",

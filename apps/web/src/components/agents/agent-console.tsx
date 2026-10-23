@@ -135,8 +135,17 @@ function ToolChips({ tools }: { tools: ToolEvent[] }) {
 export function AgentConsole({
   agent,
 }: {
-  agent: { id: string; name: string; role: string | null; status: "draft" | "active" | "archived" };
+  agent: {
+    id: string;
+    name: string;
+    role: string | null;
+    status: "draft" | "active" | "archived";
+    /** The persona's portrait and video avatar (folder), when it has them. */
+    avatar?: { image: string | null; video: string | null };
+  };
 }) {
+  // A video avatar greets with its own voice; a portrait-only persona lets the agent greet.
+  const portrait = agent.avatar?.video ? undefined : (agent.avatar?.image ?? undefined);
   const t = useTranslations("console");
   const tc = useTranslations("chat");
   const call = useVoiceCall();
@@ -338,17 +347,18 @@ export function AgentConsole({
     setError(null);
     // Inside the click: the greeting video plays with its own voice while we connect,
     // and the agent is told not to greet (ADR-014).
-    const greeted = greet();
+    const greeted = portrait ? Promise.resolve() : greet();
     // The greeting's words come from the video, not from the transcript: show them.
-    setMessages((prev) => [
-      ...prev,
-      { id: nextId(), role: "assistant", text: t("opening"), source: "voice", tools: [] },
-    ]);
+    if (!portrait)
+      setMessages((prev) => [
+        ...prev,
+        { id: nextId(), role: "assistant", text: t("opening"), source: "voice", tools: [] },
+      ]);
     void call.start(async () => {
       const res = await fetch("/api/lab/token", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ config: { agent_id: agent.id, client_greeting: true } }),
+        body: JSON.stringify({ config: { agent_id: agent.id, client_greeting: !portrait } }),
       });
       if (!res.ok) {
         stopGreeting();
@@ -427,6 +437,8 @@ export function AgentConsole({
         clip={clip}
         onGreetingEnd={onGreetingEnd}
         greetingRef={greetingRef}
+        src={agent.avatar?.video ?? undefined}
+        image={portrait}
         className={cn(
           "absolute inset-0",
           "lg:relative lg:inset-auto lg:aspect-[9/16] lg:h-full lg:rounded-[28px] lg:border lg:border-line",

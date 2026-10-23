@@ -79,6 +79,7 @@ export function AvatarStage({
   className,
   children,
   src = DEFAULT_AVATAR,
+  image,
 }: {
   clip: AvatarClip;
   onGreetingEnd: () => void;
@@ -87,7 +88,32 @@ export function AvatarStage({
   children?: ReactNode;
   /** Folder with idle.mp4, talking.mp4, greeting.mp4 and poster.jpg. */
   src?: string;
+  /** Portrait for personas without a video avatar: shown still, glowing while it talks. */
+  image?: string;
 }) {
+  if (image) {
+    return (
+      <div className={cn("overflow-hidden bg-white", className)}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={image}
+          alt=""
+          className={cn(
+            "absolute inset-0 h-full w-full object-cover object-top transition-[filter] duration-300",
+            clip === "talking" ? "brightness-105" : "brightness-100",
+          )}
+        />
+        <div
+          aria-hidden
+          className={cn(
+            "pointer-events-none absolute inset-0 rounded-[inherit] ring-inset transition-shadow duration-300",
+            clip === "talking" ? "shadow-[inset_0_0_0_3px_#a6f55a]" : "shadow-none",
+          )}
+        />
+        {children}
+      </div>
+    );
+  }
   return (
     // Positioning comes from the caller (relative, absolute…): cn() does not merge conflicts.
     <div className={cn("overflow-hidden bg-white", className)}>

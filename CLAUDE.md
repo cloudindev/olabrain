@@ -116,7 +116,7 @@ El runtime de agentes solo conoce `list_tools(agent_id)` y `call_tool(agent_id, 
 - **Spike de riesgo:** sala LiveKit + worker Python con STT → LLM → TTS (proveedores intercambiables por config) y modo alternativo speech-to-speech (Gemini Live), hablando español con barge-in; página `/lab` con la transcripción y las 4 latencias por turno. Objetivo: primer audio < 1,2 s desde que el usuario deja de hablar. Documentar resultados en `docs/decisions.md`.
 
 ### Fase 1 — Builder, texto y conectores (semanas 3–6)
-- CRUD de agentes y personajes; seed del catálogo de 12 (Lía recepción, Mateo ventas, Nora soporte, Hugo operaciones, Vega RRHH, Teo finanzas, Iris marketing, Bruno helpdesk IT, Alba agenda, Leo logística, Sara atención al cliente, Max analista de datos) con prompt base y voz asignada.
+- CRUD de agentes y personajes; seed del catálogo de 12 (Lía recepción, Mateo ventas, Nora soporte, Hugo operaciones, Vega RRHH, Teo finanzas, Iris marketing, Bruno helpdesk IT, Alba agenda, Leo logística, Enzo atención al cliente, Max analista de datos) con prompt base y voz asignada.
 - Conocimiento: subir PDF/DOCX/URL → chunking → embeddings → búsqueda con citas.
 - Chat de texto con streaming (SSE) en panel y en widget.
 - `apps/connector`: Tool Router, vault, proxy de salida, **cliente MCP** (añadir servidor por URL, flujo OAuth, listar tools, allow/deny por tool), **importador OpenAPI** (pegar URL o JSON, elegir endpoints), **Tool Studio** (SQL parametrizado de solo lectura sobre MySQL/Postgres/SQL Server con `LIMIT` forzado y timeout; HTTP con plantilla) con botón "Probar".

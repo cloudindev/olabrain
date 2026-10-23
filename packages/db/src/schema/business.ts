@@ -52,6 +52,10 @@ export const personas = pgTable(
     traits: jsonb("traits").$type<Record<string, unknown>>().notNull().default({}),
     greeting: text("greeting").notNull().default(""),
     basePrompt: text("base_prompt").notNull().default(""),
+    /** Portrait shown wherever the agent appears (e.g. /personas/mateo.jpg). */
+    avatarUrl: text("avatar_url"),
+    /** Folder with the video avatar clips (idle, talking, greeting), when it has one. */
+    avatarVideo: text("avatar_video"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
