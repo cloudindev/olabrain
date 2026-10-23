@@ -307,7 +307,15 @@
     "reauthorize": "Authorize again",
     "connected": "Connected",
     "available": "Available to connect",
-    "toolCount": "{count, plural, one {# tool} other {# tools}}"
+    "toolCount": "{count, plural, one {# tool} other {# tools}}",
+    "forAgentTitle": "Which agent is this connection for?",
+    "forAgentHint": "Each agent has its own connections: their tools are never shared with other agents.",
+    "noAgents": "You need an agent first.",
+    "createAgent": "Create agent",
+    "forAgent": "For {name}",
+    "changeAgent": "Change",
+    "owner": "{name}'s",
+    "noOwner": "No agent"
   },
   "studio": {
     "title": "Tool Studio",
@@ -577,7 +585,10 @@
     "toolsOf": "{name} tools",
     "notFound": "This connection no longer exists.",
     "cardTools": "{on}/{total} tools",
-    "noneEnabled": "No tools enabled"
+    "noneEnabled": "No tools enabled",
+    "unownedTitle": "Connections without an agent",
+    "unownedHint": "Created before each agent had its own connections. If they belong to this agent, take them: they will no longer be available to others.",
+    "adopt": "Use in this agent"
   },
   "widget": {
     "empty": "Hi, I'm {name}. Write to me or tap the microphone to talk.",
@@ -632,7 +643,6 @@
     "previewAt": "This is how it looks, bottom {side}.",
     "voice": "Voice call",
     "enabled": "Widget active",
-    "limits": "Provisional limit per visitor: 60 messages and 6 five-minute calls per hour.",
     "save": "Save",
     "saving": "Saving…",
     "saved": "Saved"

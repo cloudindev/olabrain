@@ -31,26 +31,51 @@ type CreateResult = {
   tools?: number;
 };
 
-export async function createMcpConnection(input: unknown) {
-  return run((tenantId) =>
-    connectorFetch<CreateResult>(tenantId, "/v1/connections/mcp", { body: input }),
-  );
+/**
+ * Creates a connection for one agent: connections are never shared between agents, so
+ * right after creating it the connector gives it to the agent (who gets its tools).
+ */
+async function createFor(agentId: string, path: string, input: unknown) {
+  const owner = z.uuid().parse(agentId);
+  return run(async (tenantId) => {
+    const created = await connectorFetch<CreateResult>(tenantId, path, { body: input });
+    await connectorFetch(tenantId, `/v1/connections/${created.connectionId}/owner`, {
+      body: { agentId: owner },
+    });
+    revalidatePath(`/agents/${owner}`);
+    return created;
+  });
 }
 
-export async function createWhmcsConnection(input: unknown) {
-  return run((tenantId) =>
-    connectorFetch<CreateResult>(tenantId, "/v1/connections/native/whmcs", { body: input }),
+/** Gives a connection without owner (e.g. created before agents owned connections) to an agent. */
+export async function adoptConnection(connectionId: string, agentId: string) {
+  const res = await run((tenantId) =>
+    connectorFetch<{ ok: boolean }>(
+      tenantId,
+      `/v1/connections/${z.uuid().parse(connectionId)}/owner`,
+      { body: { agentId: z.uuid().parse(agentId) } },
+    ),
   );
+  revalidatePath(`/agents/${agentId}`);
+  revalidatePath("/connections");
+  return res;
+}
+
+export async function createMcpConnection(input: unknown, agentId: string) {
+  return createFor(agentId, "/v1/connections/mcp", input);
+}
+
+export async function createWhmcsConnection(input: unknown, agentId: string) {
+  return createFor(agentId, "/v1/connections/native/whmcs", input);
 }
 
 export async function createApiKeyConnection(
   provider: "holded" | "factorial" | "sesame",
   input: unknown,
+  agentId: string,
 ) {
   const p = z.enum(["holded", "factorial", "sesame"]).parse(provider);
-  return run((tenantId) =>
-    connectorFetch<CreateResult>(tenantId, `/v1/connections/native/${p}`, { body: input }),
-  );
+  return createFor(agentId, `/v1/connections/native/${p}`, input);
 }
 
 export async function updateWhmcsAccessKey(connectionId: string, accessKey: string | null) {
@@ -65,16 +90,12 @@ export async function updateWhmcsAccessKey(connectionId: string, accessKey: stri
   });
 }
 
-export async function createGoogleDriveConnection(input: unknown) {
-  return run((tenantId) =>
-    connectorFetch<CreateResult>(tenantId, "/v1/connections/native/googledrive", { body: input }),
-  );
+export async function createGoogleDriveConnection(input: unknown, agentId: string) {
+  return createFor(agentId, "/v1/connections/native/googledrive", input);
 }
 
-export async function createMicrosoft365Connection(input: unknown) {
-  return run((tenantId) =>
-    connectorFetch<CreateResult>(tenantId, "/v1/connections/native/microsoft365", { body: input }),
-  );
+export async function createMicrosoft365Connection(input: unknown, agentId: string) {
+  return createFor(agentId, "/v1/connections/native/microsoft365", input);
 }
 
 export async function previewOpenApi(input: unknown) {
@@ -93,22 +114,16 @@ export async function previewOpenApi(input: unknown) {
   );
 }
 
-export async function createOpenApiConnection(input: unknown) {
-  return run((tenantId) =>
-    connectorFetch<CreateResult>(tenantId, "/v1/connections/openapi", { body: input }),
-  );
+export async function createOpenApiConnection(input: unknown, agentId: string) {
+  return createFor(agentId, "/v1/connections/openapi", input);
 }
 
-export async function createSqlConnection(input: unknown) {
-  return run((tenantId) =>
-    connectorFetch<CreateResult>(tenantId, "/v1/connections/sql", { body: input }),
-  );
+export async function createSqlConnection(input: unknown, agentId: string) {
+  return createFor(agentId, "/v1/connections/sql", input);
 }
 
-export async function createHttpConnection(input: unknown) {
-  return run((tenantId) =>
-    connectorFetch<CreateResult>(tenantId, "/v1/connections/http", { body: input }),
-  );
+export async function createHttpConnection(input: unknown, agentId: string) {
+  return createFor(agentId, "/v1/connections/http", input);
 }
 
 export async function syncConnection(id: string) {

@@ -16,7 +16,9 @@ async function say(page: Page, text: string) {
   await expect(page.getByText(/Primer token \d+ ms/).nth(before)).toBeVisible({ timeout: 60_000 });
 }
 
-test("an agent remembers a contact across conversations and the memory can be erased", async ({ page }) => {
+test("an agent remembers a contact across conversations and the memory can be erased", async ({
+  page,
+}) => {
   test.setTimeout(180_000);
   await signUpAndCreateOrg(page, "Cloudin Memoria");
 
@@ -28,7 +30,10 @@ test("an agent remembers a contact across conversations and the memory can be er
 
   await page.request.post(`${agentUrl.replace("/agents/", "/api/agents/")}/chat`, { data: {} });
   await page.goto(`${agentUrl}?tab=test`, { waitUntil: "networkidle" });
-  await say(page, "Hola, me llamo Luisa, soy la directora de Talleres Ruiz y prefiero que me llamen por la tarde.");
+  await say(
+    page,
+    "Hola, me llamo Luisa, soy la directora de Talleres Ruiz y prefiero que me llamen por la tarde.",
+  );
 
   // Extraction runs in the background after the reply: wait for it on the contact page.
   await expect(async () => {

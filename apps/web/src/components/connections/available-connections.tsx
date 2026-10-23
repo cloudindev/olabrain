@@ -20,12 +20,19 @@ export function iconOf(k: string): AppIconSource {
 }
 
 /** Square-ish tiles with the app logo, like an app picker: everything that can be connected. */
-export async function AvailableConnections({ headingClass }: { headingClass?: string }) {
+export async function AvailableConnections({
+  headingClass,
+  agentId,
+}: {
+  headingClass?: string;
+  /** The agent the connection will belong to (asked first when missing). */
+  agentId?: string;
+}) {
   const t = await getTranslations("connections");
   const card = (k: string, title: string, hint: string) => (
     <Link
       key={k}
-      href={`/connections/new?type=${k}`}
+      href={`/connections/new?type=${k}${agentId ? `&agent=${agentId}` : ""}`}
       className="group relative flex aspect-[5/4] flex-col gap-3 rounded-[22px] border border-line bg-surface p-5 transition hover:-translate-y-0.5 hover:border-line-strong hover:shadow-[0_18px_40px_-28px_rgba(22,24,28,0.45)] sm:aspect-square"
       data-testid={`new-connection-${k}`}
     >

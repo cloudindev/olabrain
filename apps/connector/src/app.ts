@@ -38,6 +38,7 @@ import {
   updateWhmcsAccessKey,
   whmcsInvoicePdf,
   createApiKeyConnection,
+  setConnectionOwner,
   createHttpConnection,
   createHttpSchema,
   createMcpConnection,
@@ -254,6 +255,17 @@ export function createApp(ctx: ConnectorContext, serviceToken: string, opts: App
   // --- Admin: connections ----------------------------------------------------------
   app.post("/v1/connections/mcp", async (c) =>
     c.json(await createMcpConnection(ctx, c.var.tenantId, await body(c, createMcpSchema))),
+  );
+  // Connections belong to one agent (set right after creating them, or to adopt one).
+  app.post("/v1/connections/:id/owner", async (c) =>
+    c.json(
+      await setConnectionOwner(
+        ctx,
+        c.var.tenantId,
+        uuid.parse(c.req.param("id")),
+        (await body(c, z.object({ agentId: uuid }))).agentId,
+      ),
+    ),
   );
   app.post("/v1/connections/:id/sync", async (c) =>
     c.json(await syncMcpConnection(ctx, c.var.tenantId, uuid.parse(c.req.param("id")))),

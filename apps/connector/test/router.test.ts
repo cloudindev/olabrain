@@ -112,6 +112,10 @@ describe("HTTP connection + Tool Studio + router", () => {
     const text = await res.text();
     connectionId = (JSON.parse(text) as Json).connectionId;
     expect(text).not.toContain("erp-secreto");
+    // Connections belong to one agent.
+    expect(
+      (await req(`/v1/connections/${connectionId}/owner`, { body: { agentId: agentA } })).status,
+    ).toBe(200);
   });
 
   it("saves read and write studio tools and assigns them to the agent", async () => {
@@ -389,6 +393,7 @@ describe("OpenAPI import through the API", () => {
       })
     ).json()) as Json;
     expect(created.tools).toBe(1);
+    await req(`/v1/connections/${created.connectionId}/owner`, { body: { agentId: agentA } });
 
     const [tool] = await withTenant(appDb.db, tenantA, (tx) =>
       tx.select().from(tools).where(eq(tools.name, "list_partes")),
@@ -556,7 +561,7 @@ describe("voice transcripts", () => {
 });
 
 describe("default tool assignment", () => {
-  it("new tools of a connection are assigned to every existing agent", async () => {
+  it("tools of a connection go only to its agent, never to other agents", async () => {
     const otherAgent = await withTenant(appDb.db, tenantA, async (tx) => {
       const [a] = await tx.insert(agents).values({ tenantId: tenantA, name: "Mateo" }).returning();
       return a!.id;
@@ -566,6 +571,12 @@ describe("default tool assignment", () => {
         body: { name: "CRM", baseUrl, auth: { type: "none" }, secret: {} },
       })
     ).json()) as Json;
+    await req(`/v1/connections/${connectionId}/owner`, { body: { agentId: agentA } });
+    // A connection never changes owner.
+    expect(
+      (await req(`/v1/connections/${connectionId}/owner`, { body: { agentId: otherAgent } }))
+        .status,
+    ).toBe(409);
     const { toolId } = (await (
       await req(`/v1/connections/${connectionId}/tools`, {
         body: {
@@ -583,6 +594,13 @@ describe("default tool assignment", () => {
     const rows = await withTenant(appDb.db, tenantA, (tx) =>
       tx.select().from(agentTools).where(eq(agentTools.toolId, toolId)),
     );
-    expect(rows.map((r) => r.agentId).sort()).toEqual([agentA, otherAgent].sort());
+    expect(rows.map((r) => r.agentId)).toEqual([agentA]);
+
+    // Even with a stray assignment, the other agent can't see or call it.
+    await withTenant(appDb.db, tenantA, (tx) =>
+      tx.insert(agentTools).values({ tenantId: tenantA, agentId: otherAgent, toolId }),
+    );
+    const other = (await (await req(`/v1/agents/${otherAgent}/config`)).json()) as Json;
+    expect(other.tools.map((t: { name: string }) => t.name)).not.toContain("crm_buscar");
   });
 });

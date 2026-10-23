@@ -227,6 +227,8 @@ export const connections = pgTable(
     id: uuid("id").primaryKey().defaultRandom(),
     tenantId: tenantId(),
     kind: connectionKind("kind").notNull(),
+    /** The agent this connection belongs to: its tools are never shared with others. */
+    agentId: uuid("agent_id"),
     name: text("name").notNull(),
     /** Non-secret configuration (URL, dialect, auth type…). */
     config: jsonb("config").$type<Record<string, unknown>>().notNull().default({}),
@@ -244,6 +246,13 @@ export const connections = pgTable(
       columns: [t.credentialId, t.tenantId],
       foreignColumns: [credentials.id, credentials.tenantId],
     }),
+    // Deleting an agent deletes its connections first (and their credentials).
+    foreignKey({
+      name: "connections_agent_fk",
+      columns: [t.agentId, t.tenantId],
+      foreignColumns: [agents.id, agents.tenantId],
+    }),
+    index("connections_agent_idx").on(t.agentId),
   ],
 );
 

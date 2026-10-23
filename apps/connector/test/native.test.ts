@@ -1019,11 +1019,13 @@ describe("native connections through the API", () => {
 
     const agentId = await withTenant(appDb.db, tenant, async (tx) => {
       const [a] = await tx.insert(agents).values({ tenantId: tenant, name: "Soporte" }).returning();
-      await tx
-        .insert(agentTools)
-        .values(list.map((t) => ({ tenantId: tenant, agentId: a!.id, toolId: t.id })));
       return a!.id;
     });
+    // The connection is this agent's: it gets every enabled tool of it.
+    const owned = (await (
+      await req(`/v1/connections/${ok.connectionId}/owner`, { agentId })
+    ).json()) as Json;
+    expect(owned.tools).toBe(list.length);
     const args = { deptid: 1, asunto: "No carga la web", mensaje: "Desde esta mañana" };
     const first = (await (
       await req("/v1/tools/call", { agentId, toolName: "whmcs_abrir_ticket", args })

@@ -29,6 +29,8 @@ export type ConnectionRow = {
   kind: "mcp" | "openapi" | "sql" | "http" | "native";
   config: Record<string, unknown>;
   credentialId: string | null;
+  /** Owner agent: the only one that gets (and may call) this connection's tools. */
+  agentId?: string | null;
 };
 
 export type ExecutionResult = { ok: boolean; data: unknown; truncated: boolean };

@@ -23,7 +23,7 @@ import {
   type NativeProvider,
 } from "@brainagent/core";
 import { agentTools, agents, connections, tools, withTenant, type Tx } from "@brainagent/db";
-import { and, eq, inArray, notInArray } from "drizzle-orm";
+import { and, eq, inArray, isNull, notInArray, or } from "drizzle-orm";
 import { z } from "zod";
 import type { ConnectorContext } from "./context";
 import {
@@ -440,7 +440,7 @@ export async function saveStudioTool(
       .insert(tools)
       .values({ ...values, tenantId, connectionId, sourceRef: "studio", enabled: true })
       .returning({ id: tools.id });
-    await assignToAllAgents(tx, tenantId, [row!.id]);
+    await assignToOwner(tx, conn, [row!.id]);
     return { toolId: row!.id };
   });
 }
@@ -507,16 +507,51 @@ type ToolUpsert = {
 
 /** Inserts new tools, refreshes descriptions/schemas of existing ones (keeping admin
  *  choices: enabled, confirmation), and removes tools the source no longer offers. */
-/** New tools are available to every agent of the organization by default; each agent can
- *  then opt out. Only called for tools that didn't exist before, so opt-outs survive syncs. */
-async function assignToAllAgents(tx: Tx, tenantId: string, toolIds: string[]) {
-  if (toolIds.length === 0) return;
-  const all = await tx.select({ id: agents.id }).from(agents);
-  if (all.length === 0) return;
+/** New tools of a connection go to its owner agent (and only to it); the agent can
+ *  then switch them off. Only called for tools that didn't exist before. */
+async function assignToOwner(tx: Tx, conn: ConnectionRow, toolIds: string[]) {
+  if (toolIds.length === 0 || !conn.agentId) return;
   await tx
     .insert(agentTools)
-    .values(all.flatMap((a) => toolIds.map((toolId) => ({ tenantId, agentId: a.id, toolId }))))
+    .values(toolIds.map((toolId) => ({ tenantId: conn.tenantId, agentId: conn.agentId!, toolId })))
     .onConflictDoNothing();
+}
+
+/**
+ * Gives a connection to an agent (right after creating it, or adopting one that has no
+ * owner yet) and assigns it its enabled tools. A connection never changes owner.
+ */
+export async function setConnectionOwner(
+  ctx: ConnectorContext,
+  tenantId: string,
+  connectionId: string,
+  agentId: string,
+) {
+  return withTenant(ctx.db, tenantId, async (tx) => {
+    const [agent] = await tx.select({ id: agents.id }).from(agents).where(eq(agents.id, agentId));
+    if (!agent) throw new ServiceError("agente no encontrado", 404);
+    const [conn] = await tx
+      .update(connections)
+      .set({ agentId })
+      .where(
+        and(
+          eq(connections.id, connectionId),
+          or(isNull(connections.agentId), eq(connections.agentId, agentId)),
+        ),
+      )
+      .returning();
+    if (!conn) throw new ServiceError("la conexión no existe o pertenece a otro agente", 409);
+    const enabled = await tx
+      .select({ id: tools.id })
+      .from(tools)
+      .where(and(eq(tools.connectionId, connectionId), eq(tools.enabled, true)));
+    await assignToOwner(
+      tx,
+      conn as ConnectionRow,
+      enabled.map((t) => t.id),
+    );
+    return { ok: true, tools: enabled.length };
+  });
 }
 
 async function upsertTools(ctx: ConnectorContext, conn: ConnectionRow, list: ToolUpsert[]) {
@@ -555,9 +590,14 @@ async function upsertTools(ctx: ConnectorContext, conn: ConnectionRow, list: Too
         .select({ id: tools.id })
         .from(tools)
         .where(and(eq(tools.connectionId, conn.id), inArray(tools.name, added)));
-      await assignToAllAgents(
+      // The owner as stored now (it may have been set after this connection was created).
+      const [current] = await tx
+        .select({ agentId: connections.agentId })
+        .from(connections)
+        .where(eq(connections.id, conn.id));
+      await assignToOwner(
         tx,
-        conn.tenantId,
+        { ...conn, agentId: current?.agentId ?? null },
         rows.map((r) => r.id),
       );
     }

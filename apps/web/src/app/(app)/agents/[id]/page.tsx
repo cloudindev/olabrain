@@ -78,8 +78,11 @@ export default async function AgentPage({
         kind: connections.kind,
         status: connections.status,
         config: connections.config,
+        agentId: connections.agentId,
       })
       .from(connections)
+      // This agent's connections, plus those without owner it may adopt.
+      .where(or(eq(connections.agentId, id), isNull(connections.agentId)))
       .orderBy(asc(connections.name));
     const assigned = await tx
       .select({ toolId: agentTools.toolId })
@@ -91,9 +94,14 @@ export default async function AgentPage({
       .where(and(eq(channels.agentId, id), eq(channels.kind, WEB_WIDGET)))
       .limit(1);
     // Only what the UI shows: never send connection config (URLs, hosts) to the client.
-    const connectionList = connectionRows.map(({ config, ...c }) => {
+    const connectionList = connectionRows.map(({ config, agentId, ...c }) => {
       const cfg = (config ?? {}) as { provider?: string; dialect?: string };
-      return { ...c, provider: cfg.provider ?? null, dialect: cfg.dialect ?? null };
+      return {
+        ...c,
+        provider: cfg.provider ?? null,
+        dialect: cfg.dialect ?? null,
+        owned: agentId === id,
+      };
     });
     return {
       agent,
@@ -218,7 +226,8 @@ export default async function AgentPage({
       {tab === "connections" ? (
         <AgentConnections
           agentId={id}
-          connections={data.connectionList}
+          connections={data.connectionList.filter((c) => c.owned)}
+          unowned={data.connectionList.filter((c) => !c.owned)}
           tools={data.toolList}
           assigned={data.assigned}
           connectionId={connectionId}

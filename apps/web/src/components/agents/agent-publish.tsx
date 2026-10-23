@@ -304,7 +304,6 @@ export function AgentPublish({
               }}
             />
           </div>
-          <p className="text-xs text-ink-3">{t("limits")}</p>
           {message ? (
             <p role="status" className={cn("text-sm", message.ok ? "text-ok" : "text-bad")}>
               {message.text}

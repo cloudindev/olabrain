@@ -41,8 +41,12 @@ test("create an agent, connect the demo database tools and use them", async ({ p
   await page.getByRole("button", { name: "Guardar" }).click();
   await expect(page.getByRole("status")).toHaveText("Guardado");
 
-  // New agents get every enabled tool (Conexiones); turning one off and on again saves.
+  // New agents start without connections; the demo one has no owner yet: adopt it.
   await page.goto(`${agentUrl}?tab=connections`, { waitUntil: "networkidle" });
+  await expect(page.getByTestId("connection-cards")).not.toContainText("Operaciones (demo)");
+  const unowned = page.getByTestId("unowned-connections");
+  await expect(unowned).toContainText("Operaciones (demo)");
+  await unowned.getByRole("button", { name: "Usar en este agente" }).click();
   // A card per connected app; opening it shows its tools.
   await expect(page.getByTestId("connection-cards")).toContainText("2/2 herramientas");
   await page.getByTestId("connection-card-Operaciones (demo)").click();
@@ -56,6 +60,16 @@ test("create an agent, connect the demo database tools and use them", async ({ p
 
   await page.goto("/agents");
   await expect(page.getByTestId("agent-list")).toContainText("2 herramientas");
+
+  // Another agent never gets (or sees) this agent's connection.
+  await page.goto("/agents/new", { waitUntil: "networkidle" });
+  await page.getByRole("radio", { name: /Nora/ }).click();
+  await page.getByLabel("Nombre del agente").fill("Nora soporte");
+  await page.getByRole("button", { name: "Crear agente" }).click();
+  await expect(page).toHaveURL(/\/agents\/[0-9a-f-]{36}$/);
+  await page.goto(`${page.url()}?tab=connections`, { waitUntil: "networkidle" });
+  await expect(page.getByText("Operaciones (demo)")).toHaveCount(0);
+  await page.goto(agentUrl);
 
   test.skip(!process.env.E2E_LLM, "conversation step needs a real LLM (set E2E_LLM=1)");
 

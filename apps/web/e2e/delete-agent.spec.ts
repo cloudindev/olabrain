@@ -1,9 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { signUpAndCreateOrg } from "./helpers";
 
-test("an admin deletes an agent and its conversations from Personalizar", async ({
-  page,
-}) => {
+test("an admin deletes an agent and its conversations from Personalizar", async ({ page }) => {
   test.setTimeout(90_000);
   await signUpAndCreateOrg(page, `Borrar ${Date.now()}`);
   await page.goto("/agents/new", { waitUntil: "networkidle" });

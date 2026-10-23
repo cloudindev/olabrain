@@ -3,7 +3,14 @@
 import { Badge, Button, Card, Checkbox, Field, Input, Select, Textarea } from "@brainagent/ui";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
-import { useState, useTransition, type FormEvent, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useTransition,
+  type FormEvent,
+  type ReactNode,
+} from "react";
 import {
   createHttpConnection,
   createMcpConnection,
@@ -153,6 +160,7 @@ function ApiAuthFields({
 }
 
 function McpForm() {
+  const agentId = useContext(AgentIdContext);
   const t = useTranslations("connections");
   const { error, pending, submit } = useSubmit();
   const [name, setName] = useState("");
@@ -165,7 +173,10 @@ function McpForm() {
       onSubmit={(e) => {
         e.preventDefault();
         submit(() =>
-          createMcpConnection({ name, url, auth, bearer: auth === "bearer" ? bearer : undefined }),
+          createMcpConnection(
+            { name, url, auth, bearer: auth === "bearer" ? bearer : undefined },
+            agentId,
+          ),
         );
       }}
     >
@@ -216,6 +227,7 @@ type Operation = {
 };
 
 function OpenApiForm() {
+  const agentId = useContext(AgentIdContext);
   const t = useTranslations("connections");
   const { error, pending, submit } = useSubmit();
   const [specUrl, setSpecUrl] = useState("");
@@ -285,15 +297,18 @@ function OpenApiForm() {
           onSubmit={(e) => {
             e.preventDefault();
             submit(() =>
-              createOpenApiConnection({
-                name,
-                specUrl: specText ? undefined : specUrl,
-                specText: specText || undefined,
-                baseUrl,
-                auth: { type: auth, name: keyName || undefined },
-                secret,
-                operationIds: [...selected],
-              }),
+              createOpenApiConnection(
+                {
+                  name,
+                  specUrl: specText ? undefined : specUrl,
+                  specText: specText || undefined,
+                  baseUrl,
+                  auth: { type: auth, name: keyName || undefined },
+                  secret,
+                  operationIds: [...selected],
+                },
+                agentId,
+              ),
             );
           }}
         >
@@ -377,6 +392,7 @@ function OpenApiForm() {
 }
 
 function SqlForm() {
+  const agentId = useContext(AgentIdContext);
   const t = useTranslations("connections");
   const { error, pending, submit } = useSubmit();
   const [v, setV] = useState({
@@ -398,18 +414,21 @@ function SqlForm() {
       onSubmit={(e) => {
         e.preventDefault();
         submit(() =>
-          createSqlConnection({
-            name: v.name,
-            config: {
-              dialect: v.dialect,
-              host: v.host,
-              port: Number(v.port),
-              database: v.database,
-              user: v.user,
-              ssl: v.ssl,
+          createSqlConnection(
+            {
+              name: v.name,
+              config: {
+                dialect: v.dialect,
+                host: v.host,
+                port: Number(v.port),
+                database: v.database,
+                user: v.user,
+                ssl: v.ssl,
+              },
+              password: v.password,
             },
-            password: v.password,
-          }),
+            agentId,
+          ),
         );
       }}
     >
@@ -473,6 +492,7 @@ function SqlForm() {
 }
 
 function HttpForm() {
+  const agentId = useContext(AgentIdContext);
   const t = useTranslations("connections");
   const { error, pending, submit } = useSubmit();
   const [name, setName] = useState("");
@@ -486,12 +506,15 @@ function HttpForm() {
       onSubmit={(e) => {
         e.preventDefault();
         submit(() =>
-          createHttpConnection({
-            name,
-            baseUrl,
-            auth: { type: auth, name: keyName || undefined },
-            secret,
-          }),
+          createHttpConnection(
+            {
+              name,
+              baseUrl,
+              auth: { type: auth, name: keyName || undefined },
+              secret,
+            },
+            agentId,
+          ),
         );
       }}
     >
@@ -525,6 +548,7 @@ function HttpForm() {
 }
 
 function WhmcsForm() {
+  const agentId = useContext(AgentIdContext);
   const t = useTranslations("connections");
   const { error, pending, submit } = useSubmit();
   const [v, setV] = useState({
@@ -540,7 +564,7 @@ function WhmcsForm() {
       error={error}
       onSubmit={(e) => {
         e.preventDefault();
-        submit(() => createWhmcsConnection(v));
+        submit(() => createWhmcsConnection(v, agentId));
       }}
     >
       <p className="text-sm text-ink-2">{t("providers.whmcs.help")}</p>
@@ -599,6 +623,7 @@ function WhmcsForm() {
 
 /** Holded, Factorial, Sesame HR: name + API key (+ region for Sesame), checked on connect. */
 function ApiKeyForm({ provider }: { provider: ApiKeyProvider }) {
+  const agentId = useContext(AgentIdContext);
   const t = useTranslations("connections");
   const { error, pending, submit } = useSubmit();
   const [v, setV] = useState({
@@ -613,11 +638,15 @@ function ApiKeyForm({ provider }: { provider: ApiKeyProvider }) {
       onSubmit={(e) => {
         e.preventDefault();
         submit(() =>
-          createApiKeyConnection(provider, {
-            name: v.name,
-            apiKey: v.apiKey,
-            region: provider === "sesame" ? v.region : undefined,
-          }),
+          createApiKeyConnection(
+            provider,
+            {
+              name: v.name,
+              apiKey: v.apiKey,
+              region: provider === "sesame" ? v.region : undefined,
+            },
+            agentId,
+          ),
         );
       }}
     >
@@ -655,6 +684,7 @@ function ApiKeyForm({ provider }: { provider: ApiKeyProvider }) {
 }
 
 function Microsoft365Form() {
+  const agentId = useContext(AgentIdContext);
   const t = useTranslations("connections");
   const { error, pending, submit } = useSubmit();
   const [name, setName] = useState("Outlook 365");
@@ -663,7 +693,7 @@ function Microsoft365Form() {
       error={error}
       onSubmit={(e) => {
         e.preventDefault();
-        submit(() => createMicrosoft365Connection({ name }));
+        submit(() => createMicrosoft365Connection({ name }, agentId));
       }}
     >
       <p className="text-sm text-ink-2">{t("providers.microsoft365.help")}</p>
@@ -678,6 +708,7 @@ function Microsoft365Form() {
 }
 
 function GoogleDriveForm() {
+  const agentId = useContext(AgentIdContext);
   const t = useTranslations("connections");
   const { error, pending, submit } = useSubmit();
   const [name, setName] = useState("Google Drive");
@@ -686,7 +717,7 @@ function GoogleDriveForm() {
       error={error}
       onSubmit={(e) => {
         e.preventDefault();
-        submit(() => createGoogleDriveConnection({ name }));
+        submit(() => createGoogleDriveConnection({ name }, agentId));
       }}
     >
       <p className="text-sm text-ink-2">{t("providers.googledrive.help")}</p>
@@ -700,7 +731,18 @@ function GoogleDriveForm() {
   );
 }
 
-export function NewConnectionForm({ kind }: { kind: NewConnectionKind }) {
+/** The agent the new connection is for (connections belong to one agent). */
+const AgentIdContext = createContext("");
+
+export function NewConnectionForm({ kind, agentId }: { kind: NewConnectionKind; agentId: string }) {
+  return (
+    <AgentIdContext.Provider value={agentId}>
+      <KindForm kind={kind} />
+    </AgentIdContext.Provider>
+  );
+}
+
+function KindForm({ kind }: { kind: NewConnectionKind }) {
   if (kind === "whmcs") return <WhmcsForm />;
   if (kind === "microsoft365") return <Microsoft365Form />;
   if (kind === "googledrive") return <GoogleDriveForm />;

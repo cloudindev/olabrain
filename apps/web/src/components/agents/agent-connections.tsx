@@ -10,6 +10,7 @@ import {
   ShieldCheck,
   Zap,
 } from "lucide-react";
+import { adoptConnection } from "@/app/(app)/connections/actions";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -46,9 +47,12 @@ export function AgentConnections({
   tools,
   assigned,
   connectionId,
+  unowned = [],
 }: {
   agentId: string;
   connections: AgentConnection[];
+  /** Organization connections without an owner yet (this agent may adopt them). */
+  unowned?: AgentConnection[];
   tools: ToolOption[];
   assigned: string[];
   /** Selected connection (detail view); none = the grid of cards. */
@@ -144,7 +148,7 @@ export function AgentConnections({
         })}
         <li>
           <Link
-            href="/connections/new"
+            href={`/connections/new?agent=${agentId}`}
             className="flex h-full min-h-36 flex-col items-center justify-center gap-2 rounded-[22px] border border-dashed border-line-strong p-5 text-center text-ink-2 transition hover:border-ink hover:text-ink"
           >
             <span className="flex size-10 items-center justify-center rounded-full bg-surface-2">
@@ -155,7 +159,59 @@ export function AgentConnections({
           </Link>
         </li>
       </ul>
+
+      {unowned.length ? (
+        <section className="flex flex-col gap-3" data-testid="unowned-connections">
+          <div className="max-w-2xl">
+            <h3 className="font-display text-base font-semibold">{t("unownedTitle")}</h3>
+            <p className="text-sm text-ink-2">{t("unownedHint")}</p>
+          </div>
+          <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {unowned.map((c) => (
+              <li
+                key={c.id}
+                className="flex items-center gap-3 rounded-[22px] border border-dashed border-line-strong bg-surface p-4"
+              >
+                <AppIcon source={c} />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium">{c.name}</p>
+                  <p className="text-xs text-ink-2">{tc(`kinds.${c.kind}`)}</p>
+                </div>
+                <AdoptButton connectionId={c.id} agentId={agentId} label={t("adopt")} />
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
     </div>
+  );
+}
+
+function AdoptButton({
+  connectionId,
+  agentId,
+  label,
+}: {
+  connectionId: string;
+  agentId: string;
+  label: string;
+}) {
+  const router = useRouter();
+  const [pending, start] = useTransition();
+  return (
+    <Button
+      size="sm"
+      variant="secondary"
+      disabled={pending}
+      onClick={() =>
+        start(async () => {
+          await adoptConnection(connectionId, agentId);
+          router.refresh();
+        })
+      }
+    >
+      {label}
+    </Button>
   );
 }
 

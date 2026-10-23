@@ -1,5 +1,5 @@
 import type { NativeProvider } from "@brainagent/core";
-import { connections, tools } from "@brainagent/db";
+import { agents, connections, tools } from "@brainagent/db";
 import { Badge, Button, Card } from "@brainagent/ui";
 import { count, desc, eq } from "drizzle-orm";
 import { getTranslations } from "next-intl/server";
@@ -27,11 +27,13 @@ export default async function ConnectionsPage() {
         kind: connections.kind,
         config: connections.config,
         status: connections.status,
+        owner: agents.name,
         tools: count(tools.id),
       })
       .from(connections)
       .leftJoin(tools, eq(tools.connectionId, connections.id))
-      .groupBy(connections.id)
+      .leftJoin(agents, eq(agents.id, connections.agentId))
+      .groupBy(connections.id, agents.name)
       .orderBy(desc(connections.createdAt)),
   );
   const canEdit = ctx.role === "owner" || ctx.role === "admin";
@@ -95,7 +97,8 @@ export default async function ConnectionsPage() {
                           : t(`kinds.${c.kind}`)}
                       </p>
                       <p className="mt-1 text-xs text-ink-3">
-                        {t("toolCount", { count: c.tools })}
+                        {t("toolCount", { count: c.tools })} ·{" "}
+                        {c.owner ? t("owner", { name: c.owner }) : t("noOwner")}
                       </p>
                     </div>
                   </Link>

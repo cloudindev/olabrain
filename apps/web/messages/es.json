@@ -307,7 +307,15 @@
     "reauthorize": "Volver a autorizar",
     "connected": "Conectadas",
     "available": "Disponibles para conectar",
-    "toolCount": "{count, plural, one {# herramienta} other {# herramientas}}"
+    "toolCount": "{count, plural, one {# herramienta} other {# herramientas}}",
+    "forAgentTitle": "¿Para qué agente es la conexión?",
+    "forAgentHint": "Cada agente tiene sus propias conexiones: sus herramientas no se comparten con otros agentes.",
+    "noAgents": "Primero necesitas un agente.",
+    "createAgent": "Crear agente",
+    "forAgent": "Para {name}",
+    "changeAgent": "Cambiar",
+    "owner": "De {name}",
+    "noOwner": "Sin agente"
   },
   "studio": {
     "title": "Tool Studio",
@@ -577,7 +585,10 @@
     "toolsOf": "Herramientas de {name}",
     "notFound": "Esta conexión ya no existe.",
     "cardTools": "{on}/{total} herramientas",
-    "noneEnabled": "Sin herramientas activas"
+    "noneEnabled": "Sin herramientas activas",
+    "unownedTitle": "Conexiones sin agente",
+    "unownedHint": "Se crearon antes de que cada agente tuviera sus propias conexiones. Si son de este agente, quédatelas: dejarán de estar disponibles para los demás.",
+    "adopt": "Usar en este agente"
   },
   "widget": {
     "empty": "Hola, soy {name}. Escríbeme o pulsa el micrófono para hablar.",
@@ -632,7 +643,6 @@
     "previewAt": "Así se verá, abajo a la {side}.",
     "voice": "Llamada de voz",
     "enabled": "Widget activo",
-    "limits": "Límite provisional por visitante: 60 mensajes y 6 llamadas de 5 min por hora.",
     "save": "Guardar",
     "saving": "Guardando…",
     "saved": "Guardado"

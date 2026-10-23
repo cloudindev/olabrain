@@ -77,6 +77,9 @@ async function loadAgentTools(
       .where(
         and(
           eq(agentTools.agentId, agentId),
+          // Connections belong to one agent: never another agent's tools, whatever the
+          // assignments say.
+          eq(connections.agentId, agentId),
           eq(tools.enabled, true),
           eq(connections.status, "active"),
         ),

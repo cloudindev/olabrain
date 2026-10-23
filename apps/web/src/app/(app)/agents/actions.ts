@@ -6,7 +6,9 @@ import {
   agents,
   auditLog,
   channels,
+  connections,
   conversations,
+  credentials,
   pendingConfirmations,
   personas,
   tools,
@@ -55,13 +57,7 @@ export async function createAgent(input: z.input<typeof createSchema>): Promise<
         presenceMode: "voice",
       })
       .returning({ id: agents.id });
-    // New agents start with every enabled tool of the organization; uncheck what you don't want.
-    const available = await tx.select({ id: tools.id }).from(tools).where(eq(tools.enabled, true));
-    if (available.length) {
-      await tx
-        .insert(agentTools)
-        .values(available.map((t) => ({ tenantId: ctx.tenantId, agentId: row!.id, toolId: t.id })));
-    }
+    // New agents start without tools: connections belong to one agent and are added from it.
     return row!.id;
   });
   if (!id) return { ok: false, error: "Personaje no encontrado" };
@@ -113,8 +109,13 @@ export async function setAgentTools(agentId: string, toolIds: string[]): Promise
       .where(eq(agents.id, agentId))
       .limit(1);
     if (!agent) throw new Error("agent not found");
+    // Only tools of this agent's own connections.
     const valid = ids.data.length
-      ? await tx.select({ id: tools.id }).from(tools).where(inArray(tools.id, ids.data))
+      ? await tx
+          .select({ id: tools.id })
+          .from(tools)
+          .innerJoin(connections, eq(connections.id, tools.connectionId))
+          .where(and(inArray(tools.id, ids.data), eq(connections.agentId, agentId)))
       : [];
     await tx.delete(agentTools).where(eq(agentTools.agentId, agentId));
     if (valid.length) {
@@ -161,6 +162,14 @@ export async function deleteAgent(id: string, confirmName: string): Promise<Acti
       await tx.delete(conversations).where(inArray(conversations.id, ids));
     }
     await tx.delete(pendingConfirmations).where(eq(pendingConfirmations.agentId, id));
+    // Its connections (and their tools and stored credentials) are its alone.
+    const owned = await tx
+      .delete(connections)
+      .where(eq(connections.agentId, id))
+      .returning({ credentialId: connections.credentialId });
+    const credentialIds = owned.map((c) => c.credentialId).filter((c): c is string => Boolean(c));
+    if (credentialIds.length)
+      await tx.delete(credentials).where(inArray(credentials.id, credentialIds));
     await tx.delete(agents).where(eq(agents.id, id)); // agent_tools cascade
     await tx.insert(auditLog).values({
       tenantId: ctx.tenantId,
