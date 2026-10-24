@@ -5,12 +5,20 @@
  */
 import type { ApiAuth, SqlConfig, StudioParam, ToolLimits } from "@brainagent/core";
 import { signFileLink, verifyFileLink } from "@brainagent/core/file-links";
-import { connections, conversationFiles, withTenant } from "@brainagent/db";
-import { and, eq, gt } from "drizzle-orm";
+import {
+  connections,
+  contactMemories,
+  contacts,
+  conversationFiles,
+  conversations,
+  withTenant,
+} from "@brainagent/db";
+import { and, eq, gt, isNull } from "drizzle-orm";
 import type { ConnectorContext } from "./context";
 import { executeHttp, renderJsonBody, renderTemplate, type ApiSecret } from "./adapters/http";
 import { McpOAuthProvider, callMcpTool, connectMcp, type McpAuthState } from "./adapters/mcp";
 import { NativeToolError, executeNativeTool } from "./adapters/native";
+import type { CapturedContact } from "./adapters/native/types";
 import { fetchWhmcsInvoicePdf } from "./adapters/native/whmcs";
 import { requestFromArgs, type OperationMapping } from "./adapters/openapi";
 import { runReadOnlyQuery } from "./adapters/sql";
@@ -86,6 +94,8 @@ export async function executeTool(
   conn: ConnectionRow,
   tool: ToolRow,
   args: Record<string, unknown>,
+  /** The conversation the call comes from (to link captured contacts). */
+  conversationId?: string | null,
 ): Promise<ExecutionResult> {
   const limits = limitsOf(tool);
 
@@ -217,6 +227,9 @@ export async function executeTool(
                 )
             : undefined,
           loadFile: (ref) => loadConversationFile(ctx, conn.tenantId, ref),
+          saveContact: (contact) =>
+            saveCapturedContact(ctx, conn.tenantId, conversationId ?? null, contact),
+          egressPolicy: ctx.policy,
         },
         tool.sourceRef,
         args,
@@ -282,4 +295,57 @@ export async function loadConversationFile(
     return { name: pdf.filename, mediaType: "application/pdf", bytes: new Uint8Array(pdf.bytes) };
   }
   throw new NativeToolError("indica el adjunto_id o el enlace del archivo");
+}
+
+/**
+ * A person captured by an agent (e.g. a web-widget lead) goes to Contacts: matched by
+ * email, then phone; their request is kept as notes; the conversation is linked to them.
+ */
+export async function saveCapturedContact(
+  ctx: ConnectorContext,
+  tenantId: string,
+  conversationId: string | null,
+  c: CapturedContact,
+): Promise<{ contactId: string }> {
+  const email = c.email?.trim().toLowerCase() || null;
+  const phone = c.phone?.replace(/[^\d+]/g, "") || null;
+  return withTenant(ctx.db, tenantId, async (tx) => {
+    const match = email ? eq(contacts.email, email) : phone ? eq(contacts.phone, phone) : undefined;
+    const [existing] = match ? await tx.select().from(contacts).where(match).limit(1) : [];
+    let contactId: string;
+    if (existing) {
+      contactId = existing.id;
+      await tx
+        .update(contacts)
+        .set({
+          displayName: existing.displayName || c.name,
+          email: existing.email ?? email,
+          phone: existing.phone ?? phone,
+          lastSeenAt: new Date(),
+        })
+        .where(eq(contacts.id, existing.id));
+    } else {
+      const [row] = await tx
+        .insert(contacts)
+        .values({ tenantId, displayName: c.name, email, phone })
+        .returning({ id: contacts.id });
+      contactId = row!.id;
+    }
+    if (c.notes.length)
+      await tx.insert(contactMemories).values(
+        c.notes.map((content) => ({
+          tenantId,
+          contactId,
+          content: content.slice(0, 500),
+          source: "explicit" as const,
+          conversationId,
+        })),
+      );
+    if (conversationId)
+      await tx
+        .update(conversations)
+        .set({ contactId })
+        .where(and(eq(conversations.id, conversationId), isNull(conversations.contactId)));
+    return { contactId };
+  });
 }

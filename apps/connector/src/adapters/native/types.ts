@@ -1,4 +1,4 @@
-import type { SafeFetcher } from "../../egress";
+import type { EgressPolicy, SafeFetcher } from "../../egress";
 
 /** A tool in a native connector's curated catalog. */
 export type NativeToolDef = {
@@ -6,6 +6,18 @@ export type NativeToolDef = {
   description: string;
   inputSchema: Record<string, unknown>;
   mode: "read" | "write";
+  /** Created with confirmation "auto" (admins can still change it): e.g. notifying the
+   *  company of a lead from a web widget, where asking the visitor makes no sense. */
+  autoConfirm?: boolean;
+};
+
+/** A person the agent captured (web widget lead…), saved to the panel's Contacts. */
+export type CapturedContact = {
+  name: string;
+  email?: string;
+  phone?: string;
+  /** Extra facts (company, request…) kept as the contact's notes. */
+  notes: string[];
 };
 
 export type NativeCallContext = {
@@ -18,6 +30,10 @@ export type NativeCallContext = {
   maxBytes: number;
   /** Signed, expiring download link to a file served by apps/web (e.g. an invoice PDF). */
   fileLink?: (kind: "whmcs-invoice", ref: string) => string;
+  /** Saves or updates a contact (by email/phone) and links it to the conversation. */
+  saveContact?: (contact: CapturedContact) => Promise<{ contactId: string }>;
+  /** Egress policy for non-HTTP connections (SMTP): private networks blocked. */
+  egressPolicy?: EgressPolicy;
   /** A file for upload tools: a chat attachment or the file behind a signed link. */
   loadFile?: (ref: {
     attachmentId?: string;

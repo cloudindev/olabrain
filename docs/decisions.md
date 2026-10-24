@@ -252,3 +252,9 @@ Implementa ADR-007 sin pagos (Stripe pendiente).
 - **Sin saldo** no empiezan turnos de chat ni llamadas (panel y widget, HTTP 402); una llamada en curso no se corta, el saldo puede quedar ligeramente negativo. La demo de la home no se cobra.
 - Ajustes manuales: `pnpm --filter @brainagent/db wallet:grant <tenantId> <eur> "<motivo>"`.
 - Las tarifas de referencia de CLAUDE.md (voz 0,35 €/min, mensaje 0,01 €) quedan sustituidas por coste × 1,30 por decisión del usuario.
+
+## ADR-019 — Conector Email (SMTP) con destinatarios fijos (2026-10-25)
+
+**Contexto.** El widget recoge datos de contacto de visitantes anónimos y hay que avisar a la empresa por email.
+
+**Decisión.** Conector nativo `smtp` (servidor, puerto, usuario, contraseña, remitente y **destinatarios fijos**). Herramientas: `email_aviso_contacto` (guarda el contacto en Contactos —por email/teléfono, con lo que pide como notas y la conversación enlazada— y envía el aviso con *Reply-To* del visitante) y `email_enviar` (solo a los destinatarios configurados). Ambas se crean con confirmación automática: en el widget no tiene sentido pedírsela al visitante, y no pueden escribir a direcciones arbitrarias (no sirven de relé de spam). El host pasa por la política de salida (sin redes privadas salvo lista blanca) y se conecta a la IP resuelta.

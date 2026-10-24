@@ -17,6 +17,7 @@ import {
   createGoogleDriveConnection,
   createMicrosoft365Connection,
   createApiKeyConnection,
+  createSmtpConnection,
   createWhmcsConnection,
   createOpenApiConnection,
   createSqlConnection,
@@ -24,7 +25,15 @@ import {
 } from "@/app/(app)/connections/actions";
 
 export type NewConnectionKind =
-  "mcp" | "openapi" | "sql" | "http" | "whmcs" | "microsoft365" | "googledrive" | ApiKeyProvider;
+  | "mcp"
+  | "openapi"
+  | "sql"
+  | "http"
+  | "whmcs"
+  | "microsoft365"
+  | "googledrive"
+  | "smtp"
+  | ApiKeyProvider;
 
 type ApiKeyProvider = "holded" | "factorial" | "sesame";
 type ApiAuthType = "none" | "bearer" | "api_key_header" | "api_key_query" | "basic";
@@ -621,6 +630,114 @@ function WhmcsForm() {
   );
 }
 
+/** Email (SMTP): server, credentials, sender and the fixed recipients. */
+function SmtpForm() {
+  const agentId = useContext(AgentIdContext);
+  const t = useTranslations("connections");
+  const { error, pending, submit } = useSubmit();
+  const [v, setV] = useState({
+    name: "Email",
+    host: "",
+    port: "587",
+    user: "",
+    password: "",
+    from: "",
+    recipients: "",
+  });
+  const set = (k: keyof typeof v, value: string) => setV((prev) => ({ ...prev, [k]: value }));
+  const recipients = v.recipients.split(/[\s,;]+/).filter(Boolean);
+  return (
+    <FormCard
+      error={error}
+      onSubmit={(e) => {
+        e.preventDefault();
+        submit(() =>
+          createSmtpConnection(
+            {
+              name: v.name,
+              host: v.host,
+              port: Number(v.port),
+              user: v.user,
+              password: v.password,
+              from: v.from,
+              recipients,
+            },
+            agentId,
+          ),
+        );
+      }}
+    >
+      <p className="text-sm text-ink-2">{t("providers.smtp.help")}</p>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label={t("name")} htmlFor="s-name">
+          <Input id="s-name" value={v.name} onChange={(e) => set("name", e.target.value)} />
+        </Field>
+        <div className="grid grid-cols-[1fr_96px] gap-3">
+          <Field label={t("providers.smtp.host")} htmlFor="s-host">
+            <Input
+              id="s-host"
+              placeholder="smtp.miempresa.com"
+              value={v.host}
+              onChange={(e) => set("host", e.target.value)}
+            />
+          </Field>
+          <Field label={t("providers.smtp.port")} htmlFor="s-port">
+            <Input
+              id="s-port"
+              inputMode="numeric"
+              value={v.port}
+              onChange={(e) => set("port", e.target.value)}
+            />
+          </Field>
+        </div>
+        <Field label={t("providers.smtp.user")} htmlFor="s-user">
+          <Input
+            id="s-user"
+            autoComplete="off"
+            value={v.user}
+            onChange={(e) => set("user", e.target.value)}
+          />
+        </Field>
+        <Field label={t("providers.smtp.password")} htmlFor="s-pass" hint={t("secretHint")}>
+          <Input
+            id="s-pass"
+            type="password"
+            autoComplete="off"
+            value={v.password}
+            onChange={(e) => set("password", e.target.value)}
+          />
+        </Field>
+        <Field label={t("providers.smtp.from")} htmlFor="s-from">
+          <Input
+            id="s-from"
+            placeholder="Web <avisos@miempresa.com>"
+            value={v.from}
+            onChange={(e) => set("from", e.target.value)}
+          />
+        </Field>
+        <Field
+          label={t("providers.smtp.recipients")}
+          htmlFor="s-to"
+          hint={t("providers.smtp.recipientsHint")}
+        >
+          <Input
+            id="s-to"
+            placeholder="ventas@miempresa.com, luis@miempresa.com"
+            value={v.recipients}
+            onChange={(e) => set("recipients", e.target.value)}
+          />
+        </Field>
+      </div>
+      <Button
+        type="submit"
+        disabled={pending || !v.name || !v.host || !v.from || recipients.length === 0}
+      >
+        {t("connect")}
+      </Button>
+    </FormCard>
+  );
+}
+
 /** Holded, Factorial, Sesame HR: name + API key (+ region for Sesame), checked on connect. */
 function ApiKeyForm({ provider }: { provider: ApiKeyProvider }) {
   const agentId = useContext(AgentIdContext);
@@ -746,6 +863,7 @@ function KindForm({ kind }: { kind: NewConnectionKind }) {
   if (kind === "whmcs") return <WhmcsForm />;
   if (kind === "microsoft365") return <Microsoft365Form />;
   if (kind === "googledrive") return <GoogleDriveForm />;
+  if (kind === "smtp") return <SmtpForm />;
   if (kind === "holded" || kind === "factorial" || kind === "sesame")
     return <ApiKeyForm provider={kind} />;
   if (kind === "mcp") return <McpForm />;

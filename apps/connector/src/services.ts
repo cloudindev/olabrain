@@ -21,6 +21,7 @@ import {
   type ApiKeyConnectionInput,
   type ApiKeyProvider,
   type NativeProvider,
+  type SmtpConnectionInput,
 } from "@brainagent/core";
 import { agentTools, agents, connections, tools, withTenant, type Tx } from "@brainagent/db";
 import { and, eq, inArray, isNull, notInArray, or } from "drizzle-orm";
@@ -47,6 +48,7 @@ import { checkWhmcs, fetchWhmcsInvoicePdf } from "./adapters/native/whmcs";
 import { checkFactorial } from "./adapters/native/factorial";
 import { checkHolded } from "./adapters/native/holded";
 import { checkSesame } from "./adapters/native/sesame";
+import { checkSmtp } from "./adapters/native/smtp";
 import {
   beginGoogleAuth,
   completeGoogleAuth,
@@ -496,6 +498,8 @@ export async function testSavedTool(
 // --- Shared ---------------------------------------------------------------------
 
 type ToolUpsert = {
+  /** Confirmation for tools created now (existing ones keep the admin's choice). */
+  confirmation?: "required" | "auto";
   name: string;
   sourceRef: string;
   description: string;
@@ -635,7 +639,9 @@ async function syncNativeTools(
       description: t.description,
       inputSchema: t.inputSchema,
       mode: t.mode,
-      // Curated catalog: writes are enabled but always ask the user first (confirmation: required).
+      // Curated catalog: writes are enabled and ask the user first, unless the tool is
+      // meant to run on its own (e.g. notifying a web lead): confirmation "auto".
+      confirmation: t.autoConfirm ? ("auto" as const) : ("required" as const),
       enabled: true,
       config: {},
     })),
@@ -672,6 +678,43 @@ export async function createWhmcsConnection(
     secret,
   });
   await syncNativeTools(ctx, conn, "whmcs");
+  return { connectionId: conn.id, status: "active" as const };
+}
+
+/** Email through the customer's SMTP server (recipients fixed in the connection). */
+export async function createSmtpConnection(
+  ctx: ConnectorContext,
+  tenantId: string,
+  input: SmtpConnectionInput,
+) {
+  const config = {
+    provider: "smtp",
+    host: input.host.toLowerCase(),
+    port: input.port,
+    from: input.from,
+    recipients: input.recipients.map((r) => r.toLowerCase()),
+  };
+  const secret = { user: input.user, password: input.password };
+  try {
+    await checkSmtp({
+      config,
+      secret,
+      saveSecret: async () => undefined,
+      fetcher: ctx.fetcher,
+      timeoutMs: 15_000,
+      maxBytes: 200_000,
+      egressPolicy: ctx.policy,
+    });
+  } catch (e) {
+    throw new ServiceError((e as Error).message);
+  }
+  const conn = await createConnection(ctx, tenantId, {
+    kind: "native",
+    name: input.name,
+    config,
+    secret,
+  });
+  await syncNativeTools(ctx, conn, "smtp");
   return { connectionId: conn.id, status: "active" as const };
 }
 

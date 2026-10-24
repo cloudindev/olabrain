@@ -519,6 +519,48 @@ describe("web widget visitors", () => {
   });
 });
 
+describe("captured contacts", () => {
+  it("are matched by email, keep notes and link the conversation", async () => {
+    const { saveCapturedContact } = await import("../src/execute");
+    const { contacts, contactMemories, conversations } = await import("@brainagent/db");
+    const conversationId = await withTenant(appDb.db, tenantA, async (tx) => {
+      const [c] = await tx
+        .insert(conversations)
+        .values({ tenantId: tenantA, agentId: agentA, channel: "widget" })
+        .returning();
+      return c!.id;
+    });
+    const first = await saveCapturedContact(ctx, tenantA, conversationId, {
+      name: "Luis",
+      email: "Luis@Cliente.es",
+      notes: ["Pide: un rack"],
+    });
+    const again = await saveCapturedContact(ctx, tenantA, null, {
+      name: "Luis Sánchez",
+      email: "luis@cliente.es",
+      phone: "+34 600 11 22 33",
+      notes: ["Empresa: Cliente SL"],
+    });
+    expect(again.contactId).toBe(first.contactId);
+    const [row] = await withTenant(appDb.db, tenantA, (tx) =>
+      tx.select().from(contacts).where(eq(contacts.id, first.contactId)),
+    );
+    expect(row).toMatchObject({
+      displayName: "Luis",
+      email: "luis@cliente.es",
+      phone: "+34600112233",
+    });
+    const notes = await withTenant(appDb.db, tenantA, (tx) =>
+      tx.select().from(contactMemories).where(eq(contactMemories.contactId, first.contactId)),
+    );
+    expect(notes.map((n) => n.content).sort()).toEqual(["Empresa: Cliente SL", "Pide: un rack"]);
+    const [conv] = await withTenant(appDb.db, tenantA, (tx) =>
+      tx.select().from(conversations).where(eq(conversations.id, conversationId)),
+    );
+    expect(conv!.contactId).toBe(first.contactId);
+  });
+});
+
 describe("voice transcripts", () => {
   it("appends lines in order, ends the conversation and stays within the tenant", async () => {
     const { conversations, messages } = await import("@brainagent/db");

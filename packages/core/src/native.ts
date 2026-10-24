@@ -12,6 +12,7 @@ export const NATIVE_PROVIDERS = [
   "holded",
   "factorial",
   "sesame",
+  "smtp",
 ] as const;
 export const nativeProviderSchema = z.enum(NATIVE_PROVIDERS);
 export type NativeProvider = z.infer<typeof nativeProviderSchema>;
@@ -30,7 +31,32 @@ export const NATIVE_PROVIDER_INFO: Record<NativeProvider, NativeProviderInfo> = 
   holded: { id: "holded", name: "Holded", auth: "api_credentials" },
   factorial: { id: "factorial", name: "Factorial", auth: "api_credentials" },
   sesame: { id: "sesame", name: "Sesame HR", auth: "api_credentials" },
+  smtp: { id: "smtp", name: "Email (SMTP)", auth: "api_credentials" },
 };
+
+/**
+ * Email through the customer's own SMTP server. Recipients are fixed here: the agent (also
+ * from a public web widget) can only write to these addresses, never to arbitrary ones.
+ */
+export const smtpConnectionSchema = z.object({
+  name: z.string().trim().min(1).max(80),
+  host: z
+    .string()
+    .trim()
+    .min(1)
+    .max(253)
+    .regex(/^[a-zA-Z0-9.-]+$/, "Servidor no válido"),
+  port: z.coerce.number().int().min(1).max(65535).default(587),
+  user: z.string().trim().max(320).default(""),
+  password: z.string().max(500).default(""),
+  /** Sender, e.g. "Web <avisos@miempresa.com>" or avisos@miempresa.com. */
+  from: z.string().trim().min(3).max(320),
+  recipients: z
+    .array(z.email("Destinatario no válido"))
+    .min(1, "Indica al menos un destinatario")
+    .max(10),
+});
+export type SmtpConnectionInput = z.infer<typeof smtpConnectionSchema>;
 
 /** Native connectors that only need an API key pasted by the user. */
 export const API_KEY_PROVIDERS = ["holded", "factorial", "sesame"] as const;

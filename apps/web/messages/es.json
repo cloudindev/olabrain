@@ -304,6 +304,18 @@
         "apiKey": "Token de API de Sesame",
         "region": "Región",
         "regionHint": "La que aparece junto al token en Sesame, p. ej. eu1."
+      },
+      "smtp": {
+        "name": "Email (SMTP)",
+        "hint": "Avisos por email de los contactos que recoge tu agente (también desde el widget web).",
+        "help": "Usa el servidor de correo de tu empresa (o una cuenta de Microsoft 365 / Google con contraseña de aplicación). El agente solo podrá escribir a los destinatarios que pongas aquí, y los contactos que recoja se guardan en Contactos.",
+        "host": "Servidor SMTP",
+        "port": "Puerto",
+        "user": "Usuario",
+        "password": "Contraseña",
+        "from": "Remitente",
+        "recipients": "Destinatarios",
+        "recipientsHint": "A quién avisar, separados por comas. El agente nunca podrá escribir a otras direcciones."
       }
     },
     "reauthorize": "Volver a autorizar",

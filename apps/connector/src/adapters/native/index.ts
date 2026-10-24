@@ -10,6 +10,7 @@ import { GOOGLE_DRIVE_TOOLS, executeGoogleDriveTool, type GoogleApp } from "./go
 import { FACTORIAL_TOOLS, executeFactorialTool } from "./factorial";
 import { HOLDED_TOOLS, executeHoldedTool } from "./holded";
 import { SESAME_TOOLS, executeSesameTool } from "./sesame";
+import { SMTP_TOOLS, executeSmtpTool } from "./smtp";
 import { WHMCS_TOOLS, executeWhmcsTool } from "./whmcs";
 
 export const NATIVE_TOOLS: Record<NativeProvider, NativeToolDef[]> = {
@@ -19,6 +20,7 @@ export const NATIVE_TOOLS: Record<NativeProvider, NativeToolDef[]> = {
   holded: HOLDED_TOOLS,
   factorial: FACTORIAL_TOOLS,
   sesame: SESAME_TOOLS,
+  smtp: SMTP_TOOLS,
 };
 
 /** Platform OAuth apps of the native connectors (null when not configured). */
@@ -35,6 +37,7 @@ export function executeNativeTool(
   if (provider === "holded") return executeHoldedTool(ctx, toolName, args);
   if (provider === "factorial") return executeFactorialTool(ctx, toolName, args);
   if (provider === "sesame") return executeSesameTool(ctx, toolName, args);
+  if (provider === "smtp") return executeSmtpTool(ctx, toolName, args);
   if (provider === "microsoft365") {
     if (!apps.microsoft)
       throw new NativeToolError("Outlook 365 no está configurado en la plataforma");

@@ -9,6 +9,7 @@ export const APPS = [
   "holded",
   "factorial",
   "sesame",
+  "smtp",
   "whmcs",
 ] as const;
 export const CUSTOM = ["mcp", "openapi", "sql", "http"] as const;

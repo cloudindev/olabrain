@@ -11,6 +11,7 @@ import {
   microsoft365ConnectionSchema,
   API_KEY_PROVIDERS,
   apiKeyConnectionSchema,
+  smtpConnectionSchema,
   whmcsAccessKeySchema,
   whmcsConnectionSchema,
 } from "@brainagent/core";
@@ -38,6 +39,7 @@ import {
   updateWhmcsAccessKey,
   whmcsInvoicePdf,
   createApiKeyConnection,
+  createSmtpConnection,
   setConnectionOwner,
   createHttpConnection,
   createHttpSchema,
@@ -286,6 +288,9 @@ export function createApp(ctx: ConnectorContext, serviceToken: string, opts: App
         await body(c, apiKeyConnectionSchema),
       ),
     ),
+  );
+  app.post("/v1/connections/native/smtp", async (c) =>
+    c.json(await createSmtpConnection(ctx, c.var.tenantId, await body(c, smtpConnectionSchema))),
   );
   app.post("/v1/connections/native/whmcs", async (c) =>
     c.json(await createWhmcsConnection(ctx, c.var.tenantId, await body(c, whmcsConnectionSchema))),

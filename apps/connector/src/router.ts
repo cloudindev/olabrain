@@ -480,7 +480,13 @@ export async function callTool(
   );
 
   try {
-    const res = await executeTool(ctx, conn as ConnectionRow, tool, input.args);
+    const res = await executeTool(
+      ctx,
+      conn as ConnectionRow,
+      tool,
+      input.args,
+      input.conversationId,
+    );
     await log(res.ok ? "ok" : "error", res.data);
     if (!res.ok) {
       return {

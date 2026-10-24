@@ -304,6 +304,18 @@
         "apiKey": "Sesame API token",
         "region": "Region",
         "regionHint": "The one shown next to the token in Sesame, e.g. eu1."
+      },
+      "smtp": {
+        "name": "Email (SMTP)",
+        "hint": "Email notifications of the contacts your agent collects (also from the web widget).",
+        "help": "Use your company's mail server (or a Microsoft 365 / Google account with an app password). The agent can only write to the recipients you set here, and the contacts it collects are saved in Contacts.",
+        "host": "SMTP server",
+        "port": "Port",
+        "user": "User",
+        "password": "Password",
+        "from": "Sender",
+        "recipients": "Recipients",
+        "recipientsHint": "Who to notify, comma separated. The agent can never write to other addresses."
       }
     },
     "reauthorize": "Authorize again",

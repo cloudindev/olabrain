@@ -65,6 +65,10 @@ export async function createMcpConnection(input: unknown, agentId: string) {
   return createFor(agentId, "/v1/connections/mcp", input);
 }
 
+export async function createSmtpConnection(input: unknown, agentId: string) {
+  return createFor(agentId, "/v1/connections/native/smtp", input);
+}
+
 export async function createWhmcsConnection(input: unknown, agentId: string) {
   return createFor(agentId, "/v1/connections/native/whmcs", input);
 }

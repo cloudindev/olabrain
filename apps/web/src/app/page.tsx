@@ -80,6 +80,7 @@ const INTEGRATIONS: { name: string; tag: string; icon: string; soon?: boolean }[
   { name: "Holded", tag: "ERP", icon: "/apps/holded.png" },
   { name: "Factorial", tag: "RR. HH.", icon: "/apps/factorial.png" },
   { name: "Sesame HR", tag: "RR. HH.", icon: "/apps/sesame.png" },
+  { name: "Email (SMTP)", tag: "Avisos", icon: "/apps/smtp.svg" },
   { name: "WHMCS", tag: "Facturación", icon: "/apps/whmcs.png" },
   { name: "MCP", tag: "Protocolo", icon: "/apps/mcp.svg" },
   { name: "OpenAPI", tag: "API", icon: "/apps/openapi.svg" },

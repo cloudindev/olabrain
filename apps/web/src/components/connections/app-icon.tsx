@@ -17,6 +17,7 @@ const LOGOS: Record<string, string> = {
   holded: "/apps/holded.png",
   factorial: "/apps/factorial.png",
   sesame: "/apps/sesame.png",
+  smtp: "/apps/smtp.svg",
   mcp: "/apps/mcp.svg",
   openapi: "/apps/openapi.svg",
   postgres: "/apps/postgresql.svg",
