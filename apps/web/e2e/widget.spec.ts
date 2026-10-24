@@ -22,6 +22,8 @@ test("publish an agent as a web widget and open it from another site", async ({
   // Left side + one-tone halo, saved.
   await page.getByRole("radio", { name: "Izquierda" }).click();
   await page.getByRole("radio", { name: "Un tono" }).click();
+  await page.getByRole("radio", { name: "Pastel" }).click();
+  await page.locator("#widget-size").fill("88");
   await page.getByTestId("widget-save").click();
   await expect(page.getByRole("status")).toHaveText("Guardado");
 
@@ -43,6 +45,7 @@ test("publish an agent as a web widget and open it from another site", async ({
   await expect(launcher).toBeVisible();
   const box = (await launcher.boundingBox())!;
   expect(box.x).toBeLessThan(200); // left side
+  expect(Math.round(box.width)).toBe(88); // chosen size
   await launcher.click();
   const frame = page.frameLocator('iframe[title="Mateo"]');
   await expect(frame.getByPlaceholder("Escribe un mensaje…")).toBeVisible();

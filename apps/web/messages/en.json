@@ -630,13 +630,13 @@
       "left": "Left",
       "right": "Right"
     },
-    "halo": "Neon halo around the avatar",
+    "halo": "Halo around the avatar",
     "haloModes": {
       "multicolor": "Multicolor",
       "tone": "One tone"
     },
     "baseColor": "Base colour",
-    "haloHint": "With «One tone» we build the neon effect from shades of your colour.",
+    "haloHint": "With «One tone» we build the effect from shades of your colour.",
     "domainsTitle": "Allowed domains",
     "domainsHint": "Only these sites can show the widget. One per line.",
     "domainsAny": "With no domains, any site can show it. Add yours.",
@@ -649,7 +649,14 @@
     "enabled": "Widget active",
     "save": "Save",
     "saving": "Saving…",
-    "saved": "Saved"
+    "saved": "Saved",
+    "haloStyle": "Colour style",
+    "haloStyles": {
+      "neon": "Neon",
+      "normal": "Normal",
+      "pastel": "Pastel"
+    },
+    "size": "Icon size"
   },
   "billing": {
     "title": "Balance",

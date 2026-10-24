@@ -6,10 +6,11 @@ import { useTranslations } from "next-intl";
 import { useState, useTransition, type ReactNode } from "react";
 import { saveWidget } from "@/app/(app)/agents/actions";
 import { AgentFace } from "@/components/avatar/agent-face";
-import { haloGradient, type Halo } from "@/components/widget/halo";
+import { GLOW, haloGradient, type Halo, type HaloStyle } from "@/components/widget/halo";
 
 type WidgetSettings = {
   position: "right" | "left";
+  size: number;
   halo: Halo;
   allowedOrigins: string[];
   publicToolIds: string[];
@@ -18,7 +19,8 @@ type WidgetSettings = {
 
 const DEFAULTS: WidgetSettings = {
   position: "right",
-  halo: { mode: "multicolor", color: "#a6f55a" },
+  size: 68,
+  halo: { mode: "multicolor", color: "#a6f55a", style: "neon" },
   allowedOrigins: [],
   publicToolIds: [],
   voice: true,
@@ -56,23 +58,34 @@ export function HaloPreview({
   halo,
   avatar,
   name,
+  size = 68,
 }: {
   halo: Halo;
   avatar: string | null;
   name: string;
+  /** Launcher diameter in px (same as on the customer's site). */
+  size?: number;
 }) {
   const gradient = haloGradient(halo);
+  const glow = GLOW[halo.style ?? "neon"];
+  // Ring and glow scale with the launcher (5 px and 10 px at 68 px).
+  const ring = Math.round(size * 0.075);
   return (
-    <span className="relative inline-flex size-[68px] shrink-0">
+    <span className="relative inline-flex shrink-0" style={{ width: size, height: size }}>
       <span
         aria-hidden
-        className="absolute -inset-[10px] animate-[ob-spin_4s_linear_infinite] rounded-full opacity-75 blur-[14px]"
-        style={{ background: gradient }}
+        className="absolute animate-[ob-spin_4s_linear_infinite] rounded-full"
+        style={{
+          background: gradient,
+          inset: -ring * 2,
+          opacity: glow.opacity,
+          filter: `blur(${glow.blur}px)`,
+        }}
       />
       <span
         aria-hidden
-        className="absolute -inset-[5px] animate-[ob-spin_4s_linear_infinite] rounded-full"
-        style={{ background: gradient }}
+        className="absolute animate-[ob-spin_4s_linear_infinite] rounded-full"
+        style={{ background: gradient, inset: -ring }}
       />
       <AgentFace
         src={avatar}
@@ -122,7 +135,12 @@ export function AgentPublish({
   if (!widget) {
     return (
       <section className="flex flex-col items-center gap-5 rounded-[28px] border border-line bg-surface px-6 py-14 text-center">
-        <HaloPreview halo={values.halo} avatar={agent.avatar} name={agent.name} />
+        <HaloPreview
+          halo={values.halo}
+          avatar={agent.avatar}
+          name={agent.name}
+          size={values.size}
+        />
         <div className="max-w-md">
           <h2 className="font-display text-xl font-semibold">
             {t("introTitle", { name: agent.name })}
@@ -215,6 +233,44 @@ export function AgentPublish({
               </div>
               <p className="mt-2 text-xs text-ink-3">{t("haloHint")}</p>
             </div>
+            <div>
+              <p className="mb-2 text-sm font-medium">{t("haloStyle")}</p>
+              <div className="inline-flex rounded-full border border-line p-1" role="radiogroup">
+                {(["neon", "normal", "pastel"] as const satisfies readonly HaloStyle[]).map(
+                  (st) => (
+                    <button
+                      key={st}
+                      type="button"
+                      role="radio"
+                      aria-checked={(values.halo.style ?? "neon") === st}
+                      onClick={() => set("halo", { ...values.halo, style: st })}
+                      className="rounded-full px-4 py-1.5 text-sm text-ink-2 aria-checked:bg-ink aria-checked:text-paper"
+                    >
+                      {t(`haloStyles.${st}`)}
+                    </button>
+                  ),
+                )}
+              </div>
+            </div>
+            <div>
+              <label
+                htmlFor="widget-size"
+                className="mb-2 flex items-center justify-between text-sm font-medium"
+              >
+                {t("size")}
+                <span className="font-mono text-xs text-ink-2">{values.size} px</span>
+              </label>
+              <input
+                id="widget-size"
+                type="range"
+                min={48}
+                max={96}
+                step={4}
+                value={values.size}
+                onChange={(e) => set("size", Number(e.target.value))}
+                className="w-full max-w-sm accent-[var(--ink)]"
+              />
+            </div>
           </div>
         </Card>
 
@@ -276,7 +332,12 @@ export function AgentPublish({
 
       <aside className="flex flex-col gap-4 lg:sticky lg:top-20 lg:self-start">
         <section className="flex flex-col items-center gap-4 rounded-[22px] border border-line bg-[#131313] px-5 py-8 text-center">
-          <HaloPreview halo={values.halo} avatar={agent.avatar} name={agent.name} />
+          <HaloPreview
+            halo={values.halo}
+            avatar={agent.avatar}
+            name={agent.name}
+            size={values.size}
+          />
           <p className="text-xs text-white/70">
             {t("previewAt", { side: t(`positions.${values.position}`).toLowerCase() })}
           </p>

@@ -25,6 +25,7 @@ export async function GET(
       role: channel.agentRole,
       avatar: channel.avatarImage,
       position: channel.config.position,
+      size: channel.config.size,
       halo: channel.config.halo,
       // Sites allowed to embed it (the middleware turns this into frame-ancestors).
       origins: channel.config.allowedOrigins,

@@ -630,13 +630,13 @@
       "left": "Izquierda",
       "right": "Derecha"
     },
-    "halo": "Halo neón alrededor del avatar",
+    "halo": "Halo alrededor del avatar",
     "haloModes": {
       "multicolor": "Multicolor",
       "tone": "Un tono"
     },
     "baseColor": "Color base",
-    "haloHint": "Con «Un tono» creamos el efecto neón con varias tonalidades de tu color.",
+    "haloHint": "Con «Un tono» creamos el efecto con varias tonalidades de tu color.",
     "domainsTitle": "Dominios autorizados",
     "domainsHint": "Solo estas webs podrán mostrar el widget. Uno por línea.",
     "domainsAny": "Sin dominios, cualquier web puede mostrarlo. Añade los tuyos.",
@@ -649,7 +649,14 @@
     "enabled": "Widget activo",
     "save": "Guardar",
     "saving": "Guardando…",
-    "saved": "Guardado"
+    "saved": "Guardado",
+    "haloStyle": "Estilo de color",
+    "haloStyles": {
+      "neon": "Neón",
+      "normal": "Normal",
+      "pastel": "Pastel"
+    },
+    "size": "Tamaño del icono"
   },
   "billing": {
     "title": "Saldo",

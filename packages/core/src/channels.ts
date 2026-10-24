@@ -21,13 +21,17 @@ const hexColor = z.string().regex(/^#[0-9a-fA-F]{6}$/, "Color no válido (#rrggb
 /** Widget settings edited in the agent's «Publicar» tab (stored in channels.config). */
 export const widgetConfigSchema = z.object({
   position: z.enum(["right", "left"]).default("right"),
+  /** Launcher (avatar) diameter in px. */
+  size: z.number().int().min(48).max(96).default(68),
   halo: z
     .object({
-      /** "multicolor": rainbow neon; "tone": neon shades of one base colour. */
+      /** "multicolor": rainbow; "tone": shades of one base colour. */
       mode: z.enum(["multicolor", "tone"]).default("multicolor"),
       color: hexColor.default("#a6f55a"),
+      /** Colour style: bright neon glow, plain colours or soft pastels. */
+      style: z.enum(["neon", "normal", "pastel"]).default("neon"),
     })
-    .default({ mode: "multicolor", color: "#a6f55a" }),
+    .default({ mode: "multicolor", color: "#a6f55a", style: "neon" }),
   /** Sites allowed to embed the widget (empty = any). */
   allowedOrigins: z
     .array(z.string())
