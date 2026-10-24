@@ -27,6 +27,7 @@ import {
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
+import { greetingSpeechEnd } from "@/components/avatar/avatar-config";
 import { AvatarStage, useAvatarClip, type VoiceState } from "@/components/avatar/avatar-stage";
 import { RichText } from "./rich-text";
 import {
@@ -151,7 +152,10 @@ export function AgentConsole({
   const call = useVoiceCall();
   const [agentState, setAgentState] = useState<VoiceState>("disconnected");
   const live = call.status === "live";
-  const { clip, greet, stopGreeting, greetingRef, onGreetingEnd } = useAvatarClip(agentState);
+  const { clip, greet, stopGreeting, greetingRef, onGreetingEnd } = useAvatarClip(
+    agentState,
+    greetingSpeechEnd(agent.avatar?.video),
+  );
   const elapsed = useElapsed(call.startedAt);
 
   const [messages, setMessages] = useState<Message[]>([]);

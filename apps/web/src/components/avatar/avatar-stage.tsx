@@ -18,19 +18,19 @@ export type VoiceState =
 
 const CLIPS: AvatarClip[] = ["idle", "talking", "greeting"];
 
-/**
- * The greeting clip carries its own voice ("Hola. ¿En qué te puedo ayudar?", 1.9–3.9 s),
- * so it is played with sound and the agent does not speak a greeting (ADR-014).
- * The microphone opens once the sentence is over, so the agent doesn't hear it.
+/*
+ * The greeting clip carries its own voice ("Hola. ¿En qué te puedo ayudar?"), so it is
+ * played with sound and the agent does not speak a greeting (ADR-014). The microphone
+ * opens once the sentence is over (greetingSpeechEnd per avatar), so the agent doesn't
+ * hear it.
  */
-export const GREETING_SPEECH_END_SECONDS = 4;
 
 /**
  * Clip to show during a call. `greet()` must run inside the click handler: browsers
  * (iOS Safari above all) only allow sound from media started by a user gesture.
  * Resolves when the greeting's sentence has been said (or it could not play).
  */
-export function useAvatarClip(state: VoiceState) {
+export function useAvatarClip(state: VoiceState, greetingEndSeconds = 4) {
   const [greeting, setGreeting] = useState(false);
   const greetingRef = useRef<HTMLVideoElement | null>(null);
 
@@ -47,7 +47,7 @@ export function useAvatarClip(state: VoiceState) {
         resolve();
       };
       const onTime = () => {
-        if (video.currentTime >= GREETING_SPEECH_END_SECONDS) done();
+        if (video.currentTime >= greetingEndSeconds) done();
       };
       video.addEventListener("timeupdate", onTime);
       video.addEventListener("ended", done);
@@ -56,7 +56,7 @@ export function useAvatarClip(state: VoiceState) {
         done();
       });
     });
-  }, []);
+  }, [greetingEndSeconds]);
 
   const stopGreeting = useCallback(() => {
     greetingRef.current?.pause();

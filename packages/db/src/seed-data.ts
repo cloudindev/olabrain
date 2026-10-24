@@ -26,7 +26,7 @@ const NEUTRAL = ["enzo"];
 const AVATARS: Record<string, { image: string; video?: string }> = {
   alba: { image: "/personas/alba.jpg", video: "/alba" },
   mateo: { image: "/personas/mateo.jpg" },
-  lia: { image: "/personas/lia.jpg" },
+  lia: { image: "/personas/lia.jpg", video: "/lia" },
   enzo: { image: "/personas/enzo.jpg" },
   teo: { image: "/personas/teo.jpg" },
   nora: { image: "/personas/nora.jpg" },
