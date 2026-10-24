@@ -93,12 +93,22 @@ def build_session(
     tools: list[llm.Tool] | None = None,
 ) -> tuple[AgentSession, Agent]:
     instructions = runtime_agent.instructions if runtime_agent else LIA.instructions
+    # With client_greeting the web plays the greeting with its own voice. Gemini Live's
+    # proactive audio may still greet on its own after a few seconds of silence, so the
+    # greeting also goes into the history as already said, not only in the instructions.
+    greeted: llm.ChatContext | None = None
     if cfg.client_greeting:
         instructions += (
             f"\n\nLa llamada ya ha empezado con tu saludo «{OPENING_LINE}». No vuelvas a "
             "saludar: espera a que la persona hable y respóndele directamente."
         )
-    agent = Agent(instructions=instructions, tools=list[llm.Tool | llm.Toolset](tools or []))
+        greeted = llm.ChatContext()
+        greeted.add_message(role="assistant", content=OPENING_LINE)
+    agent = Agent(
+        instructions=instructions,
+        tools=list[llm.Tool | llm.Toolset](tools or []),
+        chat_ctx=greeted,
+    )
 
     if cfg.mode == "realtime":
         # Native-audio models can drift in accent or register mid-call; anchor them.
@@ -106,7 +116,11 @@ def build_session(
             "\n\nHabla siempre en español de España, con la misma voz, el mismo acento y el "
             "mismo tono durante toda la llamada, también después de usar herramientas."
         )
-        agent = Agent(instructions=instructions, tools=list[llm.Tool | llm.Toolset](tools or []))
+        agent = Agent(
+            instructions=instructions,
+            tools=list[llm.Tool | llm.Toolset](tools or []),
+            chat_ctx=greeted,
+        )
         realtime_cfg = cfg.realtime
         persona_voice = (
             catalog_voice("google", runtime_agent.persona_slug) if runtime_agent else None
