@@ -49,7 +49,10 @@ test("publish an agent as a web widget and open it from another site", async ({
   await launcher.click();
   const frame = page.frameLocator('iframe[title="Mateo"]');
   await expect(frame.getByPlaceholder("Escribe un mensaje…")).toBeVisible();
-  await expect(frame.getByText("Agente de inteligencia artificial")).toBeVisible();
+  await expect(frame.getByRole("link", { name: "OlaBrain" })).toHaveAttribute(
+    "href",
+    "https://www.olabrain.com",
+  );
 
   // Only listed domains may frame it once the list is set.
   const res = await page.request.get(`/embed/${widgetId}`);

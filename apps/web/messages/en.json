@@ -602,7 +602,7 @@
     "hangUp": "Hang up",
     "close": "Close",
     "ai": "AI assistant",
-    "notice": "Artificial intelligence agent · OlaBrain",
+    "notice": "AI agent by <brand>OlaBrain</brand>",
     "state": {
       "listening": "Listening",
       "thinking": "Thinking…",

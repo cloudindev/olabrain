@@ -305,7 +305,20 @@ export function EmbedChat({
           <ArrowUp className="size-5" />
         </button>
       </form>
-      <p className="bg-surface pb-2 text-center text-[11px] text-ink-3">{t("notice")}</p>
+      <p className="bg-surface pb-2 text-center text-[11px] text-ink-3">
+        {t.rich("notice", {
+          brand: (chunks) => (
+            <a
+              href="https://www.olabrain.com"
+              target="_blank"
+              rel="noopener"
+              className="font-medium text-ink-2 underline-offset-2 hover:text-ink hover:underline"
+            >
+              {chunks}
+            </a>
+          ),
+        })}
+      </p>
       <VoiceRoom
         room={call.room}
         onState={setAgentState}
