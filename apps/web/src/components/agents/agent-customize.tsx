@@ -100,6 +100,7 @@ export function AgentCustomize({
     start(async () => {
       const res = await updateAgent(agent.id, {
         name: values.name,
+        role: values.role,
         personaId: values.personaId,
         instructions: values.instructions,
         model: values.model,

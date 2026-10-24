@@ -57,7 +57,9 @@ export default async function AgentsPage() {
                   <p className="truncate font-display text-lg font-semibold tracking-tight">
                     {a.name}
                   </p>
-                  <p className="text-sm text-ink-2">{a.role || "—"}</p>
+                  <p className={a.role ? "text-sm text-ink-2" : "text-sm text-ink-3"}>
+                    {a.role || t("noRole")}
+                  </p>
                   <div className="mt-3 flex flex-wrap gap-1.5">
                     <Badge tone={a.status === "active" ? "ok" : "neutral"}>
                       {t(

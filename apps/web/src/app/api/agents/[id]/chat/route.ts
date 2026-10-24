@@ -4,6 +4,7 @@ import { and, asc, eq, lt } from "drizzle-orm";
 import { z } from "zod";
 import { attachmentsSchema } from "@brainagent/core";
 import { ensurePanelContact } from "@/lib/contacts";
+import { callConnector } from "@/lib/connector-app";
 import { env } from "@/lib/env";
 import { authErrorResponse, requireTenant, tenantTx, type TenantContext } from "@/lib/tenant";
 
@@ -136,7 +137,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   let upstream: Response;
   try {
     // The text chat runtime lives in apps/connector (ADR-011).
-    upstream = await fetch(`${e.CONNECTOR_URL}/v1/chat`, {
+    upstream = await callConnector("/v1/chat", {
       method: "POST",
       headers: {
         authorization: `Bearer ${e.CONNECTOR_SERVICE_TOKEN}`,

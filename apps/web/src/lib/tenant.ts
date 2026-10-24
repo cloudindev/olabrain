@@ -3,6 +3,7 @@ import { effectiveRole, hasRoleAtLeast, type Role } from "@brainagent/core";
 import { memberships, tenants, withTenant, type Tx } from "@brainagent/db";
 import { and, eq } from "drizzle-orm";
 import { headers } from "next/headers";
+import { cache } from "react";
 import { auth } from "./auth";
 import { db } from "./db";
 
@@ -24,15 +25,21 @@ export class AuthError extends Error {
   }
 }
 
-export async function getSession() {
-  return auth().api.getSession({ headers: await headers() });
-}
+/** The request's session, read once per request (layout and page share it). */
+export const getSession = cache(async () => auth().api.getSession({ headers: await headers() }));
 
 /**
  * Resolves the active tenant for the current request and checks the membership in the
  * database (never trusts the session alone). Use the returned context with `tenantTx`.
  */
 export async function requireTenant(minimum: Role = "viewer"): Promise<TenantContext> {
+  const ctx = await resolveTenant();
+  if (!hasRoleAtLeast(ctx.role, minimum)) throw new AuthError(403, "forbidden");
+  return ctx;
+}
+
+/** Session + membership, resolved once per request (React cache). */
+const resolveTenant = cache(async (): Promise<TenantContext> => {
   const session = await getSession();
   if (!session) throw new AuthError(401, "unauthenticated");
 
@@ -48,7 +55,6 @@ export async function requireTenant(minimum: Role = "viewer"): Promise<TenantCon
 
   const role = effectiveRole(row?.role);
   if (!row || !role) throw new AuthError(403, "no_tenant");
-  if (!hasRoleAtLeast(role, minimum)) throw new AuthError(403, "forbidden");
 
   return {
     user: { id: session.user.id, name: session.user.name, email: session.user.email },
@@ -56,7 +62,7 @@ export async function requireTenant(minimum: Role = "viewer"): Promise<TenantCon
     tenantName: row.tenantName,
     role,
   };
-}
+});
 
 /** Business-table access for the request's tenant (RLS-scoped transaction). */
 export function tenantTx<T>(ctx: TenantContext, fn: (tx: Tx) => Promise<T>): Promise<T> {

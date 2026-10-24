@@ -157,7 +157,8 @@
     "memory": "Memory per contact",
     "memoryHint": "Remembers facts about each person across conversations. View and delete them in Contacts.",
     "role": "Role",
-    "rolePlaceholder": "Personal assistant, Support, Sales, Operations…"
+    "rolePlaceholder": "Personal assistant, Support, Sales, Operations…",
+    "noRole": "No role"
   },
   "chat": {
     "placeholder": "Type a message…",

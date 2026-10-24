@@ -157,7 +157,8 @@
     "memory": "Memoria por contacto",
     "memoryHint": "Recuerda datos de cada persona entre conversaciones. Puedes verlos y borrarlos en Contactos.",
     "role": "Función",
-    "rolePlaceholder": "Asistente personal, Soporte, Ventas, Operaciones…"
+    "rolePlaceholder": "Asistente personal, Soporte, Ventas, Operaciones…",
+    "noRole": "Sin función"
   },
   "chat": {
     "placeholder": "Escribe un mensaje…",

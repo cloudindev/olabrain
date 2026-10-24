@@ -58,7 +58,12 @@ function createAuth() {
       schema: { users, sessions, accounts, verifications, tenants, memberships, invitations },
     }),
     user: { modelName: "users" },
-    session: { modelName: "sessions" },
+    session: {
+      modelName: "sessions",
+      // Signed copy of the session in a cookie for 5 min: page loads don't query the
+      // sessions table every time (memberships are still checked per request).
+      cookieCache: { enabled: true, maxAge: 5 * 60 },
+    },
     account: { modelName: "accounts" },
     verification: { modelName: "verifications" },
     advanced: { database: { generateId: "uuid" } },

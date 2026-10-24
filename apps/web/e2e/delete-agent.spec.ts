@@ -28,5 +28,7 @@ test("an admin deletes an agent and its conversations from Personalizar", async 
 
   await expect(page).toHaveURL(/\/agents$/);
   await expect(page.getByText("Hugo temporal")).toHaveCount(0);
-  expect((await page.request.get(`/agents/${agentId}`)).status()).toBe(404);
+  // The page streams (loading skeleton), so a missing agent renders the not-found page.
+  await page.goto(`/agents/${agentId}`);
+  await expect(page.getByText(/could not be found|no encontrad/i)).toBeVisible();
 });

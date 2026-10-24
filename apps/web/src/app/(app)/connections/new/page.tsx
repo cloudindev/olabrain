@@ -32,13 +32,14 @@ export default async function NewConnectionPage({
 }) {
   const ctx = await requireTenant("admin");
   const t = await getTranslations("connections");
+  const ta = await getTranslations("agents");
   const { type, agent: agentParam } = await searchParams;
   const kind = ALL.includes(type ?? "") ? (type as NewConnectionKind) : null;
   const isApp = (APPS as readonly string[]).includes(kind ?? "");
 
   const agentList = await tenantTx(ctx, (tx) =>
     tx
-      .select({ id: agents.id, name: agents.name, avatar: personas.avatarUrl })
+      .select({ id: agents.id, name: agents.name, role: agents.role, avatar: personas.avatarUrl })
       .from(agents)
       .leftJoin(personas, eq(personas.id, agents.personaId))
       .orderBy(asc(agents.name)),
@@ -70,7 +71,16 @@ export default async function NewConnectionPage({
                   name={a.name}
                   className="aspect-[3/4] w-full rounded-none border-0 text-4xl"
                 />
-                <p className="truncate px-3 py-2.5 text-sm font-medium">{a.name}</p>
+                <div className="px-3 py-2.5">
+                  <p className="truncate text-sm font-medium">{a.name}</p>
+                  <p
+                    className={
+                      a.role ? "truncate text-xs text-ink-2" : "truncate text-xs text-ink-3"
+                    }
+                  >
+                    {a.role || ta("noRole")}
+                  </p>
+                </div>
               </Link>
             ))}
           </div>
@@ -82,7 +92,7 @@ export default async function NewConnectionPage({
   const forAgent = (
     <p className="mb-6 flex items-center gap-2 text-sm text-ink-2">
       <AgentFace src={agent.avatar} name={agent.name} className="size-7 rounded-full text-xs" />
-      {t("forAgent", { name: agent.name })}
+      {t("forAgent", { name: agent.role ? `${agent.name} (${agent.role})` : agent.name })}
       <Link
         href={`/connections/new${kind ? `?type=${kind}` : ""}`}
         className="underline underline-offset-4 hover:text-ink"

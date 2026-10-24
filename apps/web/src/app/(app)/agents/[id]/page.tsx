@@ -1,7 +1,7 @@
 import { WEB_WIDGET } from "@brainagent/core";
 import { agentTools, agents, channels, connections, personas, tools } from "@brainagent/db";
 import { cn } from "@brainagent/ui";
-import { and, asc, eq, isNull, or } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, or } from "drizzle-orm";
 import { ArrowLeft, MessageCircle, Plug, SlidersHorizontal, Code2 } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
@@ -12,6 +12,7 @@ import { AgentConsole } from "@/components/agents/agent-console";
 import { AgentPublish } from "@/components/agents/agent-publish";
 import { AgentCustomize } from "@/components/agents/agent-customize";
 import { AgentFace } from "@/components/avatar/agent-face";
+import { LinkPending } from "@/components/shell/link-pending";
 import { modelCatalog } from "@/lib/models";
 import { env } from "@/lib/env";
 import { requireTenant, tenantTx } from "@/lib/tenant";
@@ -45,64 +46,90 @@ export default async function AgentPage({
   const ctx = await requireTenant("builder");
   const t = await getTranslations("console");
   const ta = await getTranslations("agents");
+  // Each tab loads only what it shows (switching tabs re-renders this page).
+  const needPersonas = tab === "customize";
+  const needConnections = tab === "connections";
+  const needTools = tab === "connections" || tab === "publish";
   const data = await tenantTx(ctx, async (tx) => {
     const [agent] = await tx.select().from(agents).where(eq(agents.id, id)).limit(1);
     if (!agent) return null;
-    const personaList = await tx
-      .select({
-        id: personas.id,
-        name: personas.name,
-        avatarUrl: personas.avatarUrl,
-        avatarVideo: personas.avatarVideo,
-        tenantId: personas.tenantId,
-      })
-      .from(personas)
-      .where(or(isNull(personas.tenantId), eq(personas.tenantId, ctx.tenantId)))
-      .orderBy(asc(personas.name));
-    const toolList = await tx
-      .select({
-        id: tools.id,
-        name: tools.name,
-        description: tools.description,
-        mode: tools.mode,
-        confirmation: tools.confirmation,
-        enabled: tools.enabled,
-        connectionId: tools.connectionId,
-      })
-      .from(tools)
-      .orderBy(asc(tools.name));
-    const connectionRows = await tx
-      .select({
-        id: connections.id,
-        name: connections.name,
-        kind: connections.kind,
-        status: connections.status,
-        config: connections.config,
-        agentId: connections.agentId,
-      })
-      .from(connections)
-      // This agent's connections, plus those without owner it may adopt.
-      .where(or(eq(connections.agentId, id), isNull(connections.agentId)))
-      .orderBy(asc(connections.name));
-    const assigned = await tx
-      .select({ toolId: agentTools.toolId })
-      .from(agentTools)
-      .where(eq(agentTools.agentId, id));
-    const [widget] = await tx
-      .select({ id: channels.id, enabled: channels.enabled, config: channels.config })
-      .from(channels)
-      .where(and(eq(channels.agentId, id), eq(channels.kind, WEB_WIDGET)))
-      .limit(1);
+    const personaColumns = {
+      id: personas.id,
+      name: personas.name,
+      avatarUrl: personas.avatarUrl,
+      avatarVideo: personas.avatarVideo,
+      tenantId: personas.tenantId,
+    };
+    const personaList = needPersonas
+      ? await tx
+          .select(personaColumns)
+          .from(personas)
+          .where(or(isNull(personas.tenantId), eq(personas.tenantId, ctx.tenantId)))
+          .orderBy(asc(personas.name))
+      : agent.personaId
+        ? await tx.select(personaColumns).from(personas).where(eq(personas.id, agent.personaId))
+        : [];
+    const connectionRows = needTools
+      ? await tx
+          .select({
+            id: connections.id,
+            name: connections.name,
+            kind: connections.kind,
+            status: connections.status,
+            config: connections.config,
+            agentId: connections.agentId,
+          })
+          .from(connections)
+          // This agent's connections, plus those without owner it may adopt.
+          .where(or(eq(connections.agentId, id), isNull(connections.agentId)))
+          .orderBy(asc(connections.name))
+      : [];
+    const toolList = connectionRows.length
+      ? await tx
+          .select({
+            id: tools.id,
+            name: tools.name,
+            description: tools.description,
+            mode: tools.mode,
+            confirmation: tools.confirmation,
+            enabled: tools.enabled,
+            connectionId: tools.connectionId,
+          })
+          .from(tools)
+          .where(
+            inArray(
+              tools.connectionId,
+              connectionRows.map((c) => c.id),
+            ),
+          )
+          .orderBy(asc(tools.name))
+      : [];
+    const assigned = needTools
+      ? await tx
+          .select({ toolId: agentTools.toolId })
+          .from(agentTools)
+          .where(eq(agentTools.agentId, id))
+      : [];
+    const [widget] =
+      tab === "publish"
+        ? await tx
+            .select({ id: channels.id, enabled: channels.enabled, config: channels.config })
+            .from(channels)
+            .where(and(eq(channels.agentId, id), eq(channels.kind, WEB_WIDGET)))
+            .limit(1)
+        : [];
     // Only what the UI shows: never send connection config (URLs, hosts) to the client.
-    const connectionList = connectionRows.map(({ config, agentId, ...c }) => {
-      const cfg = (config ?? {}) as { provider?: string; dialect?: string };
-      return {
-        ...c,
-        provider: cfg.provider ?? null,
-        dialect: cfg.dialect ?? null,
-        owned: agentId === id,
-      };
-    });
+    const connectionList = (needConnections ? connectionRows : []).map(
+      ({ config, agentId, ...c }) => {
+        const cfg = (config ?? {}) as { provider?: string; dialect?: string };
+        return {
+          ...c,
+          provider: cfg.provider ?? null,
+          dialect: cfg.dialect ?? null,
+          owned: agentId === id,
+        };
+      },
+    );
     return {
       agent,
       personaList,
@@ -155,7 +182,11 @@ export default async function AgentPage({
                 {statusLabel}
               </span>
             </h1>
-            {agent.role ? <p className="truncate text-sm text-ink-2">{agent.role}</p> : null}
+            <p
+              className={agent.role ? "truncate text-sm text-ink-2" : "truncate text-sm text-ink-3"}
+            >
+              {agent.role || ta("noRole")}
+            </p>
           </div>
         </div>
         <nav
@@ -171,7 +202,9 @@ export default async function AgentPage({
                 aria-current={tab === key ? "page" : undefined}
                 className="inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-medium text-ink-2 transition hover:text-ink aria-[current=page]:bg-ink aria-[current=page]:text-paper"
               >
-                <Icon className="size-4" aria-hidden />
+                <LinkPending>
+                  <Icon className="size-4" aria-hidden />
+                </LinkPending>
                 <span className={tab === key ? undefined : "max-sm:sr-only"}>
                   {t(`tabs.${key}`)}
                 </span>

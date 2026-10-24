@@ -4,6 +4,7 @@ import { chargeChatReply, hasBalance } from "@/lib/billing";
 import { and, asc, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/lib/db";
+import { callConnector } from "@/lib/connector-app";
 import { env } from "@/lib/env";
 import { clientIp, sameOrigin, visitorKey } from "@/lib/public-voice";
 import { WIDGET_CHANNEL, resolveChannel, visitorUsage } from "@/lib/widget";
@@ -97,7 +98,7 @@ export async function POST(
 
   let upstream: Response;
   try {
-    upstream = await fetch(`${e.CONNECTOR_URL}/v1/chat`, {
+    upstream = await callConnector("/v1/chat", {
       method: "POST",
       headers: {
         authorization: `Bearer ${e.CONNECTOR_SERVICE_TOKEN}`,

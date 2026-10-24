@@ -79,7 +79,10 @@ export async function updateAgent(id: string, input: unknown): Promise<ActionRes
       .update(agents)
       .set({
         name: parsed.data.name,
-        role: parsed.data.role,
+        // Only when sent: a save without the field must not wipe the agent's role.
+        ...(typeof (input as { role?: unknown })?.role === "string"
+          ? { role: parsed.data.role }
+          : {}),
         personaId: parsed.data.personaId,
         instructions: parsed.data.instructions,
         model: parsed.data.model,

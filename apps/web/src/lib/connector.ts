@@ -1,4 +1,5 @@
 import "server-only";
+import { callConnector } from "./connector-app";
 import { env } from "./env";
 
 export class ConnectorRequestError extends Error {
@@ -22,7 +23,7 @@ export async function connectorFetch<T>(
   const e = env();
   let res: Response;
   try {
-    res = await fetch(`${e.CONNECTOR_URL}${path}`, {
+    res = await callConnector(path, {
       method: init.method ?? (init.body ? "POST" : "GET"),
       headers: {
         authorization: `Bearer ${e.CONNECTOR_SERVICE_TOKEN}`,
@@ -30,7 +31,6 @@ export async function connectorFetch<T>(
         "content-type": "application/json",
       },
       body: init.body ? JSON.stringify(init.body) : undefined,
-      cache: "no-store",
     });
   } catch {
     throw new ConnectorRequestError("El servicio de conectores no está disponible.", 503);
