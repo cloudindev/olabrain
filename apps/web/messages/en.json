@@ -52,7 +52,8 @@
     "openMenu": "Open menu",
     "closeMenu": "Close menu",
     "balance": "Balance",
-    "leads": "Leads"
+    "leads": "Leads",
+    "unreadLeads": "{count, plural, one {# unread lead} other {# unread leads}}"
   },
   "lab": {
     "title": "Voice lab",

@@ -5,19 +5,17 @@ import type { ReactNode } from "react";
 import { Logo } from "@/components/logo";
 import { memberships, tenants } from "@brainagent/db";
 import { asc, eq } from "drizzle-orm";
-import { LocaleSwitch } from "@/components/shell/locale-switch";
 import { MobileMenu } from "@/components/shell/mobile-menu";
-import { OrgSwitcher } from "@/components/shell/org-switcher";
-import { SignOutButton } from "@/components/shell/sign-out-button";
-import { ThemeToggle } from "@/components/shell/theme-toggle";
+import { UserMenu } from "@/components/shell/user-menu";
 import { db } from "@/lib/db";
 import { walletBalance } from "@/lib/billing";
 import { AuthError, requireTenant, tenantTx } from "@/lib/tenant";
 import { BalancePill } from "@/components/shell/balance-pill";
+import { unreadLeadsCount } from "@/lib/leads";
 
 // /lab stays reachable by URL (provider latency tests) but is no longer in the menu: each
 // agent's own page covers talking to it.
-const SECTIONS = ["agents", "connections", "contacts"] as const;
+const SECTIONS = ["agents", "leads", "connections", "contacts"] as const;
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
   let ctx;
@@ -36,7 +34,16 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     .innerJoin(tenants, eq(tenants.id, memberships.organizationId))
     .where(eq(memberships.userId, ctx.user.id))
     .orderBy(asc(tenants.name));
-  const balance = await tenantTx(ctx, (tx) => walletBalance(tx, ctx.tenantId));
+  const [balance, unreadLeads] = await Promise.all([
+    tenantTx(ctx, (tx) => walletBalance(tx, ctx.tenantId)),
+    unreadLeadsCount(ctx),
+  ]);
+  const account = {
+    user: { name: ctx.user.name, email: ctx.user.email },
+    orgs,
+    activeOrgId: ctx.tenantId,
+    role: ctx.role,
+  };
 
   return (
     <div className="min-h-dvh">
@@ -50,30 +57,41 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
               <Link
                 key={key}
                 href={`/${key}`}
-                className="whitespace-nowrap rounded-[var(--radius-control)] px-2.5 py-1.5 font-medium text-ink-2 hover:bg-surface-2 hover:text-ink"
+                className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-[var(--radius-control)] px-2.5 py-1.5 font-medium text-ink-2 hover:bg-surface-2 hover:text-ink"
               >
                 {t(key)}
+                {key === "leads" && unreadLeads > 0 ? (
+                  <span
+                    className="inline-flex min-w-5 items-center justify-center rounded-full bg-bad px-1.5 text-[11px] font-semibold leading-5 text-white"
+                    aria-label={t("unreadLeads", { count: unreadLeads })}
+                    data-testid="leads-badge"
+                  >
+                    {unreadLeads > 99 ? "99+" : unreadLeads}
+                  </span>
+                ) : null}
               </Link>
             ))}
           </nav>
-          <div className="ml-auto flex min-w-0 items-center gap-1 whitespace-nowrap">
+          <div className="ml-auto flex min-w-0 items-center gap-2 whitespace-nowrap">
+            <span
+              className="max-w-28 truncate text-sm text-ink-2 sm:max-w-48"
+              data-testid="tenant-name"
+              title={ctx.tenantName}
+            >
+              {ctx.tenantName}
+            </span>
             <BalancePill balance={balance} label={t("balance")} />
-            <OrgSwitcher orgs={orgs} activeId={ctx.tenantId} />
-            <div className="hidden items-center gap-1 md:flex">
-              <LocaleSwitch />
-              <ThemeToggle />
-              <SignOutButton />
+            <div className="hidden md:block">
+              <UserMenu {...account} />
             </div>
             <MobileMenu
-              items={SECTIONS.map((key) => ({ href: `/${key}`, label: t(key) }))}
+              items={SECTIONS.map((key) => ({
+                href: `/${key}`,
+                label: key === "leads" && unreadLeads > 0 ? `${t(key)} (${unreadLeads})` : t(key),
+              }))}
               user={{ name: ctx.user.name, email: ctx.user.email }}
-              footer={
-                <>
-                  <LocaleSwitch />
-                  <ThemeToggle />
-                  <SignOutButton />
-                </>
-              }
+              account={account}
+              footer={null}
             />
           </div>
         </div>
