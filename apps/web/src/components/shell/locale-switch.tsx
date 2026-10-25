@@ -1,19 +1,6 @@
 import { getLocale } from "next-intl/server";
-import { cookies } from "next/headers";
-import { revalidatePath } from "next/cache";
-import { LOCALE_COOKIE, LOCALES, isLocale } from "@/i18n/config";
-
-async function setLocale(formData: FormData) {
-  "use server";
-  const value = String(formData.get("locale"));
-  if (!isLocale(value)) return;
-  (await cookies()).set(LOCALE_COOKIE, value, {
-    path: "/",
-    maxAge: 60 * 60 * 24 * 365,
-    sameSite: "lax",
-  });
-  revalidatePath("/", "layout");
-}
+import { LOCALES } from "@/i18n/config";
+import { setLocale } from "@/lib/locale-actions";
 
 export async function LocaleSwitch() {
   const current = await getLocale();

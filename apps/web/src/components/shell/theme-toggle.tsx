@@ -2,18 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
-
-type Theme = "system" | "light" | "dark";
-const ORDER: Theme[] = ["system", "light", "dark"];
-
-function readTheme(): Theme {
-  try {
-    const saved = localStorage.getItem("ba-theme");
-    return saved === "light" || saved === "dark" ? saved : "system";
-  } catch {
-    return "system";
-  }
-}
+import { THEMES, applyTheme, readTheme, type Theme } from "./theme";
 
 export function ThemeToggle() {
   const t = useTranslations("common");
@@ -24,16 +13,9 @@ export function ThemeToggle() {
   }, []);
 
   function cycle() {
-    const next = ORDER[(ORDER.indexOf(theme) + 1) % ORDER.length]!;
+    const next = THEMES[(THEMES.indexOf(theme) + 1) % THEMES.length]!;
     setTheme(next);
-    try {
-      if (next === "system") localStorage.removeItem("ba-theme");
-      else localStorage.setItem("ba-theme", next);
-    } catch {
-      // storage unavailable: theme still applies for this page view
-    }
-    if (next === "system") delete document.documentElement.dataset.theme;
-    else document.documentElement.dataset.theme = next;
+    applyTheme(next);
   }
 
   const label = { system: t("themeSystem"), light: t("themeLight"), dark: t("themeDark") }[theme];
