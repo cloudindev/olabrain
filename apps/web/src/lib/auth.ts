@@ -16,6 +16,7 @@ import { desc, eq } from "drizzle-orm";
 import { db } from "./db";
 import { sendEmail } from "./email";
 import { env } from "./env";
+import { invitationUrl } from "./invitations";
 import { ac, roles } from "./permissions";
 
 function socialProviders(): BetterAuthOptions["socialProviders"] {
@@ -112,12 +113,18 @@ function createAuth() {
           invitation: { modelName: "invitations" },
         },
         sendInvitationEmail: async ({ email, organization: org, inviter, id }) => {
-          const url = `${e.APP_URL}/invitations/${id}`;
-          await sendEmail(
-            email,
-            `Invitación a ${org.name} en OlaBrain`,
-            `${inviter.user.name} te ha invitado a unirte a ${org.name} en OlaBrain:\n${url}`,
-          );
+          const url = invitationUrl(id);
+          // The invitation already exists and its link is shown in Settings › Organization
+          // to copy: an SMTP failure must not turn the invitation into an error.
+          try {
+            await sendEmail(
+              email,
+              `Invitación a ${org.name} en OlaBrain`,
+              `${inviter.user.name} te ha invitado a unirte a ${org.name} en OlaBrain:\n${url}`,
+            );
+          } catch (error) {
+            console.warn("[auth] invitation email not sent", { invitationId: id, error });
+          }
         },
       }),
       // Must be last: lets server actions set auth cookies.

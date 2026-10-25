@@ -133,6 +133,13 @@ export default async function BillingPage() {
               </table>
             )}
           </Card>
+
+          <Card className="overflow-hidden">
+            <h2 className="border-b border-line px-6 py-4 font-medium">{t("invoices")}</h2>
+            <p className="px-6 py-6 text-sm text-ink-2" data-testid="billing-invoices">
+              {t("invoicesEmpty")}
+            </p>
+          </Card>
         </div>
 
         <aside className="flex flex-col gap-6">

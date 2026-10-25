@@ -698,7 +698,9 @@
     "pricesHint": "Precio por uso, con impuestos aparte.",
     "voiceMinute": "Minuto de voz",
     "typicalMessage": "Mensaje de chat típico",
-    "perModel": "Por cada millón de tokens (entrada / salida):"
+    "perModel": "Por cada millón de tokens (entrada / salida):",
+    "invoices": "Facturas",
+    "invoicesEmpty": "Aquí aparecerán las facturas de tus recargas."
   },
   "leads": {
     "title": "Leads",
@@ -737,5 +739,130 @@
     "save": "Guardar",
     "saved": "Guardado",
     "saveError": "No se pudo guardar"
+  },
+  "userMenu": {
+    "open": "Menú de cuenta de {name}",
+    "label": "Cuenta",
+    "profile": "Mi perfil",
+    "organization": "Organización",
+    "billing": "Saldo y facturas",
+    "preferences": "Configuración",
+    "switchOrg": "Cambiar de organización",
+    "signOut": "Cerrar sesión"
+  },
+  "settings": {
+    "title": "Ajustes",
+    "subtitle": "Tu perfil, tu organización y tus preferencias.",
+    "saving": "Guardando…",
+    "nav": {
+      "label": "Ajustes",
+      "profile": "Mi perfil",
+      "organization": "Organización",
+      "preferences": "Configuración",
+      "billing": "Saldo y facturas"
+    },
+    "roles": {
+      "owner": "Propietario",
+      "admin": "Administrador",
+      "builder": "Creador",
+      "viewer": "Lector"
+    },
+    "errors": {
+      "invalid": "Revisa los datos e inténtalo de nuevo.",
+      "forbidden": "No tienes permiso para hacer esto.",
+      "unauthenticated": "Tu sesión ha caducado. Vuelve a entrar.",
+      "wrongPassword": "La contraseña actual no es correcta.",
+      "noPassword": "Tu cuenta entra con Google o Microsoft y no tiene contraseña.",
+      "lastOwner": "La organización necesita al menos un propietario.",
+      "ownerOnly": "Solo un propietario puede cambiar o asignar el rol de propietario.",
+      "alreadyMember": "Esa persona ya es miembro de la organización.",
+      "alreadyInvited": "Ya hay una invitación pendiente para ese email.",
+      "notFound": "No se ha encontrado. Recarga la página.",
+      "unknown": "Algo ha fallado. Vuelve a intentarlo."
+    },
+    "profile": {
+      "personalTitle": "Datos personales",
+      "name": "Nombre visible",
+      "save": "Guardar",
+      "nameSaved": "Nombre actualizado.",
+      "email": "Email",
+      "emailHint": "Es tu usuario para entrar; no se puede cambiar desde aquí.",
+      "passwordTitle": "Contraseña",
+      "noPassword": "Entras con Google o Microsoft, así que tu cuenta no tiene contraseña en OlaBrain.",
+      "currentPassword": "Contraseña actual",
+      "newPassword": "Nueva contraseña",
+      "passwordHint": "Mínimo 8 caracteres.",
+      "confirmPassword": "Repite la nueva contraseña",
+      "revokeOthers": "Cerrar la sesión en los demás dispositivos",
+      "changePassword": "Cambiar contraseña",
+      "passwordSaved": "Contraseña cambiada.",
+      "passwordTooShort": "La nueva contraseña debe tener al menos 8 caracteres.",
+      "passwordMismatch": "Las contraseñas nuevas no coinciden.",
+      "sessionsTitle": "Sesiones",
+      "sessionsHint": "{count, plural, =0 {Solo tienes abierta esta sesión.} one {Tienes # sesión abierta en otro dispositivo o navegador.} other {Tienes # sesiones abiertas en otros dispositivos o navegadores.}}",
+      "revokeSessions": "Cerrar las demás sesiones",
+      "sessionsRevoked": "Se han cerrado las demás sesiones."
+    },
+    "organization": {
+      "detailsTitle": "Datos de la organización",
+      "name": "Nombre",
+      "save": "Guardar",
+      "nameSaved": "Nombre de la organización actualizado.",
+      "nameReadOnly": "Solo propietarios y administradores pueden cambiarlo.",
+      "membersTitle": "Miembros",
+      "you": "(tú)",
+      "roleFor": "Rol de {name}",
+      "roleSaved": "Rol actualizado.",
+      "remove": "Quitar",
+      "removeConfirm": "¿Quitar a {name} de la organización? Perderá el acceso de inmediato.",
+      "removed": "Miembro quitado.",
+      "rolesHint": "Propietario: todo, incluida la facturación. Administrador: miembros, agentes y conexiones. Creador: crea y edita agentes. Lector: solo consulta.",
+      "inviteTitle": "Invitar a tu equipo",
+      "inviteEmail": "Email",
+      "inviteRole": "Rol",
+      "invite": "Invitar",
+      "inviteCreated": "Invitación creada para {email}. Le enviamos un email; si no le llega, comparte este enlace:",
+      "inviteLink": "Enlace de invitación",
+      "copy": "Copiar",
+      "copied": "Copiado",
+      "pendingTitle": "Invitaciones pendientes",
+      "noPending": "No hay invitaciones pendientes.",
+      "expires": "Caduca el {date}",
+      "cancel": "Cancelar",
+      "canceled": "Invitación cancelada.",
+      "linkHint": "La persona invitada debe entrar (o crear su cuenta) con el mismo email para aceptar.",
+      "readOnly": "Solo propietarios y administradores pueden gestionar miembros e invitaciones."
+    },
+    "preferences": {
+      "languageTitle": "Idioma",
+      "languageHint": "Idioma del panel en este navegador.",
+      "languageDescription": {
+        "es": "Panel en español",
+        "en": "Dashboard in English"
+      },
+      "themeTitle": "Tema",
+      "themeHint": "Aspecto del panel en este dispositivo.",
+      "themeDescription": {
+        "system": "Sigue el ajuste de tu dispositivo",
+        "light": "Fondo claro",
+        "dark": "Fondo oscuro"
+      }
+    },
+    "invitation": {
+      "title": "Únete a {org}",
+      "body": "{inviter} te ha invitado a {org} en OlaBrain con el rol {role}.",
+      "as": "Has entrado como {email}.",
+      "accept": "Aceptar invitación",
+      "reject": "Rechazar",
+      "unavailableTitle": "Invitación no disponible",
+      "state": {
+        "notFound": "Esta invitación no existe o ha sido cancelada.",
+        "used": "Esta invitación ya se ha usado o se ha cancelado.",
+        "expired": "Esta invitación ha caducado. Pide que te envíen otra.",
+        "otherEmail": "Esta invitación es para otro email. Has entrado como {email}: sal y entra con el email invitado.",
+        "alreadyMember": "Ya eres miembro de esta organización."
+      },
+      "goToPanel": "Ir al panel"
+    }
   }
 }

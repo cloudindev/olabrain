@@ -7,20 +7,26 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { UserMenuCompact, type UserMenuProps } from "./user-menu";
 
 /**
  * Phone navigation: the header keeps logo + organization, everything else (sections,
  * language, theme, sign out) goes into a full-height panel opened from a menu button.
+ * With `account`, the bottom shows the same account items as the desktop `UserMenu`
+ * (profile, organization, balance, preferences, organization switch, sign out) and
+ * `footer` sits next to its sign-out button (language and theme).
  */
 export function MobileMenu({
   items,
   user,
   footer,
+  account,
 }: {
   items: { href: string; label: string }[];
   user: { name: string; email: string };
-  /** Language, theme and sign-out controls. */
+  /** Language, theme and sign-out controls (only language and theme with `account`). */
   footer: ReactNode;
+  account?: UserMenuProps;
 }) {
   const t = useTranslations("nav");
   const pathname = usePathname();
@@ -59,10 +65,14 @@ export function MobileMenu({
               className="fixed inset-x-0 top-0 z-50 flex h-dvh flex-col bg-paper pb-[calc(env(safe-area-inset-bottom)+1rem)]"
             >
               <div className="flex h-14 items-center justify-between border-b border-line px-4">
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium text-ink">{user.name}</p>
-                  <p className="truncate text-xs text-ink-3">{user.email}</p>
-                </div>
+                {account ? (
+                  <p className="text-sm font-medium text-ink">{t("menu")}</p>
+                ) : (
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-ink">{user.name}</p>
+                    <p className="truncate text-xs text-ink-3">{user.email}</p>
+                  </div>
+                )}
                 <button
                   type="button"
                   onClick={() => setOpen(false)}
@@ -92,9 +102,15 @@ export function MobileMenu({
                   );
                 })}
               </nav>
-              <div className="mt-auto flex items-center justify-between gap-2 border-t border-line px-4 pt-4">
-                {footer}
-              </div>
+              {account ? (
+                <div className="mt-auto overflow-y-auto border-t border-line px-3 pt-4">
+                  <UserMenuCompact {...account} extra={<div className="flex">{footer}</div>} />
+                </div>
+              ) : (
+                <div className="mt-auto flex items-center justify-between gap-2 border-t border-line px-4 pt-4">
+                  {footer}
+                </div>
+              )}
             </div>,
             document.body,
           )

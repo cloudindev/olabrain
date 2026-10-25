@@ -10,6 +10,8 @@ const PROTECTED = [
   "/contacts",
   "/billing",
   "/leads",
+  "/settings",
+  "/invitations",
 ];
 
 // Served on any domain (marketing site included): the home, the legal pages and what

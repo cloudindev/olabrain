@@ -698,7 +698,9 @@
     "pricesHint": "Price per use, taxes not included.",
     "voiceMinute": "Voice minute",
     "typicalMessage": "Typical chat message",
-    "perModel": "Per million tokens (input / output):"
+    "perModel": "Per million tokens (input / output):",
+    "invoices": "Invoices",
+    "invoicesEmpty": "Invoices for your top-ups will appear here."
   },
   "leads": {
     "title": "Leads",
@@ -737,5 +739,130 @@
     "save": "Save",
     "saved": "Saved",
     "saveError": "Could not save"
+  },
+  "userMenu": {
+    "open": "Account menu for {name}",
+    "label": "Account",
+    "profile": "My profile",
+    "organization": "Organization",
+    "billing": "Balance and invoices",
+    "preferences": "Settings",
+    "switchOrg": "Switch organization",
+    "signOut": "Sign out"
+  },
+  "settings": {
+    "title": "Settings",
+    "subtitle": "Your profile, your organization and your preferences.",
+    "saving": "Saving…",
+    "nav": {
+      "label": "Settings",
+      "profile": "My profile",
+      "organization": "Organization",
+      "preferences": "Settings",
+      "billing": "Balance and invoices"
+    },
+    "roles": {
+      "owner": "Owner",
+      "admin": "Admin",
+      "builder": "Builder",
+      "viewer": "Viewer"
+    },
+    "errors": {
+      "invalid": "Check the details and try again.",
+      "forbidden": "You don't have permission to do this.",
+      "unauthenticated": "Your session has expired. Sign in again.",
+      "wrongPassword": "The current password is not correct.",
+      "noPassword": "Your account signs in with Google or Microsoft and has no password.",
+      "lastOwner": "The organization needs at least one owner.",
+      "ownerOnly": "Only an owner can change or grant the owner role.",
+      "alreadyMember": "That person is already a member of the organization.",
+      "alreadyInvited": "There is already a pending invitation for that email.",
+      "notFound": "Not found. Reload the page.",
+      "unknown": "Something went wrong. Please try again."
+    },
+    "profile": {
+      "personalTitle": "Personal details",
+      "name": "Display name",
+      "save": "Save",
+      "nameSaved": "Name updated.",
+      "email": "Email",
+      "emailHint": "It is your sign-in user; it can't be changed here.",
+      "passwordTitle": "Password",
+      "noPassword": "You sign in with Google or Microsoft, so your account has no OlaBrain password.",
+      "currentPassword": "Current password",
+      "newPassword": "New password",
+      "passwordHint": "At least 8 characters.",
+      "confirmPassword": "Repeat the new password",
+      "revokeOthers": "Sign out of other devices",
+      "changePassword": "Change password",
+      "passwordSaved": "Password changed.",
+      "passwordTooShort": "The new password must have at least 8 characters.",
+      "passwordMismatch": "The new passwords don't match.",
+      "sessionsTitle": "Sessions",
+      "sessionsHint": "{count, plural, =0 {This is your only open session.} one {You have # session open on another device or browser.} other {You have # sessions open on other devices or browsers.}}",
+      "revokeSessions": "Sign out of other sessions",
+      "sessionsRevoked": "Other sessions have been signed out."
+    },
+    "organization": {
+      "detailsTitle": "Organization details",
+      "name": "Name",
+      "save": "Save",
+      "nameSaved": "Organization name updated.",
+      "nameReadOnly": "Only owners and admins can change it.",
+      "membersTitle": "Members",
+      "you": "(you)",
+      "roleFor": "Role of {name}",
+      "roleSaved": "Role updated.",
+      "remove": "Remove",
+      "removeConfirm": "Remove {name} from the organization? They will lose access immediately.",
+      "removed": "Member removed.",
+      "rolesHint": "Owner: everything, billing included. Admin: members, agents and connections. Builder: creates and edits agents. Viewer: read only.",
+      "inviteTitle": "Invite your team",
+      "inviteEmail": "Email",
+      "inviteRole": "Role",
+      "invite": "Invite",
+      "inviteCreated": "Invitation created for {email}. We sent them an email; if it doesn't arrive, share this link:",
+      "inviteLink": "Invitation link",
+      "copy": "Copy",
+      "copied": "Copied",
+      "pendingTitle": "Pending invitations",
+      "noPending": "No pending invitations.",
+      "expires": "Expires on {date}",
+      "cancel": "Cancel",
+      "canceled": "Invitation canceled.",
+      "linkHint": "The invited person must sign in (or sign up) with the same email to accept.",
+      "readOnly": "Only owners and admins can manage members and invitations."
+    },
+    "preferences": {
+      "languageTitle": "Language",
+      "languageHint": "Dashboard language in this browser.",
+      "languageDescription": {
+        "es": "Panel en español",
+        "en": "Dashboard in English"
+      },
+      "themeTitle": "Theme",
+      "themeHint": "Dashboard appearance on this device.",
+      "themeDescription": {
+        "system": "Follows your device setting",
+        "light": "Light background",
+        "dark": "Dark background"
+      }
+    },
+    "invitation": {
+      "title": "Join {org}",
+      "body": "{inviter} has invited you to {org} on OlaBrain with the {role} role.",
+      "as": "Signed in as {email}.",
+      "accept": "Accept invitation",
+      "reject": "Decline",
+      "unavailableTitle": "Invitation unavailable",
+      "state": {
+        "notFound": "This invitation doesn't exist or has been canceled.",
+        "used": "This invitation has already been used or canceled.",
+        "expired": "This invitation has expired. Ask for a new one.",
+        "otherEmail": "This invitation is for another email. You are signed in as {email}: sign out and sign in with the invited email.",
+        "alreadyMember": "You are already a member of this organization."
+      },
+      "goToPanel": "Go to the dashboard"
+    }
   }
 }
