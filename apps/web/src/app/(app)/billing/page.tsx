@@ -4,8 +4,17 @@ import { Card } from "@brainagent/ui";
 import { desc, eq } from "drizzle-orm";
 import { getTranslations } from "next-intl/server";
 import { AutoRechargeForm } from "@/components/billing/auto-recharge-form";
+import { TopupForm } from "@/components/billing/topup-form";
 import { PageHeader } from "@/components/page-header";
 import { pricing, walletBalance } from "@/lib/billing";
+import {
+  fulfilCheckout,
+  listInvoices,
+  stripeEnabled,
+  TOPUP_MAX_EUR,
+  TOPUP_MIN_EUR,
+  type InvoiceRow,
+} from "@/lib/stripe";
 import { requireTenant, tenantTx } from "@/lib/tenant";
 
 export const metadata = { title: "Saldo" };
@@ -18,12 +27,24 @@ const eur = (n: number, digits = 2) =>
     maximumFractionDigits: digits,
   }).format(n);
 
-const TOPUPS = [10, 25, 50, 100];
-
-/** Prepaid balance (ADR-007): balance, top-ups, auto top-up, prices and movements. */
-export default async function BillingPage() {
+/** Prepaid balance (ADR-007/020): balance, top-ups, auto top-up, prices, movements, invoices. */
+export default async function BillingPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ topup?: string }>;
+}) {
   const ctx = await requireTenant("viewer");
   const t = await getTranslations("billing");
+  // Back from Stripe Checkout: credit it now if the webhook hasn't yet (idempotent).
+  const { topup } = await searchParams;
+  let returned: { amount: number } | "pending" | null = null;
+  if (topup?.startsWith("cs_") && stripeEnabled()) {
+    const res = await fulfilCheckout(topup, ctx.tenantId).catch((e: Error) => {
+      console.error("stripe return error", { tenantId: ctx.tenantId, error: e.message });
+      return null;
+    });
+    returned = res ? { amount: res.amount } : "pending";
+  }
   const { balance, wallet, ledger } = await tenantTx(ctx, async (tx) => {
     const balance = await walletBalance(tx, ctx.tenantId);
     const [wallet] = await tx.select().from(wallets).where(eq(wallets.tenantId, ctx.tenantId));
@@ -34,6 +55,12 @@ export default async function BillingPage() {
       .limit(50);
     return { balance, wallet, ledger };
   });
+  const invoices: InvoiceRow[] | null = await listInvoices(wallet?.stripeCustomerId ?? null).catch(
+    (e: Error) => {
+      console.error("stripe invoices error", { tenantId: ctx.tenantId, error: e.message });
+      return null;
+    },
+  );
   const cfg = pricing();
   const prices = priceList(cfg);
   const typicalMessage = priceTokens(
@@ -52,6 +79,16 @@ export default async function BillingPage() {
   return (
     <>
       <PageHeader title={t("title")} subtitle={t("subtitle")} />
+      {returned ? (
+        <p
+          className={`mb-6 rounded-xl px-4 py-3 text-sm ${returned === "pending" ? "bg-warn-soft text-warn" : "bg-ok-soft text-ok"}`}
+          data-testid="topup-result"
+        >
+          {returned === "pending"
+            ? t("topupPending")
+            : t("topupDone", { amount: eur(returned.amount) })}
+        </p>
+      ) : null}
       <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
         <div className="flex min-w-0 flex-col gap-6">
           <Card className="flex flex-col gap-2 p-6">
@@ -77,21 +114,14 @@ export default async function BillingPage() {
               <h2 className="font-medium">{t("topupTitle")}</h2>
               <p className="text-sm text-ink-2">{t("topupHint")}</p>
             </div>
-            <div className="flex flex-wrap gap-2">
-              {TOPUPS.map((amount) => (
-                <button
-                  key={amount}
-                  type="button"
-                  disabled
-                  className="rounded-full border border-line px-5 py-2 font-medium text-ink-2 opacity-60"
-                >
-                  {eur(amount, 0)}
-                </button>
-              ))}
-            </div>
-            <p className="rounded-xl bg-warn-soft px-3 py-2 text-sm text-warn">
-              {t("paymentsSoon")}
-            </p>
+            {stripeEnabled() ? (
+              <TopupForm canPay={canEdit} min={TOPUP_MIN_EUR} max={TOPUP_MAX_EUR} />
+            ) : (
+              <p className="rounded-xl bg-warn-soft px-3 py-2 text-sm text-warn">
+                {t("paymentsSoon")}
+              </p>
+            )}
+            {!canEdit ? <p className="text-sm text-ink-3">{t("adminsOnly")}</p> : null}
           </Card>
 
           <Card className="overflow-hidden">
@@ -136,9 +166,41 @@ export default async function BillingPage() {
 
           <Card className="overflow-hidden">
             <h2 className="border-b border-line px-6 py-4 font-medium">{t("invoices")}</h2>
-            <p className="px-6 py-6 text-sm text-ink-2" data-testid="billing-invoices">
-              {t("invoicesEmpty")}
-            </p>
+            {invoices === null ? (
+              <p className="px-6 py-6 text-sm text-ink-2">{t("invoicesError")}</p>
+            ) : invoices.length === 0 ? (
+              <p className="px-6 py-6 text-sm text-ink-2" data-testid="billing-invoices">
+                {t("invoicesEmpty")}
+              </p>
+            ) : (
+              <ul className="divide-y divide-line text-sm" data-testid="billing-invoices">
+                {invoices.map((i) => (
+                  <li key={i.id} className="flex items-center justify-between gap-3 px-6 py-3">
+                    <div className="min-w-0">
+                      <p className="font-medium tabular-nums">{i.number ?? i.id}</p>
+                      <p className="text-ink-2">{date.format(i.created)}</p>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <span className="tabular-nums">{eur(i.totalEur)}</span>
+                      {i.pdf ? (
+                        <a href={i.pdf} className="font-medium underline-offset-4 hover:underline">
+                          {t("downloadPdf")}
+                        </a>
+                      ) : i.url ? (
+                        <a
+                          href={i.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="font-medium underline-offset-4 hover:underline"
+                        >
+                          {t("viewInvoice")}
+                        </a>
+                      ) : null}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
           </Card>
         </div>
 

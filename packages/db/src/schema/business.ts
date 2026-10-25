@@ -498,6 +498,11 @@ export const wallets = pgTable("wallets", {
   /** Auto top-up when the balance drops below this (active once payments exist). */
   autoRechargeThresholdEur: numeric("auto_recharge_threshold_eur", { precision: 10, scale: 2 }),
   autoRechargeAmountEur: numeric("auto_recharge_amount_eur", { precision: 10, scale: 2 }),
+  /** Last automatic charge attempt: one at a time, never two within a few minutes. */
+  autoRechargeAttemptedAt: timestamp("auto_recharge_attempted_at", { withTimezone: true }),
+  /** Stripe customer and the card saved on the last top-up (ADR-020). */
+  stripeCustomerId: text("stripe_customer_id"),
+  stripePaymentMethodId: text("stripe_payment_method_id"),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
 });
@@ -524,7 +529,13 @@ export const walletLedger = pgTable(
     data: jsonb("data").$type<Record<string, unknown>>().notNull().default({}),
     createdAt: createdAt(),
   },
-  (t) => [index("wallet_ledger_tenant_created_idx").on(t.tenantId, t.createdAt)],
+  (t) => [
+    index("wallet_ledger_tenant_created_idx").on(t.tenantId, t.createdAt),
+    // A Stripe payment credits the balance once, however many times its webhook arrives.
+    uniqueIndex("wallet_ledger_topup_ref_uq")
+      .on(t.tenantId, sql`(${t.data}->>'ref')`)
+      .where(sql`${t.kind} = 'topup'`),
+  ],
 );
 
 // --- Leads (contacts captured by an agent through the web widget) -----------------------

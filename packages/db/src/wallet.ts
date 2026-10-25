@@ -3,7 +3,7 @@
  * balance changes with a single UPDATE … RETURNING, so concurrent charges never lose
  * money, and every change is recorded in the append-only wallet_ledger.
  */
-import { eq, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import type { Tx } from "./client";
 import { usageEvents, walletLedger, wallets } from "./schema";
 
@@ -100,4 +100,47 @@ async function balanceOf(tx: Tx, tenantId: string) {
     .from(wallets)
     .where(eq(wallets.tenantId, tenantId));
   return Number(row?.balance ?? 0);
+}
+
+/**
+ * Credits a paid top-up. `ref` is the payment's id (Checkout session or invoice): a payment
+ * whose webhook arrives twice credits the balance once (unique index on the ref). Returns
+ * the new balance, or null if this payment had already been credited.
+ */
+export async function creditTopup(
+  tx: Tx,
+  tenantId: string,
+  input: { amountEur: number; ref: string; description: string; signupCreditEur: number },
+): Promise<number | null> {
+  await ensureWallet(tx, tenantId, input.signupCreditEur);
+  const [seen] = await tx
+    .select({ id: walletLedger.id })
+    .from(walletLedger)
+    .where(
+      and(
+        eq(walletLedger.tenantId, tenantId),
+        eq(walletLedger.kind, "topup"),
+        sql`${walletLedger.data}->>'ref' = ${input.ref}`,
+      ),
+    );
+  if (seen) return null;
+  const [row] = await tx
+    .update(wallets)
+    .set({
+      balanceEur: sql`${wallets.balanceEur} + ${String(input.amountEur)}`,
+      autoRechargeAttemptedAt: null,
+      updatedAt: new Date(),
+    })
+    .where(eq(wallets.tenantId, tenantId))
+    .returning({ balance: wallets.balanceEur });
+  const balance = Number(row!.balance);
+  await tx.insert(walletLedger).values({
+    tenantId,
+    kind: "topup",
+    amountEur: String(input.amountEur),
+    balanceAfterEur: String(balance),
+    description: input.description,
+    data: { ref: input.ref },
+  });
+  return balance;
 }

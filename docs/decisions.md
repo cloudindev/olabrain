@@ -258,3 +258,16 @@ Implementa ADR-007 sin pagos (Stripe pendiente).
 **Contexto.** El widget recoge datos de contacto de visitantes anónimos y hay que avisar a la empresa por email.
 
 **Decisión.** Conector nativo `smtp` (servidor, puerto, usuario, contraseña, remitente y **destinatarios fijos**). Herramientas: `email_aviso_contacto` (guarda el contacto en Contactos —por email/teléfono, con lo que pide como notas y la conversación enlazada— y envía el aviso con *Reply-To* del visitante) y `email_enviar` (solo a los destinatarios configurados). Ambas se crean con confirmación automática: en el widget no tiene sentido pedírsela al visitante, y no pueden escribir a direcciones arbitrarias (no sirven de relé de spam). El host pasa por la política de salida (sin redes privadas salvo lista blanca) y se conecta a la IP resuelta.
+
+## ADR-020 — Recargas con Stripe; OlaBrain factura (2026-10-25)
+
+**Contexto.** El monedero (ADR-018) necesitaba cobro real. La cuenta de Stripe (ES, modo real) tenía activado por defecto *Managed Payments*: Stripe/Link como vendedor, factura a nombre de Link, cargo «LINK.COM*», comisión extra y sin facturas propias.
+
+**Decisión.**
+- **OlaBrain es el vendedor:** `managed_payments.enabled=false` en cada Checkout. Facturas de Stripe Invoicing a nombre de la empresa, con IVA 21 % exclusivo (`STRIPE_TAX_RATE_ID`) y el NIF del cliente (`tax_id_collection`). El saldo recibe el importe sin IVA.
+- **Recarga manual:** Checkout `mode=payment` (10–1000 €), cliente de Stripe por organización (`wallets.stripe_customer_id`), `setup_future_usage=off_session` para guardar la tarjeta (`wallets.stripe_payment_method_id`) y `invoice_creation`.
+- **Recarga automática:** cuando un turno o llamada empieza con saldo bajo el umbral y hay tarjeta guardada, tras la respuesta se reclama el intento en la BD (`auto_recharge_attempted_at`, uno por hora como mucho) y se crea una factura `charge_automatically` pagada *off-session*. Si la tarjeta falla, la factura queda abierta y se reintenta pasada una hora.
+- **Abono del saldo:** solo pagos que Stripe da por pagados, por el webhook (`checkout.session.completed`, `checkout.session.async_payment_succeeded`, `invoice.paid`, firmado) o al volver de Checkout, lo que llegue antes. `creditTopup` es idempotente por la referencia del pago (índice único en `wallet_ledger`).
+- **Clave restringida** «acceso completo salvo operaciones confidenciales»: no puede mover fondos fuera de la cuenta.
+
+**Pendiente.** IVA para clientes de fuera de España (B2B UE con inversión del sujeto pasivo, OSS), hoy siempre 21 %.

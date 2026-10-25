@@ -5,7 +5,9 @@ import {
   signupCreditEur,
   type PricingConfig,
 } from "@brainagent/core";
-import { chargeUsage, ensureWallet, type Tx } from "@brainagent/db";
+import { chargeUsage, ensureWallet, wallets, type Tx } from "@brainagent/db";
+import { eq } from "drizzle-orm";
+import { after } from "next/server";
 // Imported (not read from disk) so it is bundled into serverless functions.
 import pricingJson from "../../../../config/pricing.json";
 
@@ -24,9 +26,25 @@ export function walletBalance(tx: Tx, tenantId: string) {
   return ensureWallet(tx, tenantId, signupCredit());
 }
 
-/** Whether the organization can start a chat turn or a call (balance above zero). */
+/**
+ * Whether the organization can start a chat turn or a call (balance above zero). Below
+ * the auto top-up threshold, charges the saved card after the response (ADR-020).
+ */
 export async function hasBalance(tx: Tx, tenantId: string) {
-  return (await walletBalance(tx, tenantId)) > 0;
+  const balance = await walletBalance(tx, tenantId);
+  const [w] = await tx
+    .select({ threshold: wallets.autoRechargeThresholdEur, card: wallets.stripePaymentMethodId })
+    .from(wallets)
+    .where(eq(wallets.tenantId, tenantId));
+  if (w?.threshold != null && w.card && balance < Number(w.threshold)) {
+    after(async () => {
+      const { autoRechargeIfLow } = await import("./stripe");
+      await autoRechargeIfLow(tenantId).catch((e: Error) =>
+        console.error("auto top-up error", { tenantId, error: e.message }),
+      );
+    });
+  }
+  return balance > 0;
 }
 
 /** Charges one chat reply (tokens of the model that answered) to the wallet. */

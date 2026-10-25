@@ -6,12 +6,12 @@ ADR en `decisions.md` y bórralo de esta lista.
 ## Conocimiento y pagos (pendiente)
 
 Hecho: widget web («Publicar», ADR del canal en el commit), monedero prepago y precios
-(ADR-018), conexiones por agente (ADR-017).
+(ADR-018), conexiones por agente (ADR-017), pagos con Stripe (ADR-020).
 
 Falta:
-- **Pagos con Stripe:** recargas (10/25/50/100 €) con Checkout guardando la tarjeta,
-  recarga automática bajo el umbral ya configurable en «Saldo», facturas de las recargas
-  (Stripe Invoicing o WHMCS: por decidir). Necesita las claves de Stripe en modo prueba.
+- **Stripe (hecho, ADR-020), falta:** IVA de clientes de fuera de España (inversión del
+  sujeto pasivo en B2B UE, OSS en particulares UE); hoy siempre 21 %. Rotar la clave
+  restringida compartida en el chat.
 - **Conocimiento** por agente: subir PDF/DOCX/TXT/URL y texto libre → troceado →
   embeddings (propuesto Gemini) → pgvector, herramienta `buscar_conocimiento` con citas.
 - Medir el coste real por llamada de voz (tokens de Gemini Live) y ajustar
