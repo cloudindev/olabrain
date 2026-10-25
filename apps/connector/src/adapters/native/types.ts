@@ -16,6 +16,11 @@ export type CapturedContact = {
   name: string;
   email?: string;
   phone?: string;
+  company?: string;
+  /** What they need: the lead's request (web-widget conversations become Leads). */
+  request?: string;
+  /** The agent's own appreciations (interest, urgency, budget…): the lead's notes. */
+  agentNotes?: string;
   /** Extra facts (company, request…) kept as the contact's notes. */
   notes: string[];
 };

@@ -28,7 +28,7 @@ const TOOLS: NativeToolDef[] = [
   {
     name: "email_aviso_contacto",
     description:
-      "Avisa por email a la empresa de una persona que quiere que la contacten (p. ej. un visitante de la web) y la guarda en Contactos. Úsala en cuanto tengas su nombre, un email o un teléfono y lo que necesita. Envía siempre a los destinatarios configurados.",
+      "Avisa por email a la empresa de una persona que quiere que la contacten (p. ej. un visitante de la web) y la guarda en Contactos. Úsala en cuanto tengas su nombre, un email o un teléfono y lo que necesita, con tus apreciaciones. Envía siempre a los destinatarios configurados.",
     inputSchema: schema(
       {
         nombre: str("Nombre y apellidos"),
@@ -36,6 +36,9 @@ const TOOLS: NativeToolDef[] = [
         telefono: str("Teléfono de la persona"),
         empresa: str("Empresa, si la dice"),
         mensaje: str("Qué necesita o pide, resumido"),
+        apreciaciones: str(
+          "Tus apreciaciones sobre el contacto: interés, urgencia, presupuesto, siguiente paso…",
+        ),
       },
       ["nombre", "mensaje"],
     ),
@@ -118,6 +121,7 @@ export async function executeSmtpTool(
     const telefono = clean(args.telefono);
     const empresa = clean(args.empresa);
     const mensaje = clean(args.mensaje);
+    const apreciaciones = clean(args.apreciaciones);
     if (!email && !telefono)
       throw new NativeToolError("pide un email o un teléfono antes de avisar");
     // Contacts first: the lead is never lost even if the email fails.
@@ -126,6 +130,9 @@ export async function executeSmtpTool(
           name: nombre,
           email: email || undefined,
           phone: telefono || undefined,
+          company: empresa || undefined,
+          request: mensaje,
+          agentNotes: apreciaciones || undefined,
           notes: [empresa && `Empresa: ${empresa}`, mensaje && `Pide: ${mensaje}`].filter(
             (n): n is string => Boolean(n),
           ),
@@ -141,6 +148,8 @@ export async function executeSmtpTool(
       "",
       "Qué necesita:",
       mensaje,
+      apreciaciones && "\nApreciaciones del agente:",
+      apreciaciones,
     ]
       .filter((l) => l !== "")
       .join("\n");

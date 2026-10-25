@@ -2,7 +2,7 @@ import { randomBytes } from "node:crypto";
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { agentTools, agents, toolCalls, tools, withTenant } from "@brainagent/db";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createApp } from "../src/app";
 import { createContext } from "../src/context";
@@ -558,6 +558,64 @@ describe("captured contacts", () => {
       tx.select().from(conversations).where(eq(conversations.id, conversationId)),
     );
     expect(conv!.contactId).toBe(first.contactId);
+  });
+
+  it("become leads only when they come from a web-widget conversation", async () => {
+    const { saveCapturedContact } = await import("../src/execute");
+    const { conversations, leads } = await import("@brainagent/db");
+    const newConversation = (channel: string) =>
+      withTenant(appDb.db, tenantA, async (tx) => {
+        const [c] = await tx
+          .insert(conversations)
+          .values({ tenantId: tenantA, agentId: agentA, channel })
+          .returning();
+        return c!.id;
+      });
+    const widgetConv = await newConversation("widget");
+    const panelConv = await newConversation("panel");
+    const { contactId } = await saveCapturedContact(ctx, tenantA, widgetConv, {
+      name: "Marta Ruiz",
+      email: "marta@lead.es",
+      phone: "600 99 88 77",
+      company: "Ruiz SL",
+      request: "Presupuesto para 3 servidores",
+      agentNotes: "Interés alto, quiere empezar este mes",
+      notes: ["Empresa: Ruiz SL", "Pide: Presupuesto para 3 servidores"],
+    });
+    await saveCapturedContact(ctx, tenantA, panelConv, {
+      name: "Pedro",
+      email: "pedro@lead.es",
+      request: "Nada",
+      notes: [],
+    });
+    const rows = await withTenant(appDb.db, tenantA, (tx) =>
+      tx
+        .select()
+        .from(leads)
+        .where(inArray(leads.conversationId, [widgetConv, panelConv])),
+    );
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      tenantId: tenantA,
+      agentId: agentA,
+      agentName: "Hugo",
+      conversationId: widgetConv,
+      contactId,
+      name: "Marta Ruiz",
+      email: "marta@lead.es",
+      phone: "600998877",
+      company: "Ruiz SL",
+      request: "Presupuesto para 3 servidores",
+      agentNotes: "Interés alto, quiere empezar este mes",
+      comments: "",
+      status: "new",
+      readAt: null,
+    });
+    // Another organization doesn't see it (RLS).
+    const other = await withTenant(appDb.db, tenantB, (tx) =>
+      tx.select().from(leads).where(eq(leads.conversationId, widgetConv)),
+    );
+    expect(other).toHaveLength(0);
   });
 });
 

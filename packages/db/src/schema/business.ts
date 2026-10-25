@@ -526,3 +526,38 @@ export const walletLedger = pgTable(
   },
   (t) => [index("wallet_ledger_tenant_created_idx").on(t.tenantId, t.createdAt)],
 );
+
+// --- Leads (contacts captured by an agent through the web widget) -----------------------
+
+export const leadStatus = pgEnum("lead_status", ["new", "contacted", "won", "lost"]);
+
+/**
+ * Someone who asked to be contacted through the web widget. Agent, conversation and
+ * contact are plain ids (no FK): the lead outlives them; agent_name keeps who captured it.
+ */
+export const leads = pgTable(
+  "leads",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: tenantId(),
+    agentId: uuid("agent_id"),
+    agentName: text("agent_name").notNull().default(""),
+    conversationId: uuid("conversation_id"),
+    contactId: uuid("contact_id"),
+    name: text("name").notNull().default(""),
+    email: text("email"),
+    phone: text("phone"),
+    company: text("company"),
+    /** What they need, as the agent summarized it. */
+    request: text("request").notNull().default(""),
+    /** The agent's own appreciations: interest, urgency, budget, next step… */
+    agentNotes: text("agent_notes").notNull().default(""),
+    /** The team's comments, edited in the panel. */
+    comments: text("comments").notNull().default(""),
+    status: leadStatus("status").notNull().default("new"),
+    readAt: timestamp("read_at", { withTimezone: true }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [index("leads_tenant_created_idx").on(t.tenantId, t.createdAt)],
+);

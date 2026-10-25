@@ -94,15 +94,21 @@ describe("SMTP connector", () => {
       email: "luis@cliente.es",
       empresa: "Cliente SL",
       mensaje: "Quiere alojar 5 servidores en un rack",
+      apreciaciones: "Interés alto; presupuesto aprobado",
     });
     expect(res.ok).toBe(true);
     const mail = smtp.mails.at(-1)!;
     expect(mail.to.sort()).toEqual(["luis@acme.es", "ventas@acme.es"]);
     expect(mail.data).toContain("Reply-To: luis@cliente.es");
     expect(mail.data).toContain("Quiere alojar 5 servidores en un rack");
+    expect(mail.data).toContain("Apreciaciones del agente:");
+    expect(mail.data).toContain("Inter=C3=A9s alto; presupuesto aprobado");
     expect(saved.at(-1)).toMatchObject({
       name: "Luis Sánchez",
       email: "luis@cliente.es",
+      company: "Cliente SL",
+      request: "Quiere alojar 5 servidores en un rack",
+      agentNotes: "Interés alto; presupuesto aprobado",
       notes: ["Empresa: Cliente SL", "Pide: Quiere alojar 5 servidores en un rack"],
     });
   });

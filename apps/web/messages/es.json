@@ -51,7 +51,8 @@
     "menu": "Menú",
     "openMenu": "Abrir menú",
     "closeMenu": "Cerrar menú",
-    "balance": "Saldo"
+    "balance": "Saldo",
+    "leads": "Leads"
   },
   "lab": {
     "title": "Laboratorio de voz",
@@ -698,5 +699,43 @@
     "voiceMinute": "Minuto de voz",
     "typicalMessage": "Mensaje de chat típico",
     "perModel": "Por cada millón de tokens (entrada / salida):"
+  },
+  "leads": {
+    "title": "Leads",
+    "subtitle": "Personas que han pedido que las contactéis a través del widget web, con lo que necesitan y las apreciaciones del agente.",
+    "empty": "Todavía no hay leads. Aparecen cuando un visitante del widget web deja sus datos para que le contactéis.",
+    "unknown": "Sin nombre",
+    "unread": "Sin leer",
+    "col": {
+      "date": "Fecha",
+      "name": "Nombre",
+      "email": "Email",
+      "phone": "Teléfono",
+      "company": "Empresa",
+      "request": "Qué necesita",
+      "agent": "Agente",
+      "status": "Estado"
+    },
+    "status": {
+      "new": "Nuevo",
+      "contacted": "Contactado",
+      "won": "Ganado",
+      "lost": "Perdido"
+    },
+    "back": "Leads",
+    "details": "Datos de contacto",
+    "agentNotes": "Apreciaciones del agente",
+    "agentNotesEmpty": "El agente no dejó apreciaciones.",
+    "viewConversation": "Ver conversación",
+    "conversationEmpty": "La conversación ya no está disponible.",
+    "visitor": "Visitante",
+    "agent": "Agente",
+    "followUp": "Seguimiento",
+    "statusLabel": "Estado",
+    "comments": "Comentarios",
+    "commentsPlaceholder": "Notas del equipo: cuándo se le llamó, qué se acordó…",
+    "save": "Guardar",
+    "saved": "Guardado",
+    "saveError": "No se pudo guardar"
   }
 }

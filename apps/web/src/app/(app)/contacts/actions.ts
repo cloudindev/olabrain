@@ -1,6 +1,13 @@
 "use server";
 
-import { auditLog, contactMemories, contacts, conversations, usageEvents } from "@brainagent/db";
+import {
+  auditLog,
+  contactMemories,
+  contacts,
+  conversations,
+  leads,
+  usageEvents,
+} from "@brainagent/db";
 import { and, eq, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -53,8 +60,8 @@ export async function clearMemory(contactId: string): Promise<ActionResult> {
   return { ok: true };
 }
 
-/** RGPD erasure: the contact, its memory and its conversations (messages, metrics). Usage
- *  records are kept for billing but detached from the conversation. */
+/** RGPD erasure: the contact, its memory, its leads and its conversations (messages,
+ *  metrics). Usage records are kept for billing but detached from the conversation. */
 export async function eraseContact(contactId: string): Promise<ActionResult> {
   const ctx = await requireTenant("admin");
   if (!id.safeParse(contactId).success) return { ok: false, error: "Datos no válidos" };
@@ -71,6 +78,8 @@ export async function eraseContact(contactId: string): Promise<ActionResult> {
         .where(inArray(usageEvents.conversationId, ids));
       await tx.delete(conversations).where(inArray(conversations.id, ids));
     }
+    // Leads keep plain ids (no FK): erase this person's leads explicitly.
+    await tx.delete(leads).where(eq(leads.contactId, contactId));
     await tx.delete(contacts).where(eq(contacts.id, contactId));
     await tx.insert(auditLog).values({
       tenantId: ctx.tenantId,

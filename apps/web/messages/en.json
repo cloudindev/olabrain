@@ -51,7 +51,8 @@
     "menu": "Menu",
     "openMenu": "Open menu",
     "closeMenu": "Close menu",
-    "balance": "Balance"
+    "balance": "Balance",
+    "leads": "Leads"
   },
   "lab": {
     "title": "Voice lab",
@@ -698,5 +699,43 @@
     "voiceMinute": "Voice minute",
     "typicalMessage": "Typical chat message",
     "perModel": "Per million tokens (input / output):"
+  },
+  "leads": {
+    "title": "Leads",
+    "subtitle": "People who asked to be contacted through the web widget, with what they need and the agent's appreciations.",
+    "empty": "No leads yet. They appear when a web widget visitor leaves their details to be contacted.",
+    "unknown": "No name",
+    "unread": "Unread",
+    "col": {
+      "date": "Date",
+      "name": "Name",
+      "email": "Email",
+      "phone": "Phone",
+      "company": "Company",
+      "request": "What they need",
+      "agent": "Agent",
+      "status": "Status"
+    },
+    "status": {
+      "new": "New",
+      "contacted": "Contacted",
+      "won": "Won",
+      "lost": "Lost"
+    },
+    "back": "Leads",
+    "details": "Contact details",
+    "agentNotes": "Agent's appreciations",
+    "agentNotesEmpty": "The agent left no appreciations.",
+    "viewConversation": "View conversation",
+    "conversationEmpty": "The conversation is no longer available.",
+    "visitor": "Visitor",
+    "agent": "Agent",
+    "followUp": "Follow-up",
+    "statusLabel": "Status",
+    "comments": "Comments",
+    "commentsPlaceholder": "Team notes: when they were called, what was agreed…",
+    "save": "Save",
+    "saved": "Saved",
+    "saveError": "Could not save"
   }
 }

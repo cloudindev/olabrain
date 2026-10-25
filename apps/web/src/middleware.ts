@@ -2,7 +2,15 @@ import { getSessionCookie } from "better-auth/cookies";
 import { NextResponse, type NextRequest } from "next/server";
 
 // Cheap cookie presence check; real session + membership validation happens server-side.
-const PROTECTED = ["/lab", "/onboarding", "/agents", "/connections", "/contacts", "/billing"];
+const PROTECTED = [
+  "/lab",
+  "/onboarding",
+  "/agents",
+  "/connections",
+  "/contacts",
+  "/billing",
+  "/leads",
+];
 
 // Served on any domain (marketing site included): the home, the legal pages and what
 // they need.

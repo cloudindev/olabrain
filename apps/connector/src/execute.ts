@@ -6,11 +6,13 @@
 import type { ApiAuth, SqlConfig, StudioParam, ToolLimits } from "@brainagent/core";
 import { signFileLink, verifyFileLink } from "@brainagent/core/file-links";
 import {
+  agents,
   connections,
   contactMemories,
   contacts,
   conversationFiles,
   conversations,
+  leads,
   withTenant,
 } from "@brainagent/db";
 import { and, eq, gt, isNull } from "drizzle-orm";
@@ -300,6 +302,8 @@ export async function loadConversationFile(
 /**
  * A person captured by an agent (e.g. a web-widget lead) goes to Contacts: matched by
  * email, then phone; their request is kept as notes; the conversation is linked to them.
+ * When the conversation comes from the web widget it is also a Lead (with the agent's
+ * appreciations), listed in the panel's Leads.
  */
 export async function saveCapturedContact(
   ctx: ConnectorContext,
@@ -346,6 +350,35 @@ export async function saveCapturedContact(
         .update(conversations)
         .set({ contactId })
         .where(and(eq(conversations.id, conversationId), isNull(conversations.contactId)));
+    const [conv] = conversationId
+      ? await tx
+          .select({ channel: conversations.channel, agentId: conversations.agentId })
+          .from(conversations)
+          .where(eq(conversations.id, conversationId))
+          .limit(1)
+      : [];
+    if (conv?.channel === "widget") {
+      const [agent] = conv.agentId
+        ? await tx
+            .select({ name: agents.name })
+            .from(agents)
+            .where(eq(agents.id, conv.agentId))
+            .limit(1)
+        : [];
+      await tx.insert(leads).values({
+        tenantId,
+        agentId: conv.agentId,
+        agentName: agent?.name ?? "",
+        conversationId,
+        contactId,
+        name: c.name,
+        email,
+        phone,
+        company: c.company?.trim() || null,
+        request: c.request?.trim() ?? "",
+        agentNotes: c.agentNotes?.trim() ?? "",
+      });
+    }
     return { contactId };
   });
 }
