@@ -19,9 +19,9 @@ export default async function LoginPage({
     <>
       <h1 className="font-display text-2xl font-semibold tracking-tight">{t("signInTitle")}</h1>
       <div className="mt-8">
-        <SocialButtons providers={providers} />
-        {providers.length > 0 ? <Divider label={tc("or")} /> : null}
         <SignInForm next={next} />
+        {providers.length > 0 ? <Divider label={tc("or")} /> : null}
+        <SocialButtons providers={providers} />
       </div>
       <p className="mt-6 text-sm text-ink-2">
         {t("noAccount")}{" "}

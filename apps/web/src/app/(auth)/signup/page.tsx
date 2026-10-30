@@ -16,9 +16,9 @@ export default async function SignUpPage() {
       <h1 className="font-display text-2xl font-semibold tracking-tight">{t("signUpTitle")}</h1>
       <p className="mt-2 text-sm text-ink-2">{t("signUpSubtitle")}</p>
       <div className="mt-8">
-        <SocialButtons providers={providers} />
-        {providers.length > 0 ? <Divider label={tc("or")} /> : null}
         <SignUpForm requiresVerification={env().AUTH_REQUIRE_EMAIL_VERIFICATION} />
+        {providers.length > 0 ? <Divider label={tc("or")} /> : null}
+        <SocialButtons providers={providers} />
       </div>
       <p className="mt-6 text-sm text-ink-2">
         {t("haveAccount")}{" "}
