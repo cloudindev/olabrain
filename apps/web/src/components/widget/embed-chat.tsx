@@ -176,11 +176,11 @@ export function EmbedChat({
   return (
     <div
       className={cn(
-        "flex h-dvh flex-col bg-paper text-ink",
-        standalone && "mx-auto w-full max-w-3xl border-x border-line",
+        "flex h-dvh flex-col overflow-x-hidden bg-paper text-ink",
+        standalone && "mx-auto w-full max-w-3xl sm:border-x sm:border-line",
       )}
     >
-      <header className="flex items-center gap-3 border-b border-line bg-surface px-4 py-3">
+      <header className="flex items-center gap-3 border-b border-line bg-surface px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
         <span
           className={cn("relative rounded-full p-[3px]", speaking && "animate-pulse")}
           style={{ background: haloGradient(halo) }}
@@ -309,7 +309,7 @@ export function EmbedChat({
           disabled={live}
           placeholder={live ? t("inCall") : t("placeholder")}
           aria-label={t("placeholder")}
-          className="max-h-32 min-h-10 flex-1 resize-none rounded-2xl border border-line bg-paper px-3.5 py-2 text-sm outline-none focus:border-line-strong"
+          className="max-h-32 min-h-10 min-w-0 flex-1 resize-none rounded-2xl border border-line bg-paper px-3.5 py-2 text-sm outline-none focus:border-line-strong"
         />
         <button
           type="submit"
@@ -320,7 +320,7 @@ export function EmbedChat({
           <ArrowUp className="size-5" />
         </button>
       </form>
-      <p className="bg-surface pb-2 text-center text-[11px] text-ink-3">
+      <p className="bg-surface pb-[calc(env(safe-area-inset-bottom)+0.5rem)] text-center text-[11px] text-ink-3">
         {t.rich("notice", {
           brand: (chunks) => (
             <a
