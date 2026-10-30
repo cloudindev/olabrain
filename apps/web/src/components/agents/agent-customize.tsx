@@ -92,7 +92,7 @@ export function AgentCustomize({
     setValues((prev) => ({ ...prev, [k]: v }));
   };
   const dirty = useMemo(() => JSON.stringify(values) !== JSON.stringify(saved), [values, saved]);
-  const maxSteps = values.policy.maxToolSteps ?? 4;
+  const maxSteps = values.policy.maxToolSteps ?? 20;
   const memory = values.policy.memoryEnabled !== false;
 
   function save() {
@@ -290,7 +290,7 @@ export function AgentCustomize({
                 id="a-steps"
                 type="range"
                 min={1}
-                max={10}
+                max={50}
                 value={maxSteps}
                 onChange={(e) =>
                   set("policy", { ...values.policy, maxToolSteps: Number(e.target.value) })

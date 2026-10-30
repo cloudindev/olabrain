@@ -294,7 +294,7 @@ describe("MyTutor connection, sync and tools", () => {
     const list = await withTenant(appDb.db, tenantA, (tx) =>
       tx.select().from(tools).where(eq(tools.connectionId, connectionId)),
     );
-    expect(list.length).toBe(13);
+    expect(list.length).toBe(14);
     expect(list.every((t) => t.mode === "read" && t.confirmation === "auto")).toBe(true);
   });
 
@@ -335,6 +335,16 @@ describe("MyTutor connection, sync and tools", () => {
     expect(tach.rows.length).toBe(2);
     const orders = await call("ordenes_residuos", { desde: "2000-01-01", hasta: "2100-01-01" });
     expect(orders.total).toBe(2);
+    const sum = await call("resumen_datos", { datos: "waste_work_orders", agrupar_por: "mes" });
+    expect(sum.total).toBe(2);
+    expect(sum.grupos.reduce((n: number, g: { registros: number }) => n + g.registros, 0)).toBe(2);
+    const bad = await executeTool(
+      c,
+      await conn(),
+      { id: "x", name: "resumen_datos", sourceRef: "resumen_datos", config: {}, limits: {} },
+      { datos: "vehicles", agrupar_por: "cliente" },
+    ).catch((e: Error) => e);
+    expect(String((bad as Error).message ?? JSON.stringify(bad))).toMatch(/puedo agrupar por/);
     const file = await mytutorFile(c, tenantA, connectionId, "555");
     expect(new TextDecoder().decode(file.bytes)).toContain("%PDF");
   });

@@ -15,6 +15,12 @@ import { extractFacts } from "./memory";
 import { buildInstructions, type RuntimeConfig } from "./prompt";
 
 export const MAX_HISTORY = 40;
+/** Tool rounds per reply when the agent's policy doesn't say (data-heavy questions). */
+export const DEFAULT_TOOL_STEPS = 20;
+/** Stop starting new tool rounds after this, to answer before the 300 s function limit. */
+const TOOL_BUDGET_MS = 200_000;
+/** What one tool result may add to the model's context (the rest is cut, with a note). */
+const MAX_TOOL_OUTPUT = 60_000;
 const REMEMBER_TOOL = "recordar_dato";
 
 export type ChatEvent =
@@ -123,7 +129,11 @@ async function runTool(
     return { output: `ERROR: ${result.error}`, isError: true, status: "error", durationMs };
   }
   let output = JSON.stringify(result.result ?? null);
-  if (result.truncated) output += "\n(Resultado recortado: hay más datos de los mostrados.)";
+  if (output.length > MAX_TOOL_OUTPUT) {
+    output =
+      output.slice(0, MAX_TOOL_OUTPUT) +
+      "\n(Resultado demasiado largo, recortado. Pide los datos más acotados: por fechas, filtros o agrupados.)";
+  } else if (result.truncated) output += "\n(Resultado recortado: hay más datos de los mostrados.)";
   const data = result.result as { pdf_url?: unknown; factura?: unknown } | null;
   const file =
     data && typeof data.pdf_url === "string"
@@ -142,7 +152,8 @@ export async function* runChat(
 ): AsyncGenerator<ChatEvent> {
   const system = buildInstructions(cfg, now);
   const tools = toolSpecs(cfg);
-  const maxSteps = Number((cfg.agent.policy as { maxToolSteps?: number }).maxToolSteps) || 4;
+  const maxSteps =
+    Number((cfg.agent.policy as { maxToolSteps?: number }).maxToolSteps) || DEFAULT_TOOL_STEPS;
   const turns: ChatTurn[] = req.messages.slice(-MAX_HISTORY).map((m) =>
     m.role === "assistant"
       ? { role: "assistant", content: String(m.content).slice(0, 20_000) }
@@ -161,6 +172,7 @@ export async function* runChat(
   let finished = false;
 
   for (let step = 0; step <= maxSteps; step++) {
+    if (performance.now() - started > TOOL_BUDGET_MS) break;
     const gen = model.step({ system, turns, tools });
     let next = await gen.next();
     while (!next.done) {
@@ -204,10 +216,28 @@ export async function* runChat(
     }
   }
   if (!finished) {
-    yield {
-      type: "delta",
-      text: "\n(He alcanzado el máximo de pasos con herramientas en este turno.)",
-    };
+    // Out of tool rounds or time: answer with what was gathered instead of stopping mute.
+    turns.push({
+      role: "user",
+      content:
+        "[Aviso del sistema] Se ha llegado al límite de consultas de esta respuesta. No llames a " +
+        "más herramientas: responde ahora con lo que ya tienes, indica claramente qué parte " +
+        "queda incompleta y propón cómo seguir (por ejemplo, que el usuario escriba «continúa» " +
+        "o acote la pregunta).",
+    });
+    const gen = model.step({ system, turns, tools });
+    let next = await gen.next();
+    if (fullText && !/\s$/.test(fullText)) yield { type: "delta", text: "\n\n" };
+    while (!next.done) {
+      firstTokenMs ??= Math.round(performance.now() - started);
+      yield { type: "delta", text: next.value };
+      next = await gen.next();
+    }
+    const last = next.value;
+    usage.prompt_tokens += last.usage.input;
+    usage.completion_tokens += last.usage.output;
+    fullText += last.text;
+    // Any tool call it still asks for is ignored.
   }
 
   yield {

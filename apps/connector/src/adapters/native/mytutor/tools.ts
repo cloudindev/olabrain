@@ -7,7 +7,22 @@
  */
 import type { MytutorEntity } from "@brainagent/core";
 import { MYTUTOR_TABLES, type Tx } from "@brainagent/db";
-import { and, asc, count, desc, eq, gte, ilike, isNull, lte, max, or, type SQL } from "drizzle-orm";
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  gte,
+  ilike,
+  isNull,
+  lte,
+  max,
+  min,
+  or,
+  sql,
+  type SQL,
+} from "drizzle-orm";
 import {
   NativeToolError,
   int,
@@ -23,6 +38,49 @@ const LIMIT = 50;
 
 const desde = str("Desde (fecha AAAA-MM-DD)");
 const hasta = str("Hasta (fecha AAAA-MM-DD)");
+
+/** Group-by fields per entity for resumen_datos: SQL over the cached record. */
+const common = {
+  estado: sql`status`,
+  mes: sql`to_char(occurred_at at time zone 'Europe/Madrid', 'YYYY-MM')`,
+  semana: sql`to_char(occurred_at at time zone 'Europe/Madrid', 'IYYY-"S"IW')`,
+  dia: sql`to_char(occurred_at at time zone 'Europe/Madrid', 'YYYY-MM-DD')`,
+};
+const GROUPS: Partial<Record<MytutorEntity, Record<string, SQL>>> = {
+  waste_work_orders: {
+    ...common,
+    cliente: sql`raw->'client'->>'corporate_name'`,
+    centro: sql`raw->'workplace'->>'name'`,
+    servicio: sql`raw->>'service_type'`,
+    conductor: sql`raw->'worker'->>'fullName'`,
+    matricula: sql`raw->>'license_plate'`,
+    camion: sql`raw->>'truck_type'`,
+  },
+  consignment_notes: {
+    ...common,
+    cargador: sql`coalesce(raw->'shipper'->>'corporate_name', raw->'shipper'->>'name')`,
+    transportista: sql`coalesce(raw->'carrier'->>'corporate_name', raw->'carrier'->>'name')`,
+    servicio: sql`raw->>'serviceType'`,
+  },
+  tach_files: {
+    ...common,
+    tipo: sql`raw->>'type'`,
+    matricula: sql`raw->>'vehicleRegistrationNumber'`,
+    tarjeta: sql`raw->>'driverCardNumber'`,
+  },
+  vehicles: {
+    estado: sql`status`,
+    tipo: sql`raw->>'type'`,
+    marca: sql`raw->>'brand'`,
+    anio: sql`to_char(occurred_at, 'YYYY')`,
+  },
+  workers: { estado: sql`status`, anio_alta: sql`to_char(occurred_at, 'YYYY')` },
+  clients: { estado: sql`status`, forma_pago: sql`raw->>'payment_method'` },
+  services: { tipo: sql`raw->>'type'` },
+  expirations: { ...common, tipo: sql`raw->>'documentType'` },
+  tach_driver_cards: { estado: sql`status` },
+  tach_vehicles: { estado: sql`status` },
+};
 
 export const MYTUTOR_TOOLS: NativeToolDef[] = [
   {
@@ -137,6 +195,26 @@ export const MYTUTOR_TOOLS: NativeToolDef[] = [
       "desde",
       "hasta",
     ]),
+    mode: "read",
+    autoConfirm: true,
+  },
+  {
+    name: "resumen_datos",
+    description:
+      "Cuenta y agrupa registros de MyTutor sobre TODOS los datos (no solo 50): totales por estado, mes, semana, día, cliente, servicio, conductor, matrícula, tipo… con filtros de fechas y texto. Úsala para cálculos, rankings e informes en lugar de recorrer listas.",
+    inputSchema: schema(
+      {
+        datos: str("Qué datos", { enum: Object.keys(GROUPS) }),
+        agrupar_por: str(
+          "Campo por el que agrupar (ver la lista de cada tipo de datos); vacío = solo el total",
+        ),
+        desde,
+        hasta,
+        texto: str("Filtra por texto (cliente, matrícula, nombre…), opcional"),
+        estado: str("Filtra por estado, opcional"),
+      },
+      ["datos"],
+    ),
     mode: "read",
     autoConfirm: true,
   },
@@ -487,6 +565,67 @@ export async function executeMytutorTool(
           };
         }),
       );
+    }
+    case "resumen_datos": {
+      const entity = String(args.datos ?? "") as MytutorEntity;
+      const groups = GROUPS[entity];
+      if (!groups) throw new NativeToolError(`no sé resumir «${entity}»`);
+      const field = String(args.agrupar_por ?? "").trim();
+      if (field && !groups[field]) {
+        throw new NativeToolError(
+          `para ${entity} puedo agrupar por: ${Object.keys(groups).join(", ")}`,
+        );
+      }
+      const table = t[entity];
+      const cond = and(
+        eq(table.connectionId, connectionId),
+        isNull(table.deletedAt),
+        like(table, args.texto),
+        args.estado ? ilike(table.status, String(args.estado)) : undefined,
+        day(args.desde) ? gte(table.occurredAt, day(args.desde)!) : undefined,
+        day(args.hasta, true) ? lte(table.occurredAt, day(args.hasta, true)!) : undefined,
+      );
+      return ctx.tenantTx(async (tx: Tx) => {
+        const [agg] = await tx
+          .select({
+            total: count(),
+            desde: min(table.occurredAt),
+            hasta: max(table.occurredAt),
+            syncedAt: max(table.syncedAt),
+          })
+          .from(table)
+          .where(cond);
+        let grupos: { valor: string | null; registros: number }[] = [];
+        if (field) {
+          const key = groups[field]!;
+          const rows = await tx
+            .select({ valor: sql<string | null>`${key}`, registros: count() })
+            .from(table)
+            .where(cond)
+            .groupBy(key)
+            .orderBy(desc(count()), sql`1`)
+            .limit(200);
+          grupos = rows.map((r) => ({
+            valor: r.valor ?? "(sin dato)",
+            registros: Number(r.registros),
+          }));
+        }
+        return {
+          ok: true,
+          truncated: false,
+          data: {
+            source: "mytutor",
+            synced_at: agg?.syncedAt?.toISOString() ?? null,
+            datos: entity,
+            total: Number(agg?.total ?? 0),
+            fechas: { primera: iso(agg?.desde ?? null), ultima: iso(agg?.hasta ?? null) },
+            ...(field ? { agrupado_por: field, grupos } : {}),
+            ...(grupos.length === 200
+              ? { nota: "Se muestran los 200 grupos con más registros." }
+              : {}),
+          },
+        };
+      });
     }
     default:
       throw new NativeToolError(`herramienta de MyTutor desconocida: ${toolName}`);

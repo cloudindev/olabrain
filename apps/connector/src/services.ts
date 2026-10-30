@@ -1049,6 +1049,8 @@ export async function runMytutorSync(
   opts: { trigger: "manual" | "schedule" | "create"; budgetMs: number },
 ): Promise<SyncOutcome> {
   const conn = await mytutorConnection(ctx, tenantId, id);
+  // Keeps the tool catalog current (new tools reach existing connections).
+  await syncNativeTools(ctx, conn, "mytutor");
   const secret = await loadSecret<MytutorSecret>(ctx, conn);
   const outcome = await syncMytutor({
     db: ctx.db,

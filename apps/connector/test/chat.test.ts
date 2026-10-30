@@ -140,21 +140,34 @@ describe("text chat runtime", () => {
     expect(saved.some((m) => m.content.includes("contraseña"))).toBe(false);
   });
 
-  it("reports unknown tools as errors to the model and stops at maxToolSteps", async () => {
-    const loop = Array.from({ length: 10 }, (_, i) => ({
+  it("reports unknown tools as errors and, out of tool rounds, answers with what it has", async () => {
+    const loop = Array.from({ length: 21 }, (_, i) => ({
       text: "",
       toolCalls: [{ id: `c${i}`, name: "no_existe", args: {} }],
       usage: { input: 1, output: 1 },
     }));
-    const model = new FakeModel(loop);
+    const final = {
+      text: "Con lo que tengo: no he podido consultar los datos.",
+      // A tool call in the final answer is ignored.
+      toolCalls: [{ id: "late", name: "no_existe", args: {} }],
+      usage: { input: 1, output: 1 },
+    };
+    const model = new FakeModel([...loop, final]);
     const evs = await events(
       await chat(model, { agentId, messages: [{ role: "user", content: "hola" }] }),
     );
     const results = evs.filter((e) => e.type === "tool_result");
-    expect(results).toHaveLength(5); // maxToolSteps (4) + 1 model steps
+    expect(results).toHaveLength(21); // default 20 rounds + 1 model steps
     expect(results.every((r) => r.status === "error")).toBe(true);
-    expect(evs.find((e) => e.type === "delta")?.text).toContain("máximo de pasos");
     expect(model.requests[1]!.turns.at(-1)).toMatchObject({ role: "tool", isError: true });
+    // The last request asks for an answer without more tools.
+    expect(model.requests.at(-1)!.turns.at(-1)).toMatchObject({ role: "user" });
+    expect(String(model.requests.at(-1)!.turns.at(-1)!.content)).toContain("límite de consultas");
+    const text = evs
+      .filter((e) => e.type === "delta")
+      .map((e) => e.text)
+      .join("");
+    expect(text).toContain("Con lo que tengo");
   });
 
   it("passes the attachments of a message to the model and rejects unsupported files", async () => {
