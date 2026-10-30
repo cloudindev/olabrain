@@ -35,3 +35,6 @@ service-account*.json
 
 # Source videos (optimized copies live in apps/web/public/alba)
 /*.mp4
+
+# Local dumps with personal data (connector scripts)
+tmp/
