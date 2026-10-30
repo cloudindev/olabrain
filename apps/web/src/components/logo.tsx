@@ -7,16 +7,13 @@ import { cn } from "@brainagent/ui";
  */
 export function Logo({
   inverted = false,
-  compact = false,
   className,
 }: {
   /** On an inverted surface (bg-ink): shows the opposite theme's version. */
   inverted?: boolean;
-  /** A bit smaller on small screens (tight headers). */
-  compact?: boolean;
   className?: string;
 }) {
-  const size = cn("h-6 w-auto shrink-0", compact && "max-sm:h-5", className);
+  const size = cn("h-[18px] w-auto shrink-0 object-contain object-left", className);
   return (
     <>
       {/* Small static PNGs (~10 KB): no next/image optimisation needed. */}

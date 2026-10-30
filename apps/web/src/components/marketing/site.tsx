@@ -22,7 +22,7 @@ export const LEGAL_PAGES = [
 ] as const;
 
 export function Brand() {
-  return <Logo className="h-[18px]" />;
+  return <Logo />;
 }
 
 /**
