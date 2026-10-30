@@ -22,7 +22,7 @@ export const LEGAL_PAGES = [
 ] as const;
 
 export function Brand() {
-  return <Logo className="h-6" />;
+  return <Logo className="h-[18px]" />;
 }
 
 /**
@@ -89,7 +89,7 @@ export async function SiteFooter({ base = "" }: { base?: "" | "/" }) {
     <footer className="border-t border-line bg-[#0e0e0e] px-4 py-10 sm:px-8">
       <div className="mx-auto flex max-w-7xl flex-col gap-8">
         <div className="flex flex-col items-start justify-between gap-6 md:flex-row md:items-center">
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col items-start gap-2">
             <Brand />
             <p className="text-xs text-ink-2">{t("footerTag")}</p>
           </div>
