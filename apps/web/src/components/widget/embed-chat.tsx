@@ -26,8 +26,9 @@ const nextId = () => `w${++seq}`;
 
 /**
  * The widget's panel, rendered in our iframe on the customer's site: text chat and a
- * voice call with the agent. The visitor is anonymous; the conversation id lives in
- * sessionStorage so a reload keeps the thread.
+ * voice call with the agent. The visitor is anonymous; the conversation id and its messages
+ * live in sessionStorage, so a reload or another page of the site keeps the thread until
+ * the tab is closed.
  */
 export function EmbedChat({
   channelId,
@@ -48,6 +49,7 @@ export function EmbedChat({
 }) {
   const t = useTranslations("widget");
   const storageKey = `olabrain:${channelId}:conversation`;
+  const messagesKey = `olabrain:${channelId}:messages`;
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
@@ -62,10 +64,22 @@ export function EmbedChat({
   useEffect(() => {
     try {
       setConversationId(sessionStorage.getItem(storageKey));
+      const saved = JSON.parse(sessionStorage.getItem(messagesKey) ?? "[]") as Message[];
+      // New ids: nextId() starts over on every load.
+      if (saved.length) setMessages(saved.map((m, i) => ({ ...m, id: `s${i}` })));
     } catch {
       // storage blocked (third-party iframe): the thread just doesn't survive a reload
     }
-  }, [storageKey]);
+  }, [storageKey, messagesKey]);
+  // Finished messages only; an empty list never overwrites the saved thread.
+  useEffect(() => {
+    if (busy || !messages.length) return;
+    try {
+      sessionStorage.setItem(messagesKey, JSON.stringify(messages));
+    } catch {
+      // ignore
+    }
+  }, [messages, busy, messagesKey]);
   useEffect(() => {
     void endRef.current?.scrollIntoView({ block: "end" });
   }, [messages]);

@@ -38,17 +38,21 @@ test("publish an agent as a web widget and open it from another site", async ({
   // A customer's site: another origin (127.0.0.1 vs localhost) with the snippet pasted in.
   // A real page of ours on that origin, since Chrome blocks routed "public" pages from
   // loading loopback resources.
-  await page.goto(`${baseURL!.replace("localhost", "127.0.0.1")}/privacidad`);
-  await page.evaluate(
-    ({ src, id }) => {
-      const s = document.createElement("script");
-      s.src = src;
-      s.async = true;
-      s.setAttribute("data-agent", id);
-      document.body.appendChild(s);
-    },
-    { src: `${baseURL}/widget.js`, id: widgetId },
-  );
+  const customerSite = `${baseURL!.replace("localhost", "127.0.0.1")}/privacidad`;
+  const openCustomerSite = async (target: typeof page) => {
+    await target.goto(customerSite);
+    await target.evaluate(
+      ({ src, id }) => {
+        const s = document.createElement("script");
+        s.src = src;
+        s.async = true;
+        s.setAttribute("data-agent", id);
+        document.body.appendChild(s);
+      },
+      { src: `${baseURL}/widget.js`, id: widgetId },
+    );
+  };
+  await openCustomerSite(page);
   const launcher = page.getByRole("button", { name: /Chat con Mateo/ });
   await expect(launcher).toBeVisible();
   const box = (await launcher.boundingBox())!;
@@ -62,6 +66,46 @@ test("publish an agent as a web widget and open it from another site", async ({
     "href",
     "https://www.olabrain.com",
   );
+  await expect(frame.getByText("Agente IA by")).toBeVisible();
+
+  // The thread survives minimizing and a reload, and stays in this tab only.
+  const sent: { conversationId?: string | null }[] = [];
+  await page.context().route(`**/api/widget/${widgetId}/chat`, (route) => {
+    sent.push(route.request().postDataJSON());
+    return route.fulfill({
+      contentType: "text/event-stream",
+      body: `data: {"type":"conversation","id":"c-1"}\n\ndata: {"type":"delta","text":"Respuesta guardada"}\n\n`,
+    });
+  });
+  // Retried: the panel's input is visible before it hydrates, and Enter then does nothing.
+  const say = (text: string) =>
+    expect(async () => {
+      const input = frame.getByPlaceholder("Escribe un mensaje…");
+      await input.fill(text);
+      await input.press("Enter");
+      await expect(input).toHaveValue("", { timeout: 1000 });
+    }).toPass();
+  await say("Mensaje guardado");
+  await expect(frame.getByText("Respuesta guardada")).toBeVisible();
+  await frame.getByRole("button", { name: "Cerrar" }).click();
+  await expect(page.locator("[data-olabrain] .panel")).not.toHaveClass(/open/);
+  await launcher.click();
+  await expect(frame.getByText("Respuesta guardada")).toBeVisible();
+
+  await openCustomerSite(page);
+  await launcher.click();
+  await expect(frame.getByText("Mensaje guardado")).toBeVisible();
+  await expect(frame.getByText("Respuesta guardada")).toBeVisible();
+  await say("Otro mensaje");
+  await expect.poll(() => sent.at(-1)?.conversationId).toBe("c-1");
+
+  const otherTab = await page.context().newPage();
+  await openCustomerSite(otherTab);
+  await otherTab.getByRole("button", { name: /Chat con Mateo/ }).click();
+  const otherFrame = otherTab.frameLocator('iframe[title="Mateo"]');
+  await expect(otherFrame.getByPlaceholder("Escribe un mensaje…")).toBeVisible();
+  await expect(otherFrame.getByText("Mensaje guardado")).toHaveCount(0);
+  await otherTab.close();
 
   // Only listed domains may frame it once the list is set.
   const res = await page.request.get(`/embed/${widgetId}`);

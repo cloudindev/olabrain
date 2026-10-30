@@ -698,7 +698,7 @@
     "hangUp": "Colgar",
     "close": "Cerrar",
     "ai": "Asistente con IA",
-    "notice": "Agente de IA by <brand>OlaBrain</brand>",
+    "notice": "Agente IA by <brand>OlaBrain</brand>",
     "state": {
       "listening": "Te escucha",
       "thinking": "Pensando…",
