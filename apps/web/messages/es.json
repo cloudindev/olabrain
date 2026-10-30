@@ -752,7 +752,30 @@
       "normal": "Normal",
       "pastel": "Pastel"
     },
-    "size": "Tamaño del icono"
+    "size": "Tamaño del icono",
+    "share": {
+      "title": "Compartir",
+      "hint": "Quien tenga el enlace y la contraseña puede hablar con el agente desde cualquier navegador, sin cuenta.",
+      "introTitle": "Comparte a {name} con un enlace",
+      "introBody": "Crea un enlace protegido con contraseña: otra persona podrá chatear y hablar por voz con el agente, con todas sus conexiones, sin necesidad de cuenta. El consumo se descuenta de tu saldo.",
+      "password": "Contraseña",
+      "newPassword": "Nueva contraseña",
+      "confirm": "Repite la contraseña",
+      "tooShort": "Mínimo 8 caracteres.",
+      "mismatch": "Las contraseñas no coinciden.",
+      "voice": "Permitir llamadas de voz",
+      "create": "Crear enlace",
+      "creating": "Creando…",
+      "created": "Enlace creado. Cópialo y envíalo junto con la contraseña (mejor por canales distintos).",
+      "saved": "Guardado.",
+      "enabled": "Enlace activo",
+      "copy": "Copiar enlace",
+      "open": "Abrir enlace",
+      "disabledNote": "El enlace está desactivado: nadie puede entrar hasta que lo actives.",
+      "changePassword": "Cambiar contraseña",
+      "savePassword": "Guardar contraseña",
+      "passwordNote": "Al cambiarla, quien hubiera entrado con la anterior tendrá que volver a escribir la nueva."
+    }
   },
   "billing": {
     "title": "Saldo",
@@ -956,5 +979,15 @@
       },
       "goToPanel": "Ir al panel"
     }
+  },
+  "share": {
+    "assistant": "Asistente con IA",
+    "intro": "Este asistente es privado. Escribe la contraseña que te han dado.",
+    "password": "Contraseña",
+    "enter": "Entrar",
+    "checking": "Comprobando…",
+    "wrong": "Contraseña incorrecta.",
+    "tooMany": "Demasiados intentos. Espera unos minutos.",
+    "generic": "No se ha podido comprobar. Inténtalo de nuevo."
   }
 }

@@ -301,3 +301,19 @@ Implementa ADR-007 sin pagos (Stripe pendiente).
 - **ProfiFLEET** (`profifleet.my-tutor.es/V5`, Veosat en marca blanca, PHP + Firestore, SSO con el `veosat_token` del JWT): fuera de alcance.
 - **Libra ERP de Edisa:** las facturas del cliente salen de ahí, no de MyTutor; se integrará más adelante.
 - `profitach/connections/company/25/company-cards` devuelve 403 con este usuario: no se usa.
+
+## ADR-022 — Compartir un agente con enlace y contraseña (2026-10-31)
+
+**Contexto.** Además del widget para webs, el cliente quiere dar acceso a un agente (p. ej. un asistente interno conectado a MyTutor) a personas sin cuenta en OlaBrain.
+
+**Decisión.**
+- **El enlace:** en «Publicar» › Compartir se crea un canal `share_link`, uno por agente. Su enlace es `/c/{id}`: el id es un uuid aleatorio y además hace falta una contraseña que fija el admin.
+- **La contraseña:**
+  - Se guarda solo como hash scrypt, nunca en claro ni se envía al navegador.
+  - Si es correcta, se da una cookie HttpOnly de 30 días, firmada (HMAC) junto con el hash actual. Cambiar la contraseña o desactivar el enlace cierra todas las sesiones abiertas.
+  - Tras 10 intentos fallidos por visitante y enlace, se bloquea 15 minutos. Los intentos quedan en `audit_log`.
+- **El chat:** el mismo chat y voz del widget, extraídos a `lib/public-chat.ts`: mismo cobro por saldo, límites por visitante y conversaciones guardadas, con `channel = "share"`.
+- **Herramientas:**
+  - A diferencia del widget, que solo usa las herramientas marcadas como públicas, el enlace compartido da **todas las herramientas del agente**: está pensado para personas de confianza.
+  - Las escrituras siguen pidiendo confirmación.
+  - Las conversaciones del enlace no generan Leads.

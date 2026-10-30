@@ -752,7 +752,30 @@
       "normal": "Normal",
       "pastel": "Pastel"
     },
-    "size": "Icon size"
+    "size": "Icon size",
+    "share": {
+      "title": "Share",
+      "hint": "Anyone with the link and the password can talk to the agent from any browser, without an account.",
+      "introTitle": "Share {name} with a link",
+      "introBody": "Create a password-protected link: someone else can chat and talk by voice with the agent, with all its connections, without an account. Usage is charged to your balance.",
+      "password": "Password",
+      "newPassword": "New password",
+      "confirm": "Repeat the password",
+      "tooShort": "At least 8 characters.",
+      "mismatch": "The passwords don't match.",
+      "voice": "Allow voice calls",
+      "create": "Create link",
+      "creating": "Creating…",
+      "created": "Link created. Copy it and send it with the password (ideally through different channels).",
+      "saved": "Saved.",
+      "enabled": "Link active",
+      "copy": "Copy link",
+      "open": "Open link",
+      "disabledNote": "The link is disabled: nobody can get in until you turn it on.",
+      "changePassword": "Change password",
+      "savePassword": "Save password",
+      "passwordNote": "After changing it, anyone who entered with the old one must type the new one."
+    }
   },
   "billing": {
     "title": "Balance",
@@ -956,5 +979,15 @@
       },
       "goToPanel": "Go to the dashboard"
     }
+  },
+  "share": {
+    "assistant": "AI assistant",
+    "intro": "This assistant is private. Enter the password you were given.",
+    "password": "Password",
+    "enter": "Enter",
+    "checking": "Checking…",
+    "wrong": "Wrong password.",
+    "tooMany": "Too many attempts. Wait a few minutes.",
+    "generic": "Couldn't check it. Try again."
   }
 }

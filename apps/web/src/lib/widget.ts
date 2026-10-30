@@ -61,10 +61,15 @@ export async function resolveChannel(channelId: string): Promise<PublicChannel |
 }
 
 /** Widget conversations of a visitor started in the last hour (calls) or messages sent. */
-export async function visitorUsage(tx: Tx, channelId: string, visitor: string) {
+export async function visitorUsage(
+  tx: Tx,
+  channelId: string,
+  visitor: string,
+  channel: string = WIDGET_CHANNEL,
+) {
   const hourAgo = new Date(Date.now() - 60 * 60 * 1000);
   const mine = and(
-    eq(conversations.channel, WIDGET_CHANNEL),
+    eq(conversations.channel, channel),
     sql`${conversations.config}->>'channelId' = ${channelId}`,
     sql`${conversations.config}->>'visitor' = ${visitor}`,
   );

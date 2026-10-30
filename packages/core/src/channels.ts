@@ -53,3 +53,28 @@ export const WIDGET_LIMITS = {
   callsPerVisitorHour: 6,
   callSeconds: 5 * 60,
 } as const;
+
+/**
+ * Shared link (agent's «Publicar» › Compartir): a page on our domain where whoever has the
+ * link and the password talks to the agent, with all its tools (it is for trusted people,
+ * e.g. a colleague without an account). The password is stored only as a scrypt hash.
+ */
+export const SHARE_LINK = "share_link";
+
+export const shareConfigSchema = z.object({
+  /** "scrypt$<salt>$<hash>" (base64url). */
+  passwordHash: z.string().min(10),
+  voice: z.boolean().default(true),
+});
+export type ShareConfig = z.infer<typeof shareConfigSchema>;
+
+export const shareInputSchema = z.object({
+  enabled: z.boolean(),
+  voice: z.boolean().default(true),
+  /** Required to create the link; when updating, empty keeps the current password. */
+  password: z
+    .string()
+    .max(200)
+    .optional()
+    .refine((p) => !p || p.length >= 8, "La contraseña debe tener al menos 8 caracteres"),
+});

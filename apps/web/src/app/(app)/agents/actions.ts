@@ -1,6 +1,13 @@
 "use server";
 
-import { WEB_WIDGET, agentInputSchema, widgetConfigSchema } from "@brainagent/core";
+import {
+  SHARE_LINK,
+  WEB_WIDGET,
+  agentInputSchema,
+  shareConfigSchema,
+  shareInputSchema,
+  widgetConfigSchema,
+} from "@brainagent/core";
 import {
   agentTools,
   agents,
@@ -19,6 +26,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { env } from "@/lib/env";
+import { hashSharePassword } from "@/lib/share";
 import { requireTenant, tenantTx } from "@/lib/tenant";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
@@ -240,6 +248,58 @@ export async function saveWidget(
     return true;
   });
   if (!saved) return { ok: false, error: "Agente no encontrado" };
+  revalidatePath(`/agents/${agentId}`);
+  return { ok: true };
+}
+
+/**
+ * Creates or updates the agent's shared link (ADR-022): a password is required to create
+ * it; when updating, an empty password keeps the current one. Changing it closes every
+ * open session of the link.
+ */
+export async function saveShareLink(agentId: string, input: unknown): Promise<ActionResult> {
+  const ctx = await requireTenant("admin");
+  const parsed = shareInputSchema.safeParse(input);
+  if (!z.uuid().safeParse(agentId).success || !parsed.success)
+    return {
+      ok: false,
+      error: parsed.success ? "Agente no válido" : parsed.error.issues[0]!.message,
+    };
+  const newHash = parsed.data.password ? await hashSharePassword(parsed.data.password) : null;
+  const result = await tenantTx(ctx, async (tx) => {
+    const [agent] = await tx
+      .select({ id: agents.id })
+      .from(agents)
+      .where(eq(agents.id, agentId))
+      .limit(1);
+    if (!agent) return "not_found" as const;
+    const [current] = await tx
+      .select({ config: channels.config })
+      .from(channels)
+      .where(and(eq(channels.agentId, agentId), eq(channels.kind, SHARE_LINK)))
+      .limit(1);
+    const previous = shareConfigSchema.safeParse(current?.config ?? {});
+    const passwordHash = newHash ?? (previous.success ? previous.data.passwordHash : null);
+    if (!passwordHash) return "password_required" as const;
+    const config = { passwordHash, voice: parsed.data.voice };
+    await tx
+      .insert(channels)
+      .values({
+        tenantId: ctx.tenantId,
+        agentId,
+        kind: SHARE_LINK,
+        config,
+        enabled: parsed.data.enabled,
+      })
+      .onConflictDoUpdate({
+        target: [channels.agentId, channels.kind],
+        set: { config, enabled: parsed.data.enabled, updatedAt: new Date() },
+      });
+    return "saved" as const;
+  });
+  if (result === "not_found") return { ok: false, error: "Agente no encontrado" };
+  if (result === "password_required")
+    return { ok: false, error: "Pon una contraseña de al menos 8 caracteres" };
   revalidatePath(`/agents/${agentId}`);
   return { ok: true };
 }

@@ -34,11 +34,17 @@ export function EmbedChat({
   agent,
   voice,
   halo,
+  apiBase = `/api/widget/${channelId}`,
+  standalone = false,
 }: {
   channelId: string;
   agent: { name: string; role: string; avatar: string | null };
   voice: boolean;
   halo: { mode: "multicolor" | "tone"; color: string };
+  /** Chat/voice endpoints (a shared link uses /api/share/{id}). */
+  apiBase?: string;
+  /** A full page of its own (shared link): no close button, centred column. */
+  standalone?: boolean;
 }) {
   const t = useTranslations("widget");
   const storageKey = `olabrain:${channelId}:conversation`;
@@ -87,11 +93,13 @@ export function EmbedChat({
     const patchLast = (fn: (m: Message) => Message) =>
       setMessages((prev) => prev.map((m, i) => (i === prev.length - 1 ? fn(m) : m)));
     try {
-      const res = await fetch(`/api/widget/${channelId}/chat`, {
+      const res = await fetch(`${apiBase}/chat`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ message: text, conversationId }),
       });
+      // A shared link whose password changed: back to the password form.
+      if (res.status === 401 && standalone) return window.location.reload();
       if (!res.ok || !res.body)
         throw new Error(
           res.status === 402 ? "no_balance" : res.status === 429 ? "limit" : "generic",
@@ -151,7 +159,7 @@ export function EmbedChat({
   function startVoice() {
     setError(null);
     void call.start(async () => {
-      const res = await fetch(`/api/widget/${channelId}/voice`, { method: "POST" });
+      const res = await fetch(`${apiBase}/voice`, { method: "POST" });
       if (!res.ok) throw new CallStartError(callErrorFor(res.status));
       return res.json();
     });
@@ -166,7 +174,12 @@ export function EmbedChat({
     : null;
 
   return (
-    <div className="flex h-dvh flex-col bg-paper text-ink">
+    <div
+      className={cn(
+        "flex h-dvh flex-col bg-paper text-ink",
+        standalone && "mx-auto w-full max-w-3xl border-x border-line",
+      )}
+    >
       <header className="flex items-center gap-3 border-b border-line bg-surface px-4 py-3">
         <span
           className={cn("relative rounded-full p-[3px]", speaking && "animate-pulse")}
@@ -208,14 +221,16 @@ export function EmbedChat({
             </button>
           )
         ) : null}
-        <button
-          type="button"
-          onClick={close}
-          aria-label={t("close")}
-          className="flex size-10 items-center justify-center rounded-full text-ink-2 hover:bg-surface-2"
-        >
-          <X className="size-5" />
-        </button>
+        {standalone ? null : (
+          <button
+            type="button"
+            onClick={close}
+            aria-label={t("close")}
+            className="flex size-10 items-center justify-center rounded-full text-ink-2 hover:bg-surface-2"
+          >
+            <X className="size-5" />
+          </button>
+        )}
       </header>
 
       <div className="flex-1 overflow-y-auto px-4 py-4" data-testid="widget-log">

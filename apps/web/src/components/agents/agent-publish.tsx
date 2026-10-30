@@ -5,6 +5,7 @@ import { Check, Copy, Globe, Mic, Palette, ShieldCheck } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState, useTransition, type ReactNode } from "react";
 import { saveWidget } from "@/app/(app)/agents/actions";
+import { AgentShare } from "@/components/agents/agent-share";
 import { AgentFace } from "@/components/avatar/agent-face";
 import { GLOW, haloGradient, type Halo, type HaloStyle } from "@/components/widget/halo";
 
@@ -97,7 +98,35 @@ export function HaloPreview({
 }
 
 /** «Publicar»: embed snippet and settings of the agent's web widget. */
+/** «Publicar»: the web widget and the password-protected shared link, side by side. */
 export function AgentPublish({
+  share,
+  canShare,
+  ...props
+}: Parameters<typeof WidgetPublish>[0] & {
+  share: { id: string; enabled: boolean; voice: boolean } | null;
+  canShare: boolean;
+}) {
+  const shareCard = (
+    <AgentShare agent={props.agent} share={share} appUrl={props.appUrl} canEdit={canShare} />
+  );
+  if (!props.widget) {
+    return (
+      <div className="grid gap-6 lg:grid-cols-2">
+        <WidgetPublish {...props} />
+        {shareCard}
+      </div>
+    );
+  }
+  return (
+    <div className="flex flex-col gap-6">
+      <WidgetPublish {...props} />
+      {shareCard}
+    </div>
+  );
+}
+
+function WidgetPublish({
   agent,
   widget,
   tools,

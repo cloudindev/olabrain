@@ -1,4 +1,4 @@
-import { WEB_WIDGET } from "@brainagent/core";
+import { SHARE_LINK, WEB_WIDGET } from "@brainagent/core";
 import { agentTools, agents, channels, connections, personas, tools } from "@brainagent/db";
 import { cn } from "@brainagent/ui";
 import { and, asc, eq, inArray, isNull, or } from "drizzle-orm";
@@ -118,6 +118,14 @@ export default async function AgentPage({
             .where(and(eq(channels.agentId, id), eq(channels.kind, WEB_WIDGET)))
             .limit(1)
         : [];
+    const [share] =
+      tab === "publish"
+        ? await tx
+            .select({ id: channels.id, enabled: channels.enabled, config: channels.config })
+            .from(channels)
+            .where(and(eq(channels.agentId, id), eq(channels.kind, SHARE_LINK)))
+            .limit(1)
+        : [];
     // Only what the UI shows: never send connection config (URLs, hosts) to the client.
     const connectionList = (needConnections ? connectionRows : []).map(
       ({ config, agentId, ...c }) => {
@@ -137,6 +145,14 @@ export default async function AgentPage({
       connectionList,
       assigned: assigned.map((a) => a.toolId),
       widget: widget ?? null,
+      // Never the password hash: only whether the link exists, is on and offers voice.
+      share: share
+        ? {
+            id: share.id,
+            enabled: share.enabled,
+            voice: (share.config as { voice?: boolean }).voice !== false,
+          }
+        : null,
     };
   });
   if (!data) notFound();
@@ -252,6 +268,8 @@ export default async function AgentPage({
         <AgentPublish
           agent={{ id: agent.id, name: agent.name, avatar: persona?.avatarUrl ?? null }}
           widget={data.widget}
+          share={data.share}
+          canShare={ctx.role === "owner" || ctx.role === "admin"}
           tools={data.toolList.filter((t) => data.assigned.includes(t.id))}
           appUrl={env().APP_URL.replace(/\/$/, "")}
         />
