@@ -4,6 +4,7 @@ import { promisify } from "node:util";
 import { SHARE_LINK, shareConfigSchema, type ShareConfig } from "@brainagent/core";
 import { agents, auditLog, channels, personas, withTenant } from "@brainagent/db";
 import { and, count, eq, gt, sql } from "drizzle-orm";
+import { cache } from "react";
 import { db } from "@/lib/db";
 import { env } from "@/lib/env";
 
@@ -59,8 +60,8 @@ export type SharedLink = {
   config: ShareConfig;
 };
 
-/** An enabled shared link and its agent (public_share_tenant() then RLS). */
-export async function resolveShare(channelId: string): Promise<SharedLink | null> {
+/** An enabled shared link and its agent (public_share_tenant() then RLS); once per request. */
+export const resolveShare = cache(async (channelId: string): Promise<SharedLink | null> => {
   const rows = await db().execute<{ tenant: string | null }>(
     sql`select public_share_tenant(${channelId}::uuid) as tenant`,
   );
@@ -87,7 +88,7 @@ export async function resolveShare(channelId: string): Promise<SharedLink | null
       config: parsed.data,
     };
   });
-}
+});
 
 /** Recent wrong passwords of this visitor on this link (audit_log, inside its tenant). */
 export async function recentShareFailures(link: SharedLink, visitor: string) {
