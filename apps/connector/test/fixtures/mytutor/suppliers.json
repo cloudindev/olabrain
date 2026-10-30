@@ -1,0 +1,49 @@
+{
+ "rows": [
+  {
+   "id": 2351,
+   "extra_external_id": "extra_external_id-25",
+   "corporate_name": "corporate_name-26",
+   "brand_name": "brand_name-27",
+   "cif_nif": "B00000028",
+   "payment_method": "transfer",
+   "paymentMonthDay": null,
+   "is_active": true,
+   "libraSendDate": null,
+   "updatedAt": "2025-03-19T08:25:46.501Z",
+   "companies": [
+    {
+     "companyId": 25,
+     "name": "name-29"
+    }
+   ],
+   "billing_emails": [],
+   "contact_phones": [
+    {
+     "id": 2738,
+     "phone": ""
+    }
+   ],
+   "workplaces": [
+    {
+     "id": 1647,
+     "client_id": 2351,
+     "wasteInfo": {
+      "workplace_id": 1647,
+      "nima": "nima-30",
+      "inscription_number": "inscription_number-31",
+      "transfer_operator_type": null,
+      "production_center_type": null,
+      "management_center_type": "G04",
+      "transporter_type": null,
+      "economic_activity": "economic_activity-32",
+      "createdAt": "2025-03-19T08:25:46.710Z",
+      "updatedAt": "2025-03-19T08:25:46.710Z"
+     }
+    }
+   ],
+   "worker": null
+  }
+ ],
+ "count": 1
+}

@@ -37,6 +37,8 @@ export default defineConfig({
       // Tool Router: connections and tool tests go through it.
       command: "pnpm --filter @brainagent/connector start",
       url: "http://127.0.0.1:4100/health",
+      // e2e/mytutor.spec.ts serves a fake MyTutor here.
+      env: { MYTUTOR_API_URL: "http://127.0.0.1:4199/v1" },
       reuseExistingServer: !process.env.CI,
       timeout: 60_000,
     },

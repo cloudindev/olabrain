@@ -12,6 +12,7 @@ import { HOLDED_TOOLS, executeHoldedTool } from "./holded";
 import { SESAME_TOOLS, executeSesameTool } from "./sesame";
 import { SMTP_TOOLS, executeSmtpTool } from "./smtp";
 import { WHMCS_TOOLS, executeWhmcsTool } from "./whmcs";
+import { MYTUTOR_TOOLS, executeMytutorTool } from "./mytutor";
 
 export const NATIVE_TOOLS: Record<NativeProvider, NativeToolDef[]> = {
   whmcs: WHMCS_TOOLS,
@@ -21,6 +22,7 @@ export const NATIVE_TOOLS: Record<NativeProvider, NativeToolDef[]> = {
   factorial: FACTORIAL_TOOLS,
   sesame: SESAME_TOOLS,
   smtp: SMTP_TOOLS,
+  mytutor: MYTUTOR_TOOLS,
 };
 
 /** Platform OAuth apps of the native connectors (null when not configured). */
@@ -38,6 +40,7 @@ export function executeNativeTool(
   if (provider === "factorial") return executeFactorialTool(ctx, toolName, args);
   if (provider === "sesame") return executeSesameTool(ctx, toolName, args);
   if (provider === "smtp") return executeSmtpTool(ctx, toolName, args);
+  if (provider === "mytutor") return executeMytutorTool(ctx, toolName, args);
   if (provider === "microsoft365") {
     if (!apps.microsoft)
       throw new NativeToolError("Outlook 365 no está configurado en la plataforma");

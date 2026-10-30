@@ -17,7 +17,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "demo": "tsx src/scripts/demo-db.ts",
-    "wallet:grant": "tsx src/scripts/wallet-grant.ts"
+    "wallet:grant": "tsx src/scripts/wallet-grant.ts",
+    "cron:mytutor": "tsx src/scripts/schedule-mytutor-sync.ts"
   },
   "dependencies": {
     "dotenv": "18.0.8",

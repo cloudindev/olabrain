@@ -13,6 +13,10 @@ import {
   apiKeyConnectionSchema,
   smtpConnectionSchema,
   whmcsAccessKeySchema,
+  mytutorConnectionSchema,
+  mytutorPasswordSchema,
+  mytutorSettingsSchema,
+  mytutorTestSchema,
   whmcsConnectionSchema,
 } from "@brainagent/core";
 import { waitUntil } from "@vercel/functions";
@@ -40,6 +44,12 @@ import {
   whmcsInvoicePdf,
   createApiKeyConnection,
   createSmtpConnection,
+  createMytutorConnection,
+  mytutorFile,
+  runMytutorSync,
+  testMytutorConnection,
+  updateMytutorPassword,
+  updateMytutorSettings,
   setConnectionOwner,
   createHttpConnection,
   createHttpSchema,
@@ -292,6 +302,60 @@ export function createApp(ctx: ConnectorContext, serviceToken: string, opts: App
   app.post("/v1/connections/native/smtp", async (c) =>
     c.json(await createSmtpConnection(ctx, c.var.tenantId, await body(c, smtpConnectionSchema))),
   );
+  // MyTutor (ADR-021).
+  app.post("/v1/connections/native/mytutor/test", async (c) =>
+    c.json(await testMytutorConnection(ctx, await body(c, mytutorTestSchema))),
+  );
+  app.post("/v1/connections/native/mytutor", async (c) =>
+    c.json(
+      await createMytutorConnection(ctx, c.var.tenantId, await body(c, mytutorConnectionSchema)),
+    ),
+  );
+  app.post("/v1/connections/:id/mytutor/password", async (c) =>
+    c.json(
+      await updateMytutorPassword(
+        ctx,
+        c.var.tenantId,
+        uuid.parse(c.req.param("id")),
+        (await body(c, mytutorPasswordSchema)).password,
+      ),
+    ),
+  );
+  app.post("/v1/connections/:id/mytutor/settings", async (c) =>
+    c.json(
+      await updateMytutorSettings(
+        ctx,
+        c.var.tenantId,
+        uuid.parse(c.req.param("id")),
+        (await body(c, mytutorSettingsSchema)).syncEveryHours,
+      ),
+    ),
+  );
+  app.post("/v1/connections/:id/mytutor/sync", async (c) => {
+    const opts = await body(
+      c,
+      z.object({
+        trigger: z.enum(["manual", "schedule", "create"]).default("manual"),
+        budgetMs: z.number().int().min(5_000).max(280_000).default(240_000),
+      }),
+    );
+    return c.json(await runMytutorSync(ctx, c.var.tenantId, uuid.parse(c.req.param("id")), opts));
+  });
+  app.get("/v1/files/mytutor-file/:connectionId/:ref", async (c) => {
+    const file = await mytutorFile(
+      ctx,
+      c.var.tenantId,
+      uuid.parse(c.req.param("connectionId")),
+      z.string().max(100).parse(c.req.param("ref")),
+    );
+    return new Response(file.bytes, {
+      headers: {
+        "content-type": file.contentType,
+        "content-disposition": `attachment; filename="${file.filename.replace(/["\r\n]/g, "")}"`,
+        "cache-control": "private, no-store",
+      },
+    });
+  });
   app.post("/v1/connections/native/whmcs", async (c) =>
     c.json(await createWhmcsConnection(ctx, c.var.tenantId, await body(c, whmcsConnectionSchema))),
   );

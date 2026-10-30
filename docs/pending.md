@@ -19,6 +19,8 @@ Falta:
   el saldo lo cubra todo.
 
 ## Otros pendientes
+- MyTutor (ADR-021): programar pg_cron en producción (`cron:mytutor`, necesita `CRON_SECRET`),
+  ProfiFLEET y Libra ERP de Edisa; verificar documentos de trabajadores cuando haya alguno.
 - WhatsApp: elegir opción (API Cloud directa vs Embedded Signup) y verificación de Meta.
 - a3asesor / Solmicro: respuestas sobre instalación (local vs nube) y acceso a datos.
 - Holded: PDF de facturas por enlace firmado (como WHMCS).

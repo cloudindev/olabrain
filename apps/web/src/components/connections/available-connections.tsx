@@ -11,6 +11,7 @@ export const APPS = [
   "sesame",
   "smtp",
   "whmcs",
+  "mytutor",
 ] as const;
 export const CUSTOM = ["mcp", "openapi", "sql", "http"] as const;
 

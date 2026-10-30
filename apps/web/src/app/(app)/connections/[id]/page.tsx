@@ -8,9 +8,13 @@ import { z } from "zod";
 import { ConnectionActions } from "@/components/connections/connection-actions";
 import { StudioEditor } from "@/components/connections/studio-editor";
 import { ToolsTable } from "@/components/connections/tools-table";
+import { MytutorPanel } from "@/components/connections/mytutor-panel";
 import { WhmcsAccessKey } from "@/components/connections/whmcs-access-key";
 import { PageHeader } from "@/components/page-header";
 import { requireTenant, tenantTx } from "@/lib/tenant";
+
+// Server actions here may run a MyTutor sync after responding (ADR-021).
+export const maxDuration = 300;
 
 export default async function ConnectionPage({
   params,
@@ -72,6 +76,9 @@ export default async function ConnectionPage({
       {conn.lastError ? <p className="mb-4 text-sm text-bad">{conn.lastError}</p> : null}
 
       <div className="flex flex-col gap-6">
+        {conn.kind === "native" && config.provider === "mytutor" ? (
+          <MytutorPanel ctx={ctx} connectionId={conn.id} config={config} canEdit={canEdit} />
+        ) : null}
         <ToolsTable
           canEdit={canEdit}
           studio={conn.kind === "sql" || conn.kind === "http"}

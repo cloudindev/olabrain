@@ -19,6 +19,8 @@ import {
   createApiKeyConnection,
   createSmtpConnection,
   createWhmcsConnection,
+  createMytutorConnection,
+  testMytutorConnection,
   createOpenApiConnection,
   createSqlConnection,
   previewOpenApi,
@@ -33,6 +35,7 @@ export type NewConnectionKind =
   | "microsoft365"
   | "googledrive"
   | "smtp"
+  | "mytutor"
   | ApiKeyProvider;
 
 type ApiKeyProvider = "holded" | "factorial" | "sesame";
@@ -848,6 +851,102 @@ function GoogleDriveForm() {
   );
 }
 
+/** MyTutor: email, password and company id; "Probar conexión" shows the company first. */
+function MytutorForm() {
+  const agentId = useContext(AgentIdContext);
+  const t = useTranslations("connections");
+  const { error, pending, submit } = useSubmit();
+  const [v, setV] = useState({ name: "MyTutor", email: "", password: "", companyId: "" });
+  const [test, setTest] = useState<{ ok: boolean; text: string } | null>(null);
+  const [testing, startTest] = useTransition();
+  const set = (k: keyof typeof v, value: string) => {
+    setV((prev) => ({ ...prev, [k]: value }));
+    setTest(null);
+  };
+  const input = { email: v.email.trim(), password: v.password, companyId: Number(v.companyId) };
+  const ready = v.name && input.email && input.password && input.companyId > 0;
+  return (
+    <FormCard
+      error={error}
+      onSubmit={(e) => {
+        e.preventDefault();
+        submit(() => createMytutorConnection({ name: v.name, ...input }, agentId));
+      }}
+    >
+      <p className="text-sm text-ink-2">{t("providers.mytutor.help")}</p>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label={t("name")} htmlFor="mt-name">
+          <Input id="mt-name" value={v.name} onChange={(e) => set("name", e.target.value)} />
+        </Field>
+        <Field
+          label={t("providers.mytutor.companyId")}
+          htmlFor="mt-company"
+          hint={t("providers.mytutor.companyIdHint")}
+        >
+          <Input
+            id="mt-company"
+            inputMode="numeric"
+            value={v.companyId}
+            onChange={(e) => set("companyId", e.target.value.replace(/\D/g, ""))}
+          />
+        </Field>
+        <Field label={t("providers.mytutor.email")} htmlFor="mt-email">
+          <Input
+            id="mt-email"
+            type="email"
+            autoComplete="off"
+            value={v.email}
+            onChange={(e) => set("email", e.target.value)}
+          />
+        </Field>
+        <Field label={t("providers.mytutor.password")} htmlFor="mt-pass" hint={t("secretHint")}>
+          <Input
+            id="mt-pass"
+            type="password"
+            autoComplete="new-password"
+            value={v.password}
+            onChange={(e) => set("password", e.target.value)}
+          />
+        </Field>
+      </div>
+      {test ? (
+        <p
+          role="status"
+          data-testid="mytutor-test-result"
+          className={`text-sm ${test.ok ? "text-ok" : "text-bad"}`}
+        >
+          {test.text}
+        </p>
+      ) : null}
+      <div className="flex flex-wrap gap-2">
+        <Button
+          type="button"
+          variant="secondary"
+          disabled={!ready || testing || pending}
+          onClick={() =>
+            startTest(async () => {
+              const res = await testMytutorConnection(input);
+              setTest(
+                res.ok
+                  ? {
+                      ok: true,
+                      text: t("providers.mytutor.testOk", { company: res.data.companyName }),
+                    }
+                  : { ok: false, text: res.error },
+              );
+            })
+          }
+        >
+          {testing ? t("providers.mytutor.testing") : t("providers.mytutor.test")}
+        </Button>
+        <Button type="submit" disabled={!ready || pending || testing}>
+          {t("providers.mytutor.connect")}
+        </Button>
+      </div>
+    </FormCard>
+  );
+}
+
 /** The agent the new connection is for (connections belong to one agent). */
 const AgentIdContext = createContext("");
 
@@ -864,6 +963,7 @@ function KindForm({ kind }: { kind: NewConnectionKind }) {
   if (kind === "microsoft365") return <Microsoft365Form />;
   if (kind === "googledrive") return <GoogleDriveForm />;
   if (kind === "smtp") return <SmtpForm />;
+  if (kind === "mytutor") return <MytutorForm />;
   if (kind === "holded" || kind === "factorial" || kind === "sesame")
     return <ApiKeyForm provider={kind} />;
   if (kind === "mcp") return <McpForm />;

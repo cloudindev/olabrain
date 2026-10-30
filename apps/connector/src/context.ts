@@ -20,6 +20,8 @@ export type ConnectorContext = {
   google: GoogleApp | null;
   /** Key that signs file download links (shared with apps/web). */
   linkKey?: string;
+  /** MyTutor API base URL (MYTUTOR_API_URL). */
+  mytutorApiUrl: string;
 };
 
 export function createLogger(level = "info"): Logger {
@@ -55,6 +57,7 @@ export function createContext(opts: {
   microsoft?: MicrosoftApp | null;
   google?: GoogleApp | null;
   linkKey?: string;
+  mytutorApiUrl?: string;
 }): ConnectorContext {
   const policy = { allowedPrivateHosts: opts.allowedPrivateHosts };
   return {
@@ -73,5 +76,6 @@ export function createContext(opts: {
     microsoft: opts.microsoft ?? null,
     google: opts.google ?? null,
     linkKey: opts.linkKey,
+    mytutorApiUrl: opts.mytutorApiUrl ?? "https://api.my-tutor.es/v1",
   };
 }

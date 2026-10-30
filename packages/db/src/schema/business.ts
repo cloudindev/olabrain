@@ -572,3 +572,98 @@ export const leads = pgTable(
   },
   (t) => [index("leads_tenant_created_idx").on(t.tenantId, t.createdAt)],
 );
+
+// --- MyTutor cache (ADR-021) ----------------------------------------------------------
+
+/**
+ * Same shape for every MyTutor entity: the record's id in MyTutor, a few columns the tools
+ * and the panel filter on, and the (trimmed) source record. Rows missing from a full sync
+ * get deleted_at instead of being removed.
+ */
+function mytutorTable(name: string) {
+  return pgTable(
+    `mytutor_${name}`,
+    {
+      id: uuid("id").primaryKey().defaultRandom(),
+      tenantId: tenantId(),
+      connectionId: uuid("connection_id")
+        .notNull()
+        .references(() => connections.id, { onDelete: "cascade" }),
+      sourceId: text("source_id").notNull(),
+      /** Display name (client, worker, plate…). */
+      name: text("name").notNull().default(""),
+      /** Main identifier people search by: CIF/NIF, plate, card number, document number. */
+      ref: text("ref"),
+      status: text("status"),
+      /** The record's main date (download, pickup, start, expiry…). */
+      occurredAt: timestamp("occurred_at", { withTimezone: true }),
+      /** Owner record in MyTutor (worker of a document, client of an order…). */
+      parentId: text("parent_id"),
+      /** MyTutor file behind the record (PDF), served on demand through a signed link. */
+      fileId: text("file_id"),
+      /** Lower-case, accent-free text for search. */
+      search: text("search").notNull().default(""),
+      raw: jsonb("raw").$type<Record<string, unknown>>().notNull(),
+      syncedAt: timestamp("synced_at", { withTimezone: true }).notNull(),
+      deletedAt: timestamp("deleted_at", { withTimezone: true }),
+      createdAt: createdAt(),
+    },
+    (t) => [
+      uniqueIndex(`mytutor_${name}_source_uq`).on(t.connectionId, t.sourceId),
+      index(`mytutor_${name}_tenant_idx`).on(t.tenantId, t.connectionId),
+    ],
+  );
+}
+
+export const mytutorClients = mytutorTable("clients");
+export const mytutorSuppliers = mytutorTable("suppliers");
+export const mytutorServices = mytutorTable("services");
+export const mytutorVehicles = mytutorTable("vehicles");
+export const mytutorWorkers = mytutorTable("workers");
+export const mytutorWorkerDocuments = mytutorTable("worker_documents");
+export const mytutorExpirations = mytutorTable("expirations");
+export const mytutorTachVehicles = mytutorTable("tach_vehicles");
+export const mytutorTachDriverCards = mytutorTable("tach_driver_cards");
+export const mytutorTachFiles = mytutorTable("tach_files");
+export const mytutorConsignmentNotes = mytutorTable("consignment_notes");
+export const mytutorWasteWorkOrders = mytutorTable("waste_work_orders");
+
+export const MYTUTOR_TABLES = {
+  clients: mytutorClients,
+  suppliers: mytutorSuppliers,
+  services: mytutorServices,
+  vehicles: mytutorVehicles,
+  workers: mytutorWorkers,
+  worker_documents: mytutorWorkerDocuments,
+  expirations: mytutorExpirations,
+  tach_vehicles: mytutorTachVehicles,
+  tach_driver_cards: mytutorTachDriverCards,
+  tach_files: mytutorTachFiles,
+  consignment_notes: mytutorConsignmentNotes,
+  waste_work_orders: mytutorWasteWorkOrders,
+} as const;
+export type MytutorTable = (typeof MYTUTOR_TABLES)[keyof typeof MYTUTOR_TABLES];
+
+export const mytutorSyncStatus = pgEnum("mytutor_sync_status", ["running", "done", "error"]);
+
+/** One sync of a MyTutor connection; resumable entity by entity across invocations. */
+export const mytutorSyncRuns = pgTable(
+  "mytutor_sync_runs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: tenantId(),
+    connectionId: uuid("connection_id")
+      .notNull()
+      .references(() => connections.id, { onDelete: "cascade" }),
+    status: mytutorSyncStatus("status").notNull().default("running"),
+    trigger: text("trigger").notNull().default("schedule"),
+    /** Per-entity progress: { clients: { status, page, records, error? }, … }. */
+    entities: jsonb("entities").$type<Record<string, unknown>>().notNull().default({}),
+    error: text("error"),
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+    /** Heartbeat: a run not seen for a while can be taken over by the next invocation. */
+    heartbeatAt: timestamp("heartbeat_at", { withTimezone: true }).notNull().defaultNow(),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+  },
+  (t) => [index("mytutor_sync_runs_conn_idx").on(t.connectionId, t.startedAt)],
+);

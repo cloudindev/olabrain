@@ -1,0 +1,135 @@
+{
+ "rows": [
+  {
+   "id": 1129,
+   "extra_external_id": "",
+   "corporate_name": "corporate_name-1",
+   "brand_name": "brand_name-2",
+   "cif_nif": "B00000003",
+   "payment_method": "transfer",
+   "paymentMonthDay": null,
+   "is_active": true,
+   "libraSendDate": "2026-06-25T07:28:17.994Z",
+   "updatedAt": "2026-06-24T11:12:30.372Z",
+   "companies": [
+    {
+     "companyId": 25,
+     "name": "name-4"
+    }
+   ],
+   "billing_emails": [
+    {
+     "id": 13750,
+     "email": "persona5@ejemplo.test"
+    }
+   ],
+   "contact_phones": [
+    {
+     "id": 18906,
+     "phone": ""
+    }
+   ],
+   "workplaces": [
+    {
+     "id": 1303,
+     "client_id": 1129,
+     "wasteInfo": {
+      "workplace_id": 1303,
+      "nima": "nima-6",
+      "inscription_number": "inscription_number-7",
+      "transfer_operator_type": null,
+      "production_center_type": "P04",
+      "management_center_type": null,
+      "transporter_type": null,
+      "economic_activity": "economic_activity-8",
+      "createdAt": "2025-01-09T17:41:44.444Z",
+      "updatedAt": "2026-06-24T11:12:04.911Z"
+     }
+    },
+    {
+     "id": 4644,
+     "client_id": 1129,
+     "wasteInfo": {
+      "workplace_id": 4644,
+      "nima": "nima-9",
+      "inscription_number": "inscription_number-10",
+      "transfer_operator_type": null,
+      "production_center_type": "P04",
+      "management_center_type": null,
+      "transporter_type": null,
+      "economic_activity": "economic_activity-11",
+      "createdAt": "2025-07-22T09:42:23.679Z",
+      "updatedAt": "2026-06-24T11:12:30.387Z"
+     }
+    },
+    {
+     "id": 4521,
+     "client_id": 1129,
+     "wasteInfo": {
+      "workplace_id": 4521,
+      "nima": "nima-12",
+      "inscription_number": "inscription_number-13",
+      "transfer_operator_type": null,
+      "production_center_type": "P04",
+      "management_center_type": null,
+      "transporter_type": null,
+      "economic_activity": "economic_activity-14",
+      "createdAt": "2025-07-17T10:09:45.102Z",
+      "updatedAt": "2026-09-21T08:31:21.960Z"
+     }
+    }
+   ],
+   "worker": null
+  },
+  {
+   "id": 1182,
+   "extra_external_id": "extra_external_id-15",
+   "corporate_name": "corporate_name-16",
+   "brand_name": "brand_name-17",
+   "cif_nif": "B00000018",
+   "payment_method": "receipt",
+   "paymentMonthDay": null,
+   "is_active": true,
+   "libraSendDate": "2026-01-19T12:05:23.195Z",
+   "updatedAt": "2026-01-14T15:10:50.589Z",
+   "companies": [
+    {
+     "companyId": 25,
+     "name": "name-19"
+    }
+   ],
+   "billing_emails": [
+    {
+     "id": 13220,
+     "email": "persona20@ejemplo.test"
+    }
+   ],
+   "contact_phones": [
+    {
+     "id": 18393,
+     "phone": "+34600000021"
+    }
+   ],
+   "workplaces": [
+    {
+     "id": 1386,
+     "client_id": 1182,
+     "wasteInfo": {
+      "workplace_id": 1386,
+      "nima": "nima-22",
+      "inscription_number": "inscription_number-23",
+      "transfer_operator_type": null,
+      "production_center_type": "P04",
+      "management_center_type": null,
+      "transporter_type": null,
+      "economic_activity": "economic_activity-24",
+      "createdAt": "2025-01-15T17:52:16.920Z",
+      "updatedAt": "2025-01-15T17:52:16.920Z"
+     }
+    }
+   ],
+   "worker": null
+  }
+ ],
+ "count": 2
+}

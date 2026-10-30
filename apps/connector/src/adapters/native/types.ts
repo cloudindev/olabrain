@@ -1,3 +1,4 @@
+import type { Tx } from "@brainagent/db";
 import type { EgressPolicy, SafeFetcher } from "../../egress";
 
 /** A tool in a native connector's curated catalog. */
@@ -34,7 +35,11 @@ export type NativeCallContext = {
   timeoutMs: number;
   maxBytes: number;
   /** Signed, expiring download link to a file served by apps/web (e.g. an invoice PDF). */
-  fileLink?: (kind: "whmcs-invoice", ref: string) => string;
+  fileLink?: (kind: "whmcs-invoice" | "mytutor-file", ref: string) => string;
+  /** The connection being called (cache-backed connectors such as MyTutor). */
+  connectionId?: string;
+  /** A transaction scoped to the connection's tenant (RLS), to read its cache. */
+  tenantTx?: <T>(fn: (tx: Tx) => Promise<T>) => Promise<T>;
   /** Saves or updates a contact (by email/phone) and links it to the conversation. */
   saveContact?: (contact: CapturedContact) => Promise<{ contactId: string }>;
   /** Egress policy for non-HTTP connections (SMTP): private networks blocked. */

@@ -1,0 +1,45 @@
+{
+ "rows": [
+  {
+   "id": 432,
+   "companyId": 25,
+   "providerDriverCardId": "providerDriverCardId-110",
+   "cardNumber": "E000000000000111",
+   "holderFirstName": "holderFirstName-112",
+   "holderLastName": "holderLastName-113",
+   "lastDownloadedAt": null,
+   "lastConnected": null,
+   "lastActivity": "",
+   "lastVehicleId": null,
+   "lastVehicleNumber": null,
+   "disabled": false,
+   "hasGlobalSchedule": true,
+   "createdAt": "2026-08-10T11:22:32.259Z",
+   "updatedAt": "2026-08-10T11:22:32.259Z",
+   "companyName": "companyName-114",
+   "dni": "B00000115",
+   "isLinkedInProfidata": true
+  },
+  {
+   "id": 429,
+   "companyId": 25,
+   "providerDriverCardId": "providerDriverCardId-116",
+   "cardNumber": "E000000000000117",
+   "holderFirstName": "holderFirstName-118",
+   "holderLastName": "holderLastName-119",
+   "lastDownloadedAt": null,
+   "lastConnected": null,
+   "lastActivity": "",
+   "lastVehicleId": null,
+   "lastVehicleNumber": null,
+   "disabled": false,
+   "hasGlobalSchedule": true,
+   "createdAt": "2026-08-10T11:22:32.259Z",
+   "updatedAt": "2026-08-10T11:22:32.259Z",
+   "companyName": "companyName-120",
+   "dni": "B00000121",
+   "isLinkedInProfidata": true
+  }
+ ],
+ "count": 2
+}

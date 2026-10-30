@@ -22,7 +22,10 @@ import {
   type ApiKeyProvider,
   type NativeProvider,
   type SmtpConnectionInput,
+  type MytutorConnectionInput,
+  MYTUTOR_DEFAULT_SYNC_HOURS,
 } from "@brainagent/core";
+import type { mytutorTestSchema } from "@brainagent/core";
 import { agentTools, agents, connections, tools, withTenant, type Tx } from "@brainagent/db";
 import { and, eq, inArray, isNull, notInArray, or } from "drizzle-orm";
 import { z } from "zod";
@@ -49,6 +52,14 @@ import { checkFactorial } from "./adapters/native/factorial";
 import { checkHolded } from "./adapters/native/holded";
 import { checkSesame } from "./adapters/native/sesame";
 import { checkSmtp } from "./adapters/native/smtp";
+import {
+  checkMytutor,
+  mytutorClient,
+  mytutorFilePath,
+  syncMytutor,
+  type MytutorConfig,
+  type SyncOutcome,
+} from "./adapters/native/mytutor";
 import {
   beginGoogleAuth,
   completeGoogleAuth,
@@ -939,4 +950,131 @@ async function completeNativeOAuth(
   );
   await syncNativeTools(ctx, conn, "microsoft365");
   return { connectionId: conn.id, status: "active" as const };
+}
+
+// --- MyTutor (ADR-021) ------------------------------------------------------------------
+
+type MytutorSecret = { email: string; password: string };
+
+async function mytutorConnection(ctx: ConnectorContext, tenantId: string, id: string) {
+  const conn = await getConnection(ctx, tenantId, id);
+  if (conn.kind !== "native" || conn.config.provider !== "mytutor") {
+    throw new ServiceError("La conexión no es de MyTutor", 404);
+  }
+  return conn;
+}
+
+async function checkOrFail(ctx: ConnectorContext, secret: MytutorSecret, companyId: number) {
+  try {
+    return await checkMytutor(ctx.fetcher, ctx.mytutorApiUrl, secret, companyId);
+  } catch (e) {
+    throw new ServiceError((e as Error).message);
+  }
+}
+
+/** "Probar conexión": login + GET empresa/{id}; nothing is saved. */
+export async function testMytutorConnection(
+  ctx: ConnectorContext,
+  input: z.infer<typeof mytutorTestSchema>,
+) {
+  return checkOrFail(ctx, { email: input.email, password: input.password }, input.companyId);
+}
+
+/** Checks the login, stores email + password in the vault and creates the tools. */
+export async function createMytutorConnection(
+  ctx: ConnectorContext,
+  tenantId: string,
+  input: MytutorConnectionInput,
+) {
+  const secret = { email: input.email, password: input.password };
+  const { companyName } = await checkOrFail(ctx, secret, input.companyId);
+  const config: MytutorConfig = {
+    provider: "mytutor",
+    companyId: input.companyId,
+    companyName,
+    syncEveryHours: MYTUTOR_DEFAULT_SYNC_HOURS,
+  };
+  const conn = await createConnection(ctx, tenantId, {
+    kind: "native",
+    name: input.name,
+    config,
+    secret,
+  });
+  await syncNativeTools(ctx, conn, "mytutor");
+  return { connectionId: conn.id, status: "active" as const, companyName };
+}
+
+/** Rotates the stored password (checked against MyTutor first). */
+export async function updateMytutorPassword(
+  ctx: ConnectorContext,
+  tenantId: string,
+  id: string,
+  password: string,
+) {
+  const conn = await mytutorConnection(ctx, tenantId, id);
+  const current = await loadSecret<MytutorSecret>(ctx, conn);
+  const secret = { email: current.email, password };
+  await checkOrFail(ctx, secret, Number(conn.config.companyId));
+  await withTenant(ctx.db, tenantId, async (tx) => {
+    if (conn.credentialId) await ctx.vault.update(tx, tenantId, conn.credentialId, secret);
+    await tx
+      .update(connections)
+      .set({ status: "active", lastError: null, updatedAt: new Date() })
+      .where(eq(connections.id, id));
+  });
+  return { ok: true };
+}
+
+export async function updateMytutorSettings(
+  ctx: ConnectorContext,
+  tenantId: string,
+  id: string,
+  syncEveryHours: number,
+) {
+  const conn = await mytutorConnection(ctx, tenantId, id);
+  await withTenant(ctx.db, tenantId, (tx) =>
+    tx
+      .update(connections)
+      .set({ config: { ...conn.config, syncEveryHours }, updatedAt: new Date() })
+      .where(eq(connections.id, id)),
+  );
+  return { ok: true };
+}
+
+/** Runs (or resumes) the sync until `budgetMs` runs out; the next call continues. */
+export async function runMytutorSync(
+  ctx: ConnectorContext,
+  tenantId: string,
+  id: string,
+  opts: { trigger: "manual" | "schedule" | "create"; budgetMs: number },
+): Promise<SyncOutcome> {
+  const conn = await mytutorConnection(ctx, tenantId, id);
+  const secret = await loadSecret<MytutorSecret>(ctx, conn);
+  const outcome = await syncMytutor({
+    db: ctx.db,
+    client: mytutorClient(ctx.fetcher, ctx.mytutorApiUrl, secret),
+    tenantId,
+    connectionId: id,
+    config: conn.config as MytutorConfig,
+    deadline: Date.now() + opts.budgetMs,
+    trigger: opts.trigger,
+  });
+  ctx.log.info({ connectionId: id, status: outcome.status }, "mytutor sync");
+  return outcome;
+}
+
+/** A MyTutor PDF (consignment note, worker document…), fetched at click time. */
+export async function mytutorFile(
+  ctx: ConnectorContext,
+  tenantId: string,
+  id: string,
+  ref: string,
+) {
+  const conn = await mytutorConnection(ctx, tenantId, id);
+  const secret = await loadSecret<MytutorSecret>(ctx, conn);
+  try {
+    return await mytutorClient(ctx.fetcher, ctx.mytutorApiUrl, secret).file(mytutorFilePath(ref));
+  } catch (e) {
+    throw new ServiceError((e as Error).message, 502);
+  }
 }

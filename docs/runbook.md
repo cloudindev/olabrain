@@ -190,3 +190,26 @@ Precios en `config/pricing.json` (coste de proveedor × margen). Añadir saldo a
 set -a; . ./.env.production; set +a
 pnpm --filter @brainagent/db wallet:grant <tenantId> <euros> "Motivo"
 ```
+
+## MyTutor (ADR-021)
+
+- **Conectar:** en un agente, «Conexiones» → MyTutor. Pide email, contraseña e id de empresa;
+  «Probar conexión» enseña el nombre de la empresa antes de guardar. La primera
+  sincronización arranca sola en segundo plano.
+- **Sincronización:** cada hora, pg_cron de Supabase llama a `POST /api/cron/mytutor-sync`
+  con `CRON_SECRET`. Sincroniza las conexiones a las que les toca (cada 6 h por defecto,
+  configurable en el panel) y retoma las que se quedaron a medias. Las órdenes de residuos
+  se copian como mucho una vez al día. Programarlo (una vez, o para rotar el secreto):
+
+  ```bash
+  set -a; . ./.env.production; set +a
+  pnpm --filter @brainagent/db cron:mytutor
+  ```
+
+  Ver ejecuciones: `select * from cron.job_run_details order by start_time desc limit 10;`
+  y el estado por conexión en `mytutor_sync_runs`.
+- **En local** no hay pg_cron: usa «Sincronizar ahora» en la página de la conexión.
+- **Volcado de diagnóstico** (solo lectura, datos a `tmp/`, que está fuera de git):
+  `MYTUTOR_EMAIL=… MYTUTOR_PASSWORD=… MYTUTOR_COMPANY_ID=… pnpm --filter @brainagent/connector exec tsx scripts/mytutor-dump.ts`.
+- **Si MyTutor cambia su API** (no está documentada), la sincronización marca la entidad
+  con error en el panel y el resto sigue. Revisa `docs/connectors/mytutor-schema.md`.

@@ -41,6 +41,8 @@ const schema = z.object({
   /** Platform OAuth client for the Google Drive connector (drive.file scope). */
   GOOGLE_DRIVE_CLIENT_ID: emptyAsUndefined(z.string().optional()),
   GOOGLE_DRIVE_CLIENT_SECRET: emptyAsUndefined(z.string().optional()),
+  /** MyTutor API (ADR-021): platform setting, never user input. */
+  MYTUTOR_API_URL: z.string().default("https://api.my-tutor.es/v1"),
   LOG_LEVEL: z.string().default("info"),
 });
 

@@ -1,0 +1,35 @@
+{
+ "rows": [
+  {
+   "id": 198,
+   "companyId": 25,
+   "providerVehicleId": "providerVehicleId-104",
+   "registrationNumber": "1105TST",
+   "lastDownloadedAt": null,
+   "status": "Inactive",
+   "lastConnected": null,
+   "disabled": true,
+   "hasGlobalSchedule": true,
+   "createdAt": "2026-08-10T11:22:32.250Z",
+   "updatedAt": "2026-08-10T11:22:32.250Z",
+   "companyName": "companyName-106",
+   "isLinkedInProfidata": true
+  },
+  {
+   "id": 192,
+   "companyId": 25,
+   "providerVehicleId": "providerVehicleId-107",
+   "registrationNumber": "1108TST",
+   "lastDownloadedAt": null,
+   "status": "Inactive",
+   "lastConnected": null,
+   "disabled": false,
+   "hasGlobalSchedule": true,
+   "createdAt": "2026-08-10T11:22:32.250Z",
+   "updatedAt": "2026-08-10T11:22:32.250Z",
+   "companyName": "companyName-109",
+   "isLinkedInProfidata": true
+  }
+ ],
+ "count": 2
+}

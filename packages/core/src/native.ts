@@ -13,6 +13,7 @@ export const NATIVE_PROVIDERS = [
   "factorial",
   "sesame",
   "smtp",
+  "mytutor",
 ] as const;
 export const nativeProviderSchema = z.enum(NATIVE_PROVIDERS);
 export type NativeProvider = z.infer<typeof nativeProviderSchema>;
@@ -32,6 +33,7 @@ export const NATIVE_PROVIDER_INFO: Record<NativeProvider, NativeProviderInfo> = 
   factorial: { id: "factorial", name: "Factorial", auth: "api_credentials" },
   sesame: { id: "sesame", name: "Sesame HR", auth: "api_credentials" },
   smtp: { id: "smtp", name: "Email (SMTP)", auth: "api_credentials" },
+  mytutor: { id: "mytutor", name: "MyTutor", auth: "api_credentials" },
 };
 
 /**
@@ -104,4 +106,21 @@ export const microsoft365ConnectionSchema = z.object({
 
 export const googleDriveConnectionSchema = z.object({
   name: z.string().trim().min(1).max(80),
+});
+
+/**
+ * MyTutor (my-tutor.es): the user's own login (email + password) and company id. The
+ * password goes to the vault; only the email, company and sync settings are config.
+ */
+export const mytutorConnectionSchema = z.object({
+  name: z.string().trim().min(1).max(80),
+  email: z.email("Email no válido").max(320),
+  password: z.string().min(1, "Falta la contraseña").max(500),
+  companyId: z.coerce.number().int().positive("Id de empresa no válido"),
+});
+export type MytutorConnectionInput = z.infer<typeof mytutorConnectionSchema>;
+export const mytutorTestSchema = mytutorConnectionSchema.omit({ name: true });
+export const mytutorPasswordSchema = z.object({ password: z.string().min(1).max(500) });
+export const mytutorSettingsSchema = z.object({
+  syncEveryHours: z.coerce.number().int().min(1).max(168),
 });

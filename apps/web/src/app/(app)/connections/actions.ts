@@ -3,6 +3,7 @@
 import { connections, credentials, tools } from "@brainagent/db";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { ConnectorRequestError, connectorFetch } from "@/lib/connector";
@@ -80,6 +81,72 @@ export async function createApiKeyConnection(
 ) {
   const p = z.enum(["holded", "factorial", "sesame"]).parse(provider);
   return createFor(agentId, `/v1/connections/native/${p}`, input);
+}
+
+// --- MyTutor (ADR-021) -----------------------------------------------------------------
+
+/** Runs the MyTutor sync after the response (resumed by the hourly scheduler if needed). */
+function syncInBackground(tenantId: string, connectionId: string, trigger: "manual" | "create") {
+  after(() =>
+    connectorFetch(tenantId, `/v1/connections/${connectionId}/mytutor/sync`, {
+      body: { trigger, budgetMs: 240_000 },
+    }).catch((e: Error) => console.error("mytutor sync error", { connectionId, error: e.message })),
+  );
+}
+
+export async function testMytutorConnection(input: unknown) {
+  return run((tenantId) =>
+    connectorFetch<{ companyName: string }>(tenantId, "/v1/connections/native/mytutor/test", {
+      body: input,
+    }),
+  );
+}
+
+export async function createMytutorConnection(input: unknown, agentId: string) {
+  const res = await createFor(agentId, "/v1/connections/native/mytutor", input);
+  if (res.ok) {
+    const ctx = await requireTenant("admin");
+    syncInBackground(ctx.tenantId, res.data.connectionId, "create");
+  }
+  return res;
+}
+
+export async function syncMytutorNow(connectionId: string) {
+  const id = z.uuid().parse(connectionId);
+  return run(async (tenantId) => {
+    syncInBackground(tenantId, id, "manual");
+    return { started: true };
+  });
+}
+
+export async function updateMytutorPassword(connectionId: string, password: string) {
+  const id = z.uuid().parse(connectionId);
+  return run(async (tenantId) => {
+    const res = await connectorFetch<{ ok: boolean }>(
+      tenantId,
+      `/v1/connections/${id}/mytutor/password`,
+      {
+        body: { password },
+      },
+    );
+    revalidatePath(`/connections/${id}`);
+    return res;
+  });
+}
+
+export async function updateMytutorSettings(connectionId: string, syncEveryHours: number) {
+  const id = z.uuid().parse(connectionId);
+  return run(async (tenantId) => {
+    const res = await connectorFetch<{ ok: boolean }>(
+      tenantId,
+      `/v1/connections/${id}/mytutor/settings`,
+      {
+        body: { syncEveryHours },
+      },
+    );
+    revalidatePath(`/connections/${id}`);
+    return res;
+  });
 }
 
 export async function updateWhmcsAccessKey(connectionId: string, accessKey: string | null) {

@@ -1,0 +1,61 @@
+{
+ "rows": [
+  {
+   "id": 13826,
+   "companyId": 25,
+   "providerFileId": "providerFileId-122",
+   "vehicleId": 197,
+   "driverCardId": null,
+   "type": "vehicle",
+   "generation": null,
+   "downloadedAt": "2026-10-27T10:25:34.000Z",
+   "status": "synced",
+   "createdAt": "2026-10-28T02:25:06.802Z",
+   "updatedAt": "2026-10-28T02:25:13.244Z",
+   "vehicle": {
+    "registrationNumber": "1123TST"
+   },
+   "driverCard": null,
+   "analysis": {
+    "status": "failed",
+    "fromDate": null,
+    "toDate": null
+   },
+   "isStoredLocally": true,
+   "vehicleRegistrationNumber": "1124TST",
+   "driverCardNumber": null,
+   "analysisStatus": "failed",
+   "coverageFrom": null,
+   "coverageTo": null
+  },
+  {
+   "id": 13825,
+   "companyId": 25,
+   "providerFileId": "providerFileId-125",
+   "vehicleId": null,
+   "driverCardId": 438,
+   "type": "driver",
+   "generation": null,
+   "downloadedAt": "2026-10-27T10:25:34.000Z",
+   "status": "synced",
+   "createdAt": "2026-10-28T02:25:06.802Z",
+   "updatedAt": "2026-10-28T02:25:13.207Z",
+   "vehicle": null,
+   "driverCard": {
+    "cardNumber": "E000000000000126"
+   },
+   "analysis": {
+    "status": "failed",
+    "fromDate": null,
+    "toDate": null
+   },
+   "isStoredLocally": true,
+   "vehicleRegistrationNumber": null,
+   "driverCardNumber": "E000000000000127",
+   "analysisStatus": "failed",
+   "coverageFrom": null,
+   "coverageTo": null
+  }
+ ],
+ "count": 2
+}

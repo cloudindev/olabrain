@@ -53,6 +53,8 @@ const schema = z.object({
   STRIPE_WEBHOOK_SECRET: optional,
   /** Tax rate added to every top-up (IVA 21 %), created once in Stripe. */
   STRIPE_TAX_RATE_ID: optional,
+  /** Bearer secret of the scheduler calling /api/cron/* (Supabase pg_cron, ADR-021). */
+  CRON_SECRET: optional,
   CONNECTOR_URL: z.string().default("http://127.0.0.1:4100"),
   CONNECTOR_SERVICE_TOKEN: z.string().default(""),
   /** Public home agent (talks to anonymous visitors). Both empty = home without voice. */

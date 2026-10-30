@@ -26,6 +26,7 @@ export function createConnectorFromEnv(
     appUrl: e.APP_URL,
     logLevel: e.LOG_LEVEL,
     linkKey: e.CONNECTOR_SERVICE_TOKEN,
+    mytutorApiUrl: e.MYTUTOR_API_URL,
     microsoft:
       e.MICROSOFT_CLIENT_ID && e.MICROSOFT_CLIENT_SECRET
         ? {

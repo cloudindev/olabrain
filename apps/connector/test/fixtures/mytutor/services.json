@@ -1,0 +1,74 @@
+{
+ "rows": [
+  {
+   "id": 10430,
+   "name": "name-452",
+   "description": "description-453",
+   "pctExcent": false,
+   "isGlobal": false,
+   "legacyId": null,
+   "createdAt": "2026-09-30T09:17:11.712Z",
+   "updatedAt": "2026-09-30T09:17:11.712Z",
+   "deletedAt": null,
+   "rateConfigId": null,
+   "parentId": 44,
+   "companyId": 25,
+   "clientId": 1170,
+   "workplaceId": null,
+   "type": "waste",
+   "parent_id": 44,
+   "rateConfig": null,
+   "companyServiceKm": null,
+   "companyServicePct": null,
+   "companyServiceHour": null,
+   "companyServiceFixed": null,
+   "companyServiceWaste": {
+    "id": 8819,
+    "hasContainer": true,
+    "hasResidue": true,
+    "movementType": "withdrawn",
+    "companyServiceId": 10430,
+    "createdAt": "2026-09-30T09:17:11.716Z",
+    "updatedAt": "2026-09-30T09:17:11.716Z",
+    "deletedAt": null,
+    "containerConfig": [
+     {
+      "id": 33784,
+      "price": 0,
+      "containerType": null,
+      "itemId": 29,
+      "companyServic": 8819,
+      "createdAt": "2026-09-30T09:17:11.718Z",
+      "updatedAt": "2026-09-30T09:17:11.718Z",
+      "deletedAt": null,
+      "item": {
+       "id": 29,
+       "name": "name-454",
+       "descript": "descript-455",
+       "initialS": null,
+       "stock": null,
+       "price": 0,
+       "measureU": "measureU-456",
+       "type": "container",
+       "rentalPr": null,
+       "rentalFr": null,
+       "isGlobal": true,
+       "companyI": 25,
+       "clientId": null,
+       "workplac": null,
+       "rateConf": null,
+       "parentIt": null,
+       "ceCode": null,
+       "uneEnCod": null,
+       "category": null,
+       "createdA": "createdA-457",
+       "updatedA": "updatedA-458",
+       "deletedA": null
+      }
+     }
+    ]
+   }
+  }
+ ],
+ "count": 1
+}

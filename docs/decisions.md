@@ -271,3 +271,33 @@ Implementa ADR-007 sin pagos (Stripe pendiente).
 - **Clave restringida** «acceso completo salvo operaciones confidenciales»: no puede mover fondos fuera de la cuenta.
 
 **Pendiente.** IVA para clientes de fuera de España (B2B UE con inversión del sujeto pasivo, OSS), hoy siempre 21 %.
+
+## ADR-021 — Conector MyTutor por su API no documentada, con caché por organización (2026-10-30)
+
+**Contexto.** MyTutor (my-tutor.es) es el software de gestión de Coverde Cogar S.L. (empresa 25) y no exporta datos. Su frontend usa una API REST en `api.my-tutor.es/v1`, sin documentación pública, que observamos y describimos en `docs/connectors/mytutor-schema.md`. El acceso es con la cuenta que el cliente nos da.
+
+**Decisión.**
+- Es un conector **nativo** (`kind: native`, `provider: "mytutor"`), como WHMCS u Holded: así reutiliza el vault, el Tool Router y las conexiones por agente (ADR-017) sin añadir un `kind` nuevo.
+- **Credenciales:** el email y la contraseña van al vault, cifrados con la clave del tenant; en la configuración solo quedan la empresa y los ajustes de sincronización. La sesión va por cookie (`cookie_profieco`, 10 min) y se renueva con `/auth/refresh`.
+- **Solo lectura:** únicamente `GET` contra la API, más el login y la renovación; los tests lo comprueban. Como mucho 2 peticiones por segundo, reintentos con espera creciente en 429/5xx y `User-Agent: OlaBrain-Connector/0.1`. Todo sale por el proxy de salida.
+- **Caché por organización:** 12 tablas `mytutor_*` (clientes, proveedores, servicios de empresa, vehículos, trabajadores, documentos de trabajadores, vencimientos, y de tacógrafo vehículos, tarjetas y descargas, más documentos de control y órdenes de residuos).
+  - Todas con `tenant_id`, RLS, `source_id`, columnas de búsqueda, `raw` y `synced_at`.
+  - Upsert por `source_id`; lo que desaparece en una pasada completa recibe `deleted_at`.
+  - Las órdenes de residuos (unas 15.000 de ~10 KB) guardan `raw` recortado: escalares más ids y nombres de los objetos anidados.
+- **Sincronización sin BullMQ:** producción (Vercel Hobby + Supabase) no tiene Redis.
+  - pg_cron de Supabase llama cada hora a `/api/cron/mytutor-sync`, autenticado con `CRON_SECRET`, que se guarda en Supabase Vault.
+  - La sincronización es reanudable: guarda la entidad y la página en `mytutor_sync_runs`, con una sola ejecución activa por conexión (índice único más latido). Lo que no cabe en una invocación de 300 s sigue en la siguiente.
+  - Cadencia por defecto de 6 h; las órdenes de residuos, como mucho una vez al día.
+  - La empresa piloto completa todo en unos 160 s.
+- **PDF bajo demanda:** no copiamos documentos a S3. El agente y el panel dan un enlace firmado (24 h) que los descarga de MyTutor en el momento, siguiendo solo enlaces de `*.my-tutor.es`.
+- **Herramientas:** 13, todas de lectura y con confirmación automática, respondidas desde la caché. Devuelven como mucho 50 filas, con `source: "mytutor"` y `synced_at`. Al modelo nunca le llegan NIF, fecha de nacimiento, emails, teléfonos personales ni direcciones de los trabajadores.
+- **Panel:** estado, última sincronización y registros por entidad; «Sincronizar ahora», frecuencia, cambio de contraseña (se comprueba antes de guardar) y revocación (borrar la conexión elimina la contraseña y la caché). Una tabla por entidad con búsqueda, filtros y exportación CSV/XLSX.
+
+**Riesgos.**
+- La API puede cambiar sin aviso. Cada entidad falla por separado y lo indica en el panel, y nunca se vacía una tabla por una pasada que vuelva vacía.
+- Los documentos de trabajadores tienen el mapeo hecho pero sin verificar, porque la empresa piloto no tiene ninguno.
+
+**Pendiente.**
+- **ProfiFLEET** (`profifleet.my-tutor.es/V5`, Veosat en marca blanca, PHP + Firestore, SSO con el `veosat_token` del JWT): fuera de alcance.
+- **Libra ERP de Edisa:** las facturas del cliente salen de ahí, no de MyTutor; se integrará más adelante.
+- `profitach/connections/company/25/company-cards` devuelve 403 con este usuario: no se usa.

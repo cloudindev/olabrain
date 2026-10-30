@@ -229,6 +229,8 @@ export async function executeTool(
                 )
             : undefined,
           loadFile: (ref) => loadConversationFile(ctx, conn.tenantId, ref),
+          connectionId: conn.id,
+          tenantTx: (fn) => withTenant(ctx.db, conn.tenantId, fn),
           saveContact: (contact) =>
             saveCapturedContact(ctx, conn.tenantId, conversationId ?? null, contact),
           egressPolicy: ctx.policy,

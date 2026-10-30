@@ -18,6 +18,9 @@ import {
 import { PageHeader } from "@/components/page-header";
 import { requireTenant, tenantTx } from "@/lib/tenant";
 
+// Server actions here may run a MyTutor sync after responding (ADR-021).
+export const maxDuration = 300;
+
 export const metadata = { title: "Nueva conexión" };
 const ALL: readonly string[] = [...APPS, ...CUSTOM];
 

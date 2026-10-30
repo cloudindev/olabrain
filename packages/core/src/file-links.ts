@@ -6,13 +6,16 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 
 export type FileLinkRef = {
-  kind: "whmcs-invoice";
+  /** whmcs-invoice: invoice PDF; mytutor-file: a MyTutor file (id) or consignment note PDF. */
+  kind: "whmcs-invoice" | "mytutor-file";
   tenantId: string;
   connectionId: string;
   ref: string;
   /** Unix seconds. */
   expires: number;
 };
+
+const FILE_KINDS = ["whmcs-invoice", "mytutor-file"];
 
 const canonical = (l: FileLinkRef) =>
   [l.kind, l.tenantId, l.connectionId, l.ref, l.expires].join("|");
@@ -53,7 +56,8 @@ export function verifyFileLink(
     ref: params.get("r") ?? "",
     expires: Number(params.get("e")),
   };
-  if (kind !== "whmcs-invoice" || !link.tenantId || !link.connectionId || !link.ref) return null;
+  if (!FILE_KINDS.includes(kind ?? "") || !link.tenantId || !link.connectionId || !link.ref)
+    return null;
   if (!Number.isFinite(link.expires) || link.expires * 1000 < now) return null;
   const expected = Buffer.from(fileLinkSignature(link as FileLinkRef, key));
   const given = Buffer.from(params.get("s") ?? "");
