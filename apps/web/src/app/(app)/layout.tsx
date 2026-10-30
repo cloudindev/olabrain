@@ -6,6 +6,7 @@ import { Logo } from "@/components/logo";
 import { memberships, tenants } from "@brainagent/db";
 import { asc, eq } from "drizzle-orm";
 import { MobileMenu } from "@/components/shell/mobile-menu";
+import { OrgSwitcher } from "@/components/shell/org-switcher";
 import { UserMenu } from "@/components/shell/user-menu";
 import { db } from "@/lib/db";
 import { walletBalance } from "@/lib/billing";
@@ -73,13 +74,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
             ))}
           </nav>
           <div className="ml-auto flex min-w-0 items-center gap-2 whitespace-nowrap">
-            <span
-              className="max-w-28 truncate text-sm text-ink-2 sm:max-w-48"
-              data-testid="tenant-name"
-              title={ctx.tenantName}
-            >
-              {ctx.tenantName}
-            </span>
+            <OrgSwitcher orgs={account.orgs} activeId={ctx.tenantId} />
             <BalancePill balance={balance} label={t("balance")} />
             <div className="hidden md:block">
               <UserMenu {...account} />
