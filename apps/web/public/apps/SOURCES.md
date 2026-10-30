@@ -7,3 +7,4 @@ App icons shown next to each connection (nominative use, to identify the integra
 - holded.png: apple-touch-icon from holded.com
 - factorial.png: apple-touch-icon from factorialhr.com
 - sesame.png: site icon (192 px) from sesamehr.es
+- profieco.png: wordmark supplied by the customer (ProfiECO, internally the "mytutor" connector)

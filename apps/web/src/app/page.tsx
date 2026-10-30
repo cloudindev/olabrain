@@ -71,23 +71,25 @@ const STEPS: { key: "create" | "connect" | "automate"; icon: LucideIcon }[] = [
 ];
 
 /** What the platform really connects to today; the rest is marked as coming soon. */
-const INTEGRATIONS: { name: string; tag: string; icon: string; soon?: boolean }[] = [
-  { name: "Claude", tag: "LLM", icon: "/apps/claude.svg" },
-  { name: "Gemini", tag: "LLM", icon: "/apps/gemini.svg" },
-  { name: "ChatGPT", tag: "LLM", icon: "/apps/openai.svg" },
-  { name: "Outlook", tag: "M365", icon: "/apps/outlook.svg" },
-  { name: "Google Drive", tag: "Google", icon: "/apps/googledrive.svg" },
-  { name: "Holded", tag: "ERP", icon: "/apps/holded.png" },
-  { name: "Factorial", tag: "RR. HH.", icon: "/apps/factorial.png" },
-  { name: "Sesame HR", tag: "RR. HH.", icon: "/apps/sesame.png" },
-  { name: "Email (SMTP)", tag: "Avisos", icon: "/apps/smtp.svg" },
-  { name: "WHMCS", tag: "Facturación", icon: "/apps/whmcs.png" },
-  { name: "MCP", tag: "Protocolo", icon: "/apps/mcp.svg" },
-  { name: "OpenAPI", tag: "API", icon: "/apps/openapi.svg" },
-  { name: "PostgreSQL", tag: "SQL", icon: "/apps/postgresql.svg" },
-  { name: "MySQL", tag: "SQL", icon: "/apps/mysql.svg" },
-  { name: "WhatsApp", tag: "Canal", icon: "/apps/whatsapp.svg", soon: true },
-];
+const INTEGRATIONS: { name: string; tag: string; icon: string; soon?: boolean; wide?: boolean }[] =
+  [
+    { name: "Claude", tag: "LLM", icon: "/apps/claude.svg" },
+    { name: "Gemini", tag: "LLM", icon: "/apps/gemini.svg" },
+    { name: "ChatGPT", tag: "LLM", icon: "/apps/openai.svg" },
+    { name: "Outlook", tag: "M365", icon: "/apps/outlook.svg" },
+    { name: "Google Drive", tag: "Google", icon: "/apps/googledrive.svg" },
+    { name: "Holded", tag: "ERP", icon: "/apps/holded.png" },
+    { name: "Factorial", tag: "RR. HH.", icon: "/apps/factorial.png" },
+    { name: "Sesame HR", tag: "RR. HH.", icon: "/apps/sesame.png" },
+    { name: "Email (SMTP)", tag: "Avisos", icon: "/apps/smtp.svg" },
+    { name: "WHMCS", tag: "Facturación", icon: "/apps/whmcs.png" },
+    { name: "ProfiECO", tag: "Transporte", icon: "/apps/profieco.png", wide: true },
+    { name: "MCP", tag: "Protocolo", icon: "/apps/mcp.svg" },
+    { name: "OpenAPI", tag: "API", icon: "/apps/openapi.svg" },
+    { name: "PostgreSQL", tag: "SQL", icon: "/apps/postgresql.svg" },
+    { name: "MySQL", tag: "SQL", icon: "/apps/mysql.svg" },
+    { name: "WhatsApp", tag: "Canal", icon: "/apps/whatsapp.svg", soon: true },
+  ];
 
 const FACTS = ["eu", "gdpr", "aes", "code"] as const;
 
@@ -324,7 +326,11 @@ export default async function Home() {
                   <div className="flex items-center justify-between">
                     <span className="flex size-14 items-center justify-center rounded-xl bg-white">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={app.icon} alt="" className="size-9 object-contain" />
+                      <img
+                        src={app.icon}
+                        alt=""
+                        className={cn("object-contain", app.wide ? "w-12" : "size-9")}
+                      />
                     </span>
                     <span className="rounded border border-line-strong bg-[#0e0e0e] px-1.5 py-0.5 font-mono text-[9px] uppercase text-signal">
                       {app.soon ? t("soon") : app.tag}

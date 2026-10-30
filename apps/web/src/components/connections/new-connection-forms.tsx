@@ -856,7 +856,7 @@ function MytutorForm() {
   const agentId = useContext(AgentIdContext);
   const t = useTranslations("connections");
   const { error, pending, submit } = useSubmit();
-  const [v, setV] = useState({ name: "MyTutor", email: "", password: "", companyId: "" });
+  const [v, setV] = useState({ name: "ProfiECO", email: "", password: "", companyId: "" });
   const [test, setTest] = useState<{ ok: boolean; text: string } | null>(null);
   const [testing, startTest] = useTransition();
   const set = (k: keyof typeof v, value: string) => {

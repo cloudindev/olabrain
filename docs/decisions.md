@@ -333,3 +333,7 @@ Implementa ADR-007 sin pagos (Stripe pendiente).
 ## ADR-024 — Tema propio del widget (2026-10-30)
 
 **Decisión.** `theme: light | dark` en la configuración del widget, sin opción automática, para que el chat combine con la web del cliente sea cual sea el dispositivo del visitante o el tema del panel. Por defecto, claro: los widgets ya publicados dejan de seguir el modo oscuro del dispositivo. El enlace compartido sigue usando el tema del dispositivo.
+
+## ADR-025 — MyTutor se muestra como ProfiECO (2026-10-30)
+
+**Decisión.** Todo lo que ven los usuarios y lo que leen los agentes dice ProfiECO. Lo interno no cambia: `provider = "mytutor"`, las tablas `mytutor_*`, las rutas y el dominio real de la API y del inicio de sesión (`my-tutor.es`). Renombrarlo exigiría migrar datos sin ningún beneficio visible.

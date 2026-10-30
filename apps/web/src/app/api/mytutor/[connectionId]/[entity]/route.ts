@@ -62,7 +62,7 @@ export async function GET(
     copiado: r.syncedAt.toISOString(),
   }));
   const columns = [...new Set(flat.flatMap((r) => Object.keys(r)))];
-  const name = `mytutor-${entity}-${new Date().toISOString().slice(0, 10)}`;
+  const name = `profieco-${entity}-${new Date().toISOString().slice(0, 10)}`;
 
   if (format === "csv") {
     const lines = [

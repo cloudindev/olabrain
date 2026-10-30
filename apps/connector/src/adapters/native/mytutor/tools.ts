@@ -85,7 +85,7 @@ const GROUPS: Partial<Record<MytutorEntity, Record<string, SQL>>> = {
 export const MYTUTOR_TOOLS: NativeToolDef[] = [
   {
     name: "buscar_cliente",
-    description: "Busca clientes en MyTutor por nombre, nombre comercial o CIF/NIF.",
+    description: "Busca clientes en ProfiECO por nombre, nombre comercial o CIF/NIF.",
     inputSchema: schema({ texto: str("Nombre, parte del nombre o CIF/NIF") }, ["texto"]),
     mode: "read",
     autoConfirm: true,
@@ -93,14 +93,14 @@ export const MYTUTOR_TOOLS: NativeToolDef[] = [
   {
     name: "ficha_cliente",
     description:
-      "Ficha completa de un cliente de MyTutor: datos, emails de facturación, teléfonos y centros de trabajo.",
-    inputSchema: schema({ id: str("Id del cliente en MyTutor o su CIF/NIF") }, ["id"]),
+      "Ficha completa de un cliente de ProfiECO: datos, emails de facturación, teléfonos y centros de trabajo.",
+    inputSchema: schema({ id: str("Id del cliente en ProfiECO o su CIF/NIF") }, ["id"]),
     mode: "read",
     autoConfirm: true,
   },
   {
     name: "buscar_proveedor",
-    description: "Busca proveedores en MyTutor por nombre o CIF/NIF.",
+    description: "Busca proveedores en ProfiECO por nombre o CIF/NIF.",
     inputSchema: schema({ texto: str("Nombre o CIF/NIF") }, ["texto"]),
     mode: "read",
     autoConfirm: true,
@@ -108,14 +108,14 @@ export const MYTUTOR_TOOLS: NativeToolDef[] = [
   {
     name: "servicios",
     description:
-      "Servicios de la empresa en MyTutor (ProfiDATA › Empresa › Servicios), con su tipo y tarifa.",
+      "Servicios de la empresa en ProfiECO (ProfiDATA › Empresa › Servicios), con su tipo y tarifa.",
     inputSchema: schema({ texto: str("Filtra por nombre o descripción (opcional)") }),
     mode: "read",
     autoConfirm: true,
   },
   {
     name: "vehiculos",
-    description: "Lista los vehículos de MyTutor; filtra por matrícula, marca, modelo o tipo.",
+    description: "Lista los vehículos de ProfiECO; filtra por matrícula, marca, modelo o tipo.",
     inputSchema: schema({
       filtro: str("Matrícula, marca, modelo o tipo (opcional)"),
       incluir_bajas: { type: "boolean", description: "Incluir vehículos dados de baja" },
@@ -133,7 +133,7 @@ export const MYTUTOR_TOOLS: NativeToolDef[] = [
   {
     name: "trabajadores",
     description:
-      "Lista los trabajadores de MyTutor (nombre, estado, vehículo asignado); filtra por nombre.",
+      "Lista los trabajadores de ProfiECO (nombre, estado, vehículo asignado); filtra por nombre.",
     inputSchema: schema({
       filtro: str("Nombre o parte del nombre (opcional)"),
       incluir_bajas: { type: "boolean", description: "Incluir trabajadores de baja" },
@@ -145,7 +145,7 @@ export const MYTUTOR_TOOLS: NativeToolDef[] = [
     name: "documentos_trabajador",
     description:
       "Documentos y certificaciones de un trabajador, con su caducidad y enlace al PDF si lo hay.",
-    inputSchema: schema({ id: str("Id del trabajador en MyTutor o su nombre") }, ["id"]),
+    inputSchema: schema({ id: str("Id del trabajador en ProfiECO o su nombre") }, ["id"]),
     mode: "read",
     autoConfirm: true,
   },
@@ -201,7 +201,7 @@ export const MYTUTOR_TOOLS: NativeToolDef[] = [
   {
     name: "resumen_datos",
     description:
-      "Cuenta y agrupa registros de MyTutor sobre TODOS los datos (no solo 50): totales por estado, mes, semana, día, cliente, servicio, conductor, matrícula, tipo… con filtros de fechas y texto. Úsala para cálculos, rankings e informes en lugar de recorrer listas.",
+      "Cuenta y agrupa registros de ProfiECO sobre TODOS los datos (no solo 50): totales por estado, mes, semana, día, cliente, servicio, conductor, matrícula, tipo… con filtros de fechas y texto. Úsala para cálculos, rankings e informes en lugar de recorrer listas.",
     inputSchema: schema(
       {
         datos: str("Qué datos", { enum: Object.keys(GROUPS) }),
@@ -240,7 +240,7 @@ export async function executeMytutorTool(
   args: R,
 ): Promise<NativeResult> {
   if (!ctx.tenantTx || !ctx.connectionId)
-    throw new NativeToolError("caché de MyTutor no disponible");
+    throw new NativeToolError("caché de ProfiECO no disponible");
   const connectionId = ctx.connectionId;
 
   /** Rows of one entity with the cache's freshness; `where` excludes deleted by default. */
@@ -439,7 +439,7 @@ export async function executeMytutorTool(
         {
           trabajador: worker(w),
           ...(docs.total === 0
-            ? { mensaje: "MyTutor no tiene documentos de este trabajador." }
+            ? { mensaje: "ProfiECO no tiene documentos de este trabajador." }
             : {}),
         },
       );
@@ -628,7 +628,7 @@ export async function executeMytutorTool(
       });
     }
     default:
-      throw new NativeToolError(`herramienta de MyTutor desconocida: ${toolName}`);
+      throw new NativeToolError(`herramienta de ProfiECO desconocida: ${toolName}`);
   }
 }
 

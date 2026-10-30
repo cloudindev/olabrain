@@ -959,7 +959,7 @@ type MytutorSecret = { email: string; password: string };
 async function mytutorConnection(ctx: ConnectorContext, tenantId: string, id: string) {
   const conn = await getConnection(ctx, tenantId, id);
   if (conn.kind !== "native" || conn.config.provider !== "mytutor") {
-    throw new ServiceError("La conexión no es de MyTutor", 404);
+    throw new ServiceError("La conexión no es de ProfiECO", 404);
   }
   return conn;
 }

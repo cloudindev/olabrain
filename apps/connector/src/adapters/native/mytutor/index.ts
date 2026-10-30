@@ -33,7 +33,7 @@ export async function checkMytutor(
   const { companies } = await client.login();
   if (companies.length && !companies.some((c) => c.id === companyId)) {
     throw new MytutorError(
-      `Este usuario de MyTutor no tiene acceso a la empresa ${companyId} (tiene: ${companies
+      `Este usuario de ProfiECO no tiene acceso a la empresa ${companyId} (tiene: ${companies
         .map((c) => `${c.id} ${c.name}`)
         .join(", ")})`,
       403,
@@ -45,7 +45,7 @@ export async function checkMytutor(
     (company?.nombre as string | undefined) ??
     (company?.razonSocial as string | undefined) ??
     companies.find((c) => c.id === companyId)?.name;
-  if (!name) throw new MytutorError(`MyTutor no devolvió la empresa ${companyId}`, 404);
+  if (!name) throw new MytutorError(`ProfiECO no devolvió la empresa ${companyId}`, 404);
   return { companyName: name };
 }
 

@@ -43,18 +43,28 @@ test.beforeAll(async () => {
     req.on("end", () => {
       if (url.pathname === "/v1/auth/login") {
         const claims = Buffer.from(
-          JSON.stringify({ companies: [{ company_id: 25, company_name: "TRANSPORTES DEMO S.L." }] }),
+          JSON.stringify({
+            companies: [{ company_id: 25, company_name: "TRANSPORTES DEMO S.L." }],
+          }),
         ).toString("base64url");
-        return json(201, { access_token: `x.${claims}.y` }, { "set-cookie": "cookie_profieco=acc; Path=/" });
+        return json(
+          201,
+          { access_token: `x.${claims}.y` },
+          { "set-cookie": "cookie_profieco=acc; Path=/" },
+        );
       }
       if (!(req.headers.cookie ?? "").includes("cookie_profieco=acc")) return json(403, {});
       if (url.pathname === "/v1/empresa/25") return json(200, { name: "TRANSPORTES DEMO S.L." });
-      if (/^\/v1\/workers\/\d+$/.test(url.pathname)) return json(200, { id: 1, certifications: [] });
+      if (/^\/v1\/workers\/\d+$/.test(url.pathname))
+        return json(200, { id: 1, certifications: [] });
       if (url.pathname === "/v1/expiration/table") return json(200, { rows: [], count: 0 });
       const table = TABLES[url.pathname];
       if (!table) return json(404, {});
       const all = rows(table);
-      return json(200, { rows: url.searchParams.get("page") === "1" ? all : [], count: all.length });
+      return json(200, {
+        rows: url.searchParams.get("page") === "1" ? all : [],
+        count: all.length,
+      });
     });
   });
   await new Promise<void>((r) => server.listen(4199, "127.0.0.1", r));
@@ -65,9 +75,11 @@ test.afterAll(() => {
   server.close();
 });
 
-test("connect MyTutor to an agent, sync it and browse/export the copied data", async ({ page }) => {
+test("connect ProfiECO to an agent, sync it and browse/export the copied data", async ({
+  page,
+}) => {
   test.setTimeout(180_000);
-  await signUpAndCreateOrg(page, `MyTutor ${Date.now()}`);
+  await signUpAndCreateOrg(page, `ProfiECO ${Date.now()}`);
   await page.goto("/agents/new", { waitUntil: "networkidle" });
   await page.getByRole("radio", { name: /Lía/ }).click();
   await page.getByRole("button", { name: "Crear agente" }).click();
@@ -78,8 +90,8 @@ test("connect MyTutor to an agent, sync it and browse/export the copied data", a
   await page.goto(`/connections/new?agent=${agentId}`, { waitUntil: "networkidle" });
   await page.getByTestId("new-connection-mytutor").click();
   await page.getByLabel("Id de empresa").fill("25");
-  await page.getByLabel("Email de MyTutor").fill("admin@ejemplo.test");
-  await page.getByLabel("Contraseña de MyTutor").fill("secreta");
+  await page.getByLabel("Email de ProfiECO").fill("admin@ejemplo.test");
+  await page.getByLabel("Contraseña de ProfiECO").fill("secreta");
   await page.getByRole("button", { name: "Probar conexión" }).click();
   await expect(page.getByTestId("mytutor-test-result")).toHaveText(
     "Conexión correcta: TRANSPORTES DEMO S.L.",
@@ -121,7 +133,9 @@ test("connect MyTutor to an agent, sync it and browse/export the copied data", a
   }
   await page.goto(`${agentUrl}?tab=test`, { waitUntil: "networkidle" });
   await expect(async () => {
-    await page.getByLabel("Escribe un mensaje…").fill("Busca en MyTutor los clientes y dime cuántos hay.");
+    await page
+      .getByLabel("Escribe un mensaje…")
+      .fill("Busca en ProfiECO los clientes y dime cuántos hay.");
     await expect(page.getByRole("button", { name: "Enviar" })).toBeEnabled({ timeout: 1_000 });
   }).toPass({ timeout: 20_000 });
   await page.getByRole("button", { name: "Enviar" }).click();

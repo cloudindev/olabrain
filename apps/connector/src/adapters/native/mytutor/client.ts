@@ -81,7 +81,7 @@ export function unpackList(data: unknown): {
       total: typeof d.count === "number" ? d.count : null,
     };
   }
-  throw new MytutorError("respuesta inesperada de MyTutor (no es una lista)", 0);
+  throw new MytutorError("respuesta inesperada de ProfiECO (no es una lista)", 0);
 }
 
 export class MytutorError extends NativeToolError {
@@ -173,7 +173,7 @@ export class MytutorClient {
         continue;
       }
       if (res.truncated)
-        throw new MytutorError("respuesta de MyTutor demasiado grande", res.status);
+        throw new MytutorError("respuesta de ProfiECO demasiado grande", res.status);
       return res;
     }
   }
@@ -186,14 +186,17 @@ export class MytutorClient {
       password: this.opts.credentials.password,
       rememberMe: false,
     });
-    if (res.status === 401) throw new MytutorError("MyTutor: email o contraseña incorrectos", 401);
+    if (res.status === 401) throw new MytutorError("ProfiECO: email o contraseña incorrectos", 401);
     if (res.status === 403)
       throw new MytutorError(
-        "MyTutor: esta cuenta inicia sesión con SSO; usa un usuario con contraseña",
+        "ProfiECO: esta cuenta inicia sesión con SSO; usa un usuario con contraseña",
         403,
       );
     if (res.status !== 200 && res.status !== 201)
-      throw new MytutorError(`MyTutor no permitió iniciar sesión (HTTP ${res.status})`, res.status);
+      throw new MytutorError(
+        `ProfiECO no permitió iniciar sesión (HTTP ${res.status})`,
+        res.status,
+      );
     this.accessAt = Date.now();
     let token = "";
     try {
@@ -223,14 +226,14 @@ export class MytutorClient {
     }
     if (res.status !== 200) {
       throw new MytutorError(
-        `MyTutor respondió HTTP ${res.status} en ${path.split("?")[0]}`,
+        `ProfiECO respondió HTTP ${res.status} en ${path.split("?")[0]}`,
         res.status,
       );
     }
     try {
       return JSON.parse(res.body);
     } catch {
-      throw new MytutorError(`MyTutor devolvió algo que no es JSON en ${path.split("?")[0]}`, 200);
+      throw new MytutorError(`ProfiECO devolvió algo que no es JSON en ${path.split("?")[0]}`, 200);
     }
   }
 
@@ -248,7 +251,7 @@ export class MytutorClient {
     });
     if (res.status !== 200) {
       await res.body?.cancel();
-      throw new MytutorError(`MyTutor no devolvió el archivo (HTTP ${res.status})`, res.status);
+      throw new MytutorError(`ProfiECO no devolvió el archivo (HTTP ${res.status})`, res.status);
     }
     const type = res.headers.get("content-type") ?? "application/octet-stream";
     // Some endpoints answer with a link to the file (plain text or {url}), not the file.
@@ -265,7 +268,7 @@ export class MytutorClient {
       const url = /^https:\/\//.test(link) ? new URL(link) : null;
       // Only MyTutor's own document hosts (e.g. edocumentos.my-tutor.es).
       if (!url || !/(^|\.)my-tutor\.es$/.test(url.hostname)) {
-        throw new MytutorError("MyTutor no devolvió el archivo", 200);
+        throw new MytutorError("ProfiECO no devolvió el archivo", 200);
       }
       await this.throttle();
       this.requests++;

@@ -33,7 +33,7 @@ export const NATIVE_PROVIDER_INFO: Record<NativeProvider, NativeProviderInfo> = 
   factorial: { id: "factorial", name: "Factorial", auth: "api_credentials" },
   sesame: { id: "sesame", name: "Sesame HR", auth: "api_credentials" },
   smtp: { id: "smtp", name: "Email (SMTP)", auth: "api_credentials" },
-  mytutor: { id: "mytutor", name: "MyTutor", auth: "api_credentials" },
+  mytutor: { id: "mytutor", name: "ProfiECO", auth: "api_credentials" },
 };
 
 /**

@@ -13,6 +13,7 @@ export type AppIconSource = {
 const LOGOS: Record<string, string> = {
   microsoft365: "/apps/outlook.svg",
   whmcs: "/apps/whmcs.png",
+  mytutor: "/apps/profieco.png",
   googledrive: "/apps/googledrive.svg",
   holded: "/apps/holded.png",
   factorial: "/apps/factorial.png",
@@ -23,6 +24,9 @@ const LOGOS: Record<string, string> = {
   postgres: "/apps/postgresql.svg",
   mysql: "/apps/mysql.svg",
 };
+
+/** Wordmarks, not square icons: they need the whole tile to stay readable. */
+const WIDE_LOGOS = new Set(["/apps/profieco.png"]);
 
 export function appLogo(src: AppIconSource): string | null {
   if (src.kind === "native" && src.provider) return LOGOS[src.provider] ?? null;
@@ -56,6 +60,7 @@ export function AppIcon({
         size === "sm" && "size-9 rounded-xl p-1.5",
         size === "md" && "size-12 p-2.5",
         size === "lg" && "size-16 p-3",
+        logo && WIDE_LOGOS.has(logo) && "!p-1",
         className,
       )}
     >
