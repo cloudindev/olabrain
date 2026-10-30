@@ -11,6 +11,7 @@ import { GLOW, haloGradient, type Halo, type HaloStyle } from "@/components/widg
 
 type WidgetSettings = {
   position: "right" | "left";
+  theme: "light" | "dark";
   size: number;
   halo: Halo;
   allowedOrigins: string[];
@@ -20,6 +21,7 @@ type WidgetSettings = {
 
 const DEFAULTS: WidgetSettings = {
   position: "right",
+  theme: "light",
   size: 68,
   halo: { mode: "multicolor", color: "#a6f55a", style: "neon" },
   allowedOrigins: [],
@@ -229,6 +231,24 @@ function WidgetPublish({
                   </button>
                 ))}
               </div>
+            </div>
+            <div>
+              <p className="mb-2 text-sm font-medium">{t("theme")}</p>
+              <div className="inline-flex rounded-full border border-line p-1" role="radiogroup">
+                {(["light", "dark"] as const).map((theme) => (
+                  <button
+                    key={theme}
+                    type="button"
+                    role="radio"
+                    aria-checked={values.theme === theme}
+                    onClick={() => set("theme", theme)}
+                    className="rounded-full px-4 py-1.5 text-sm text-ink-2 aria-checked:bg-ink aria-checked:text-paper"
+                  >
+                    {t(`themes.${theme}`)}
+                  </button>
+                ))}
+              </div>
+              <p className="mt-2 text-xs text-ink-3">{t("themeHint")}</p>
             </div>
             <div>
               <p className="mb-2 text-sm font-medium">{t("halo")}</p>

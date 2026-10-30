@@ -21,6 +21,8 @@ const hexColor = z.string().regex(/^#[0-9a-fA-F]{6}$/, "Color no válido (#rrggb
 /** Widget settings edited in the agent's «Publicar» tab (stored in channels.config). */
 export const widgetConfigSchema = z.object({
   position: z.enum(["right", "left"]).default("right"),
+  /** Chat colours, whatever the visitor's device or the panel's theme use. */
+  theme: z.enum(["light", "dark"]).default("light"),
   /** Launcher (avatar) diameter in px. */
   size: z.number().int().min(48).max(96).default(68),
   halo: z

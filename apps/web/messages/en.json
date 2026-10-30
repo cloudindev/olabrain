@@ -746,6 +746,12 @@
     "save": "Save",
     "saving": "Saving…",
     "saved": "Saved",
+    "theme": "Chat theme",
+    "themes": {
+      "light": "Light",
+      "dark": "Dark"
+    },
+    "themeHint": "It doesn't depend on your panel's theme or the visitor's device.",
     "haloStyle": "Colour style",
     "haloStyles": {
       "neon": "Neon",

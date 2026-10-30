@@ -19,8 +19,16 @@ test("publish an agent as a web widget and open it from another site", async ({
   await expect(snippet).toContainText("widget.js");
   const widgetId = /data-agent="([0-9a-f-]{36})"/.exec((await snippet.textContent())!)![1]!;
 
-  // Left side + one-tone halo, saved.
+  // Light by default, even on a dark device.
+  await page.emulateMedia({ colorScheme: "dark" });
+  await page.goto(`/embed/${widgetId}`);
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+  await page.emulateMedia({ colorScheme: "light" });
+  await page.goto(`${agentUrl}?tab=publish`, { waitUntil: "networkidle" });
+
+  // Left side + one-tone halo + dark chat, saved.
   await page.getByRole("radio", { name: "Izquierda" }).click();
+  await page.getByRole("radio", { name: "Oscuro" }).click();
   await page.getByRole("radio", { name: "Un tono" }).click();
   await page.getByRole("radio", { name: "Pastel" }).click();
   await page.locator("#widget-size").fill("88");
@@ -49,6 +57,7 @@ test("publish an agent as a web widget and open it from another site", async ({
   await launcher.click();
   const frame = page.frameLocator('iframe[title="Mateo"]');
   await expect(frame.getByPlaceholder("Escribe un mensaje…")).toBeVisible();
+  await expect(frame.locator("html")).toHaveAttribute("data-theme", "dark");
   await expect(frame.getByRole("link", { name: "OlaBrain" })).toHaveAttribute(
     "href",
     "https://www.olabrain.com",

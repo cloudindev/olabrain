@@ -13,11 +13,19 @@ export default async function EmbedPage({ params }: { params: Promise<{ channelI
   const channel = await resolveChannel(channelId);
   if (!channel) notFound();
   return (
-    <EmbedChat
-      channelId={channel.id}
-      agent={{ name: channel.agentName, role: channel.agentRole, avatar: channel.avatarImage }}
-      voice={channel.config.voice}
-      halo={channel.config.halo}
-    />
+    <>
+      {/* The widget's own theme wins over the device's and the saved panel one (no flash). */}
+      <script
+        dangerouslySetInnerHTML={{
+          __html: `document.documentElement.dataset.theme=${JSON.stringify(channel.config.theme)}`,
+        }}
+      />
+      <EmbedChat
+        channelId={channel.id}
+        agent={{ name: channel.agentName, role: channel.agentRole, avatar: channel.avatarImage }}
+        voice={channel.config.voice}
+        halo={channel.config.halo}
+      />
+    </>
   );
 }

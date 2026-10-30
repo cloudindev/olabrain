@@ -329,3 +329,7 @@ Implementa ADR-007 sin pagos (Stripe pendiente).
 - Sigue exigiendo un email o un teléfono, y el enlace compartido sigue sin generar Leads (ADR-022).
 
 **Límite.** Depende de que el modelo llame a la herramienta; no hay extracción automática al terminar la conversación.
+
+## ADR-024 — Tema propio del widget (2026-10-30)
+
+**Decisión.** `theme: light | dark` en la configuración del widget, sin opción automática, para que el chat combine con la web del cliente sea cual sea el dispositivo del visitante o el tema del panel. Por defecto, claro: los widgets ya publicados dejan de seguir el modo oscuro del dispositivo. El enlace compartido sigue usando el tema del dispositivo.

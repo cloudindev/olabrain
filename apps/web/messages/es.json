@@ -746,6 +746,12 @@
     "save": "Guardar",
     "saving": "Guardando…",
     "saved": "Guardado",
+    "theme": "Tema del chat",
+    "themes": {
+      "light": "Claro",
+      "dark": "Oscuro"
+    },
+    "themeHint": "Es independiente del tema de tu panel y del dispositivo del visitante.",
     "haloStyle": "Estilo de color",
     "haloStyles": {
       "neon": "Neón",

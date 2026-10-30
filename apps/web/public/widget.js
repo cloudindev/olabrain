@@ -75,7 +75,7 @@
       ".face{position:absolute;inset:0;border-radius:50%;overflow:hidden;background:#131313;border:3px solid #fff;display:flex;align-items:center;justify-content:center;color:#a6f55a;font:700 " + Math.round(size * 0.38) + "px system-ui,sans-serif}" +
       ".face img{width:100%;height:100%;object-fit:cover;object-position:top}" +
       ".btn:hover .face{transform:scale(1.04)}.face{transition:transform .2s}" +
-      ".panel{position:fixed;bottom:" + (size + 36) + "px;" + side + ":22px;width:380px;height:min(620px,calc(100vh - 130px));border:0;border-radius:22px;overflow:hidden;box-shadow:0 24px 70px -20px rgba(0,0,0,.45);background:#fff;opacity:0;transform:translateY(12px);pointer-events:none;transition:opacity .2s,transform .2s}" +
+      ".panel{position:fixed;bottom:" + (size + 36) + "px;" + side + ":22px;width:380px;height:min(620px,calc(100vh - 130px));border:0;border-radius:22px;overflow:hidden;box-shadow:0 24px 70px -20px rgba(0,0,0,.45);background:" + (cfg.theme === "dark" ? "#131313" : "#fff") + ";opacity:0;transform:translateY(12px);pointer-events:none;transition:opacity .2s,transform .2s}" +
       ".panel.open{opacity:1;transform:none;pointer-events:auto}" +
       ".panel iframe{width:100%;height:100%;border:0}" +
       "@media (max-width:520px){.panel{inset:0;width:100%;height:100%;border-radius:0}.panel.open~.btn{display:none}}" +
