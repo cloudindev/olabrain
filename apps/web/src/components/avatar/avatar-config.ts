@@ -8,6 +8,7 @@ export const DEFAULT_AVATAR = "/alba";
 const GREETING_SPEECH_END: Record<string, number> = {
   "/alba": 4,
   "/lia": 3.5,
+  "/cloe": 3,
 };
 
 export function greetingSpeechEnd(avatar: string | null | undefined): number {

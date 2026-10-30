@@ -30,6 +30,7 @@ const AVATARS: Record<string, { image: string; video?: string }> = {
   enzo: { image: "/personas/enzo.jpg" },
   teo: { image: "/personas/teo.jpg" },
   nora: { image: "/personas/nora.jpg" },
+  cloe: { image: "/personas/cloe.jpg", video: "/cloe" },
 };
 
 function persona(
@@ -38,7 +39,7 @@ function persona(
   role: string,
   traits: CatalogPersona["traits"],
 ): CatalogPersona {
-  const article = ["lia", "nora", "vega", "iris", "alba"].includes(slug)
+  const article = ["lia", "nora", "vega", "iris", "alba", "cloe"].includes(slug)
     ? "una "
     : NEUTRAL.includes(slug)
       ? ""
@@ -134,4 +135,12 @@ export const CATALOG_PERSONAS: CatalogPersona[] = [
     "Analista de datos",
     detallado,
   ),
+];
+
+/**
+ * Personas private to one organization (seed:tenants; ADR-026). They use the catalog's
+ * shape but are stored with that tenant's id, so no other organization can see them.
+ */
+export const TENANT_PERSONAS: { tenantName: string; persona: CatalogPersona }[] = [
+  { tenantName: "Coverde", persona: persona("cloe", "Cloe", "Asistente", cercano) },
 ];

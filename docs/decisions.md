@@ -337,3 +337,13 @@ Implementa ADR-007 sin pagos (Stripe pendiente).
 ## ADR-025 — MyTutor se muestra como ProfiECO (2026-10-30)
 
 **Decisión.** Todo lo que ven los usuarios y lo que leen los agentes dice ProfiECO. Lo interno no cambia: `provider = "mytutor"`, las tablas `mytutor_*`, las rutas y el dominio real de la API y del inicio de sesión (`my-tutor.es`). Renombrarlo exigiría migrar datos sin ningún beneficio visible.
+
+---
+
+## ADR-026 — Personajes propios de una organización: Cloe para Coverde (2026-10-31)
+
+**Decisión.** Cloe es una fila de `personas` con el `tenant_id` de Coverde: el panel ya lista el catálogo más los personajes de la organización y RLS impide verla o elegirla desde otra. Se define en `TENANT_PERSONAS` (`seed-data.ts`) y se crea con `pnpm --filter @brainagent/db seed:tenants`, que busca la organización por nombre y se detiene si no hay exactamente una (acepta un id como argumento). No es una migración porque depende de una organización concreta de producción.
+
+**Consecuencias.**
+- Los clips y el retrato viven en `apps/web/public/cloe` y `public/personas/cloe.jpg`: quien tenga la URL puede abrirlos, igual que el widget del cliente. Lo privado es el personaje, no los ficheros.
+- La voz sale de `config/catalog-voices.json` por `slug`, así que el worker necesita una versión nueva para usarla.
