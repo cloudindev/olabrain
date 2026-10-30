@@ -10,6 +10,7 @@ import {
   NativeToolError,
   schema,
   str,
+  type CapturedContact,
   type NativeCallContext,
   type NativeResult,
   type NativeToolDef,
@@ -24,24 +25,27 @@ export type SmtpConfig = {
 };
 type SmtpSecret = { user?: string; password?: string };
 
+/** A person to contact: email_aviso_contacto and the widget's registrar_contacto (ADR-023). */
+export const CONTACT_INPUT_SCHEMA = schema(
+  {
+    nombre: str("Nombre y apellidos"),
+    email: str("Email de la persona"),
+    telefono: str("Teléfono de la persona"),
+    empresa: str("Empresa, si la dice"),
+    mensaje: str("Qué necesita o pide, resumido"),
+    apreciaciones: str(
+      "Tus apreciaciones sobre el contacto: interés, urgencia, presupuesto, siguiente paso…",
+    ),
+  },
+  ["nombre", "mensaje"],
+);
+
 const TOOLS: NativeToolDef[] = [
   {
     name: "email_aviso_contacto",
     description:
       "Avisa por email a la empresa de una persona que quiere que la contacten (p. ej. un visitante de la web) y la guarda en Contactos. Úsala en cuanto tengas su nombre, un email o un teléfono y lo que necesita, con tus apreciaciones. Envía siempre a los destinatarios configurados.",
-    inputSchema: schema(
-      {
-        nombre: str("Nombre y apellidos"),
-        email: str("Email de la persona"),
-        telefono: str("Teléfono de la persona"),
-        empresa: str("Empresa, si la dice"),
-        mensaje: str("Qué necesita o pide, resumido"),
-        apreciaciones: str(
-          "Tus apreciaciones sobre el contacto: interés, urgencia, presupuesto, siguiente paso…",
-        ),
-      },
-      ["nombre", "mensaje"],
-    ),
+    inputSchema: CONTACT_INPUT_SCHEMA,
     mode: "write",
     autoConfirm: true,
   },
@@ -106,6 +110,26 @@ async function send(
 
 const clean = (v: unknown) => (typeof v === "string" ? v.trim().slice(0, 2000) : "");
 
+/** The person in CONTACT_INPUT_SCHEMA arguments; without an email or phone, an error. */
+export function capturedContactFromArgs(args: Record<string, unknown>): CapturedContact {
+  const email = clean(args.email);
+  const telefono = clean(args.telefono);
+  const empresa = clean(args.empresa);
+  const mensaje = clean(args.mensaje);
+  if (!email && !telefono) throw new NativeToolError("pide un email o un teléfono antes de avisar");
+  return {
+    name: clean(args.nombre),
+    email: email || undefined,
+    phone: telefono || undefined,
+    company: empresa || undefined,
+    request: mensaje,
+    agentNotes: clean(args.apreciaciones) || undefined,
+    notes: [empresa && `Empresa: ${empresa}`, mensaje && `Pide: ${mensaje}`].filter(
+      (n): n is string => Boolean(n),
+    ),
+  };
+}
+
 export async function executeSmtpTool(
   ctx: NativeCallContext,
   toolName: string,
@@ -116,28 +140,15 @@ export async function executeSmtpTool(
   if (!recipients.length) throw new NativeToolError("la conexión no tiene destinatarios");
 
   if (toolName === "email_aviso_contacto") {
-    const nombre = clean(args.nombre);
-    const email = clean(args.email);
-    const telefono = clean(args.telefono);
-    const empresa = clean(args.empresa);
-    const mensaje = clean(args.mensaje);
-    const apreciaciones = clean(args.apreciaciones);
-    if (!email && !telefono)
-      throw new NativeToolError("pide un email o un teléfono antes de avisar");
+    const contact = capturedContactFromArgs(args);
+    const nombre = contact.name;
+    const email = contact.email ?? "";
+    const telefono = contact.phone ?? "";
+    const empresa = contact.company ?? "";
+    const mensaje = contact.request ?? "";
+    const apreciaciones = contact.agentNotes ?? "";
     // Contacts first: the lead is never lost even if the email fails.
-    const saved = ctx.saveContact
-      ? await ctx.saveContact({
-          name: nombre,
-          email: email || undefined,
-          phone: telefono || undefined,
-          company: empresa || undefined,
-          request: mensaje,
-          agentNotes: apreciaciones || undefined,
-          notes: [empresa && `Empresa: ${empresa}`, mensaje && `Pide: ${mensaje}`].filter(
-            (n): n is string => Boolean(n),
-          ),
-        })
-      : null;
+    const saved = ctx.saveContact ? await ctx.saveContact(contact) : null;
     const body = [
       "Nuevo contacto recogido por tu agente de OlaBrain:",
       "",

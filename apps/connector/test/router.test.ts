@@ -1,11 +1,23 @@
 import { randomBytes } from "node:crypto";
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
-import { agentTools, agents, toolCalls, tools, withTenant } from "@brainagent/db";
+import { WEB_WIDGET } from "@brainagent/core";
+import {
+  agentTools,
+  agents,
+  channels,
+  connections,
+  conversations,
+  leads,
+  toolCalls,
+  tools,
+  withTenant,
+} from "@brainagent/db";
 import { eq, inArray } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createApp } from "../src/app";
 import { createContext } from "../src/context";
+import { agentRuntimeConfig, callTool } from "../src/router";
 import { createTenant, dropTenant, testDbs } from "./helpers";
 
 const TOKEN = randomBytes(24).toString("hex");
@@ -503,7 +515,11 @@ describe("web widget visitors", () => {
     const config = (await (
       await req(`/v1/agents/${agentA}/config?conversationId=${conversationId}`)
     ).json()) as Json;
-    expect(config.tools.map((t: { id: string }) => t.id)).toEqual([readId]);
+    // (Plus the built-in tool that saves leads, ADR-023.)
+    expect(config.tools.map((t: { id: string }) => t.id)).toEqual([
+      readId,
+      "builtin:registrar_contacto",
+    ]);
 
     // A tool that isn't public is unknown to the visitor's conversation, even if named.
     const blocked = (await (
@@ -616,6 +632,142 @@ describe("captured contacts", () => {
       tx.select().from(leads).where(eq(leads.conversationId, widgetConv)),
     );
     expect(other).toHaveLength(0);
+  });
+});
+
+describe("leads without any connection", () => {
+  let channelId = "";
+
+  /** A web-widget conversation of a fresh agent, with no public tools. */
+  async function widgetConversation(agentId: string) {
+    return withTenant(appDb.db, tenantA, async (tx) => {
+      const [channel] = await tx
+        .insert(channels)
+        .values({ tenantId: tenantA, agentId, kind: WEB_WIDGET, config: {} })
+        .returning();
+      channelId = channel!.id;
+      const [conv] = await tx
+        .insert(conversations)
+        .values({ tenantId: tenantA, agentId, channel: "widget", config: { channelId } })
+        .returning();
+      return conv!.id;
+    });
+  }
+  const newAgent = (name: string) =>
+    withTenant(appDb.db, tenantA, async (tx) => {
+      const [a] = await tx.insert(agents).values({ tenantId: tenantA, name }).returning();
+      return a!.id;
+    });
+  const leadsOf = (conversationId: string) =>
+    withTenant(appDb.db, tenantA, (tx) =>
+      tx.select().from(leads).where(eq(leads.conversationId, conversationId)),
+    );
+
+  it("a widget agent can always save a lead, and is told to", async () => {
+    const agentId = await newAgent("Alba");
+    const conversationId = await widgetConversation(agentId);
+    const cfg = await agentRuntimeConfig(ctx, tenantA, agentId, undefined, conversationId);
+    expect(cfg!.tools.map((t) => t.name)).toEqual(["registrar_contacto"]);
+    expect(cfg!.agent.instructions).toContain("registrar_contacto");
+
+    const call = (args: Record<string, unknown>) =>
+      callTool(ctx, {
+        tenantId: tenantA,
+        agentId,
+        conversationId,
+        toolName: "registrar_contacto",
+        args,
+      });
+    expect((await call({ nombre: "Luis", mensaje: "Colocation 1U" })).status).toBe("error");
+    expect(await leadsOf(conversationId)).toHaveLength(0);
+
+    expect((await call({ nombre: "Luis", email: "L@x.es", mensaje: "Colocation 1U" })).status).toBe(
+      "ok",
+    );
+    expect(
+      (
+        await call({
+          nombre: "Luis Sánchez",
+          email: "l@x.es",
+          telefono: "685 85 02 70",
+          empresa: "Cloudin",
+          mensaje: "Colocation 1U",
+        })
+      ).status,
+    ).toBe("ok");
+    const rows = await leadsOf(conversationId);
+    expect(rows).toHaveLength(1); // More details update the conversation's lead.
+    expect(rows[0]).toMatchObject({
+      agentName: "Alba",
+      name: "Luis Sánchez",
+      email: "l@x.es",
+      phone: "685850270",
+      company: "Cloudin",
+      request: "Colocation 1U",
+    });
+  });
+
+  it("isn't offered outside the widget, nor callable there", async () => {
+    const agentId = await newAgent("Hugo");
+    const conversationId = await withTenant(appDb.db, tenantA, async (tx) => {
+      const [c] = await tx
+        .insert(conversations)
+        .values({ tenantId: tenantA, agentId, channel: "panel" })
+        .returning();
+      return c!.id;
+    });
+    const cfg = await agentRuntimeConfig(ctx, tenantA, agentId, undefined, conversationId);
+    expect(cfg!.tools).toHaveLength(0);
+    expect(cfg!.agent.instructions ?? "").not.toContain("registrar_contacto");
+    const res = await callTool(ctx, {
+      tenantId: tenantA,
+      agentId,
+      conversationId,
+      toolName: "registrar_contacto",
+      args: { nombre: "Eva", email: "e@x.es", mensaje: "Hola" },
+    });
+    expect(res.status).toBe("error");
+    expect(await leadsOf(conversationId)).toHaveLength(0);
+  });
+
+  it("gives way to the email notice when that one is public", async () => {
+    const agentId = await newAgent("Nora");
+    const conversationId = await widgetConversation(agentId);
+    await withTenant(appDb.db, tenantA, async (tx) => {
+      const [conn] = await tx
+        .insert(connections)
+        .values({
+          tenantId: tenantA,
+          agentId,
+          kind: "native",
+          name: "Email",
+          config: { provider: "smtp" },
+          status: "active",
+        })
+        .returning();
+      const [tool] = await tx
+        .insert(tools)
+        .values({
+          tenantId: tenantA,
+          connectionId: conn!.id,
+          name: "email_aviso_contacto",
+          description: "Avisa",
+          inputSchema: {},
+          mode: "write",
+          confirmation: "auto",
+          sourceRef: "email_aviso_contacto",
+          enabled: true,
+        })
+        .returning();
+      await tx.insert(agentTools).values({ tenantId: tenantA, agentId, toolId: tool!.id });
+      await tx
+        .update(channels)
+        .set({ config: { publicToolIds: [tool!.id] } })
+        .where(eq(channels.id, channelId));
+    });
+    const cfg = await agentRuntimeConfig(ctx, tenantA, agentId, undefined, conversationId);
+    expect(cfg!.tools.map((t) => t.name)).toEqual(["email_aviso_contacto"]);
+    expect(cfg!.agent.instructions).toContain("email_aviso_contacto");
   });
 });
 

@@ -162,7 +162,9 @@ describe("text chat runtime", () => {
     expect(model.requests[1]!.turns.at(-1)).toMatchObject({ role: "tool", isError: true });
     // The last request asks for an answer without more tools.
     expect(model.requests.at(-1)!.turns.at(-1)).toMatchObject({ role: "user" });
-    expect(String(model.requests.at(-1)!.turns.at(-1)!.content)).toContain("límite de consultas");
+    expect(model.requests.at(-1)!.turns.at(-1)).toMatchObject({
+      content: expect.stringContaining("límite de consultas"),
+    });
     const text = evs
       .filter((e) => e.type === "delta")
       .map((e) => e.text)

@@ -367,11 +367,7 @@ export async function saveCapturedContact(
             .where(eq(agents.id, conv.agentId))
             .limit(1)
         : [];
-      await tx.insert(leads).values({
-        tenantId,
-        agentId: conv.agentId,
-        agentName: agent?.name ?? "",
-        conversationId,
+      const details = {
         contactId,
         name: c.name,
         email,
@@ -379,7 +375,22 @@ export async function saveCapturedContact(
         company: c.company?.trim() || null,
         request: c.request?.trim() ?? "",
         agentNotes: c.agentNotes?.trim() ?? "",
-      });
+      };
+      // One lead per conversation: the visitor may add or correct data later on.
+      const [lead] = await tx
+        .select({ id: leads.id })
+        .from(leads)
+        .where(eq(leads.conversationId, conversationId!))
+        .limit(1);
+      if (lead) await tx.update(leads).set(details).where(eq(leads.id, lead.id));
+      else
+        await tx.insert(leads).values({
+          tenantId,
+          agentId: conv.agentId,
+          agentName: agent?.name ?? "",
+          conversationId,
+          ...details,
+        });
     }
     return { contactId };
   });

@@ -317,3 +317,15 @@ Implementa ADR-007 sin pagos (Stripe pendiente).
   - A diferencia del widget, que solo usa las herramientas marcadas como públicas, el enlace compartido da **todas las herramientas del agente**: está pensado para personas de confianza.
   - Las escrituras siguen pidiendo confirmación.
   - Las conversaciones del enlace no generan Leads.
+
+## ADR-023 — Los Leads no dependen del conector de email (2026-10-30)
+
+**Contexto.** El Lead solo se guardaba dentro de `email_aviso_contacto`, que exige una conexión SMTP en el agente y marcar la herramienta como pública en el widget (ninguna lo es por defecto). Sin eso, el agente recogía los datos y decía «he tomado nota», pero no tenía forma de guardarlos.
+
+**Decisión.**
+- Toda conversación del widget ofrece la herramienta integrada `registrar_contacto` (sin conexión ni confirmación), resuelta en el Tool Router, así que sirve para texto y voz. Si `email_aviso_contacto` es pública, se ofrece esa en su lugar, que además avisa por email: el modelo solo ve una.
+- `agentRuntimeConfig` añade a las instrucciones que debe llamarla antes de decir que ha anotado los datos.
+- Un Lead por conversación: si la persona da más datos, se actualiza el mismo.
+- Sigue exigiendo un email o un teléfono, y el enlace compartido sigue sin generar Leads (ADR-022).
+
+**Límite.** Depende de que el modelo llame a la herramienta; no hay extracción automática al terminar la conversación.

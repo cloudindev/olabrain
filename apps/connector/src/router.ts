@@ -37,7 +37,15 @@ import addFormats from "ajv-formats";
 import { and, desc, eq, gt, isNull, lt, max } from "drizzle-orm";
 import { pricing, signupCredit } from "./billing";
 import type { ConnectorContext } from "./context";
-import { executeTool, limitsOf, type ConnectionRow, type ToolRow } from "./execute";
+import { CONTACT_INPUT_SCHEMA, capturedContactFromArgs } from "./adapters/native/smtp";
+import { NativeToolError } from "./adapters/native/types";
+import {
+  executeTool,
+  limitsOf,
+  saveCapturedContact,
+  type ConnectionRow,
+  type ToolRow,
+} from "./execute";
 
 const CONFIRMATION_TTL_MS = 5 * 60_000;
 const LOG_PAYLOAD_LIMIT = 4_000;
@@ -124,6 +132,30 @@ export async function visitorToolFilter(
   });
 }
 
+/**
+ * Leads don't depend on any connection (ADR-023): a widget agent always has a way to save
+ * a visitor's details. If the email notice is public it does this too, so it's used instead.
+ */
+const LEAD_TOOL = "registrar_contacto";
+const EMAIL_LEAD_TOOL = "email_aviso_contacto";
+const LEAD_GUIDANCE =
+  "Cuando alguien te deje sus datos para que le contacten, llama a la herramienta " +
+  "{tool} en cuanto tengas su nombre, un email o un teléfono y lo que necesita, antes de " +
+  "decirle que lo has anotado. Sin esa llamada los datos no se guardan: nunca digas que " +
+  "has tomado nota si no la has hecho.";
+
+const leadTool: Tool = {
+  id: `builtin:${LEAD_TOOL}`,
+  name: LEAD_TOOL,
+  description:
+    "Guarda en Leads a una persona que quiere que la empresa la contacte, para que el equipo la vea en el panel. Úsala en cuanto tengas su nombre, un email o un teléfono y lo que necesita, con tus apreciaciones. Si después te da más datos, vuelve a llamarla con todos.",
+  inputSchema: CONTACT_INPUT_SCHEMA,
+  mode: "write",
+  confirmation: "auto",
+  source: { kind: "native", connectionId: "", ref: LEAD_TOOL },
+  limits: { timeoutMs: 10_000, maxBytes: 10_000 },
+};
+
 export async function listTools(
   ctx: ConnectorContext,
   tenantId: string,
@@ -134,7 +166,7 @@ export async function listTools(
   const rows = (await loadAgentTools(ctx, tenantId, agentId)).filter(
     (t) => !allowed || allowed.has(t.id),
   );
-  return rows.map((t) => ({
+  const list: Tool[] = rows.map((t) => ({
     id: t.id,
     name: t.name,
     description: t.description,
@@ -144,6 +176,8 @@ export async function listTools(
     source: { kind: t.connectionKind, connectionId: t.connectionId, ref: t.sourceRef },
     limits: limitsOf(t) as ToolLimits,
   }));
+  if (allowed && !rows.some((t) => t.name === EMAIL_LEAD_TOOL)) list.push(leadTool);
+  return list;
 }
 
 const MEMORY_LIMIT = 30;
@@ -282,12 +316,17 @@ export async function agentRuntimeConfig(
       .limit(1),
   );
   if (!row) return null;
+  const toolList = await listTools(ctx, tenantId, agentId, conversationId);
+  // Here and not in the prompt builders: text and voice both get it.
+  const leadToolName = [LEAD_TOOL, EMAIL_LEAD_TOOL].find((n) => toolList.some((t) => t.name === n));
   return {
     agent: {
       id: row.agent.id,
       name: row.agent.name,
       role: row.agent.role,
-      instructions: row.agent.instructions,
+      instructions: leadToolName
+        ? `${row.agent.instructions ?? ""}\n\n${LEAD_GUIDANCE.replace("{tool}", leadToolName)}`.trim()
+        : row.agent.instructions,
       model: row.agent.model,
       presenceMode: row.agent.presenceMode,
       policy: row.agent.policy,
@@ -304,7 +343,7 @@ export async function agentRuntimeConfig(
           voiceRef: row.persona.voiceRef,
         }
       : null,
-    tools: await listTools(ctx, tenantId, agentId, conversationId),
+    tools: toolList,
     memory:
       contactId && (row.agent.policy as { memoryEnabled?: boolean }).memoryEnabled !== false
         ? {
@@ -379,6 +418,24 @@ export async function callTool(
       }),
     );
   };
+
+  if (!tool && allowed && input.toolName === LEAD_TOOL) {
+    try {
+      const contact = capturedContactFromArgs(input.args);
+      await saveCapturedContact(ctx, input.tenantId, input.conversationId, contact);
+      await log("ok", { guardado: true });
+      return { status: "ok", result: { guardado: true }, durationMs: elapsed() };
+    } catch (e) {
+      const known = e instanceof NativeToolError;
+      await log("error", { error: known ? e.message : "lead_not_saved" });
+      if (!known) ctx.log.warn({ err: (e as Error).message }, "lead not saved");
+      return {
+        status: "error",
+        error: known ? e.message : "No se han podido guardar los datos.",
+        durationMs: elapsed(),
+      };
+    }
+  }
 
   if (!tool) {
     await log("error", { error: "unknown_tool" });
