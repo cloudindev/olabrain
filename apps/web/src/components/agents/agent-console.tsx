@@ -667,7 +667,13 @@ export function AgentConsole({
             role="alert"
             className="mx-4 mb-2 rounded-xl bg-bad-soft px-3 py-2 text-sm text-bad lg:mx-6"
           >
-            {shownError}
+            {shownError === t("errors.no_balance") ? (
+              <Link href="/billing" className="underline underline-offset-2 hover:no-underline">
+                {shownError}
+              </Link>
+            ) : (
+              shownError
+            )}
           </p>
         ) : null}
 

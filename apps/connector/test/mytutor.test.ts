@@ -3,8 +3,15 @@ import { readFileSync } from "node:fs";
 import { createServer, type IncomingMessage, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { join } from "node:path";
-import { connections, mytutorClients, mytutorSyncRuns, tools, withTenant } from "@brainagent/db";
-import { and, eq, isNull } from "drizzle-orm";
+import {
+  MYTUTOR_TABLES,
+  connections,
+  mytutorClients,
+  mytutorSyncRuns,
+  tools,
+  withTenant,
+} from "@brainagent/db";
+import { and, eq, isNull, like } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   MytutorClient,
@@ -318,7 +325,7 @@ describe("MyTutor connection, sync and tools", () => {
 
   it("answers the tools from the cache, citing source and sync time", async () => {
     const all = await call("buscar_cliente", { texto: "" });
-    expect(all).toMatchObject({ source: "mytutor", total: 2 });
+    expect(all).toMatchObject({ source: "ProfiECO", total: 2 });
     expect(all.synced_at).toBeTruthy();
     const one = await call("ficha_cliente", { id: all.rows[0].cif_nif });
     expect(one.rows[0].id).toBe(all.rows[0].id);
@@ -335,6 +342,37 @@ describe("MyTutor connection, sync and tools", () => {
     expect(tach.rows.length).toBe(2);
     const orders = await call("ordenes_residuos", { desde: "2000-01-01", hasta: "2100-01-01" });
     expect(orders.total).toBe(2);
+    expect(orders.nota).toBeUndefined();
+
+    // Long lists can be read to the end, page by page.
+    const orderTable = MYTUTOR_TABLES.waste_work_orders;
+    const [sample] = await withTenant(appDb.db, tenantA, (tx) =>
+      tx.select().from(orderTable).where(eq(orderTable.connectionId, connectionId)).limit(1),
+    );
+    const { id: _id, ...base } = sample!;
+    await withTenant(appDb.db, tenantA, (tx) =>
+      tx
+        .insert(orderTable)
+        .values(Array.from({ length: 111 }, (_, i) => ({ ...base, sourceId: `page-${i}` }))),
+    );
+    const range = { desde: "2000-01-01", hasta: "2100-01-01" };
+    const seen = new Set<string>();
+    for (const [pagina, size] of [
+      [1, 50],
+      [2, 50],
+      [3, 13],
+    ] as const) {
+      const page = await call("ordenes_residuos", { ...range, pagina });
+      expect(page.total).toBe(113);
+      expect(page.rows).toHaveLength(size);
+      if (pagina < 3) expect(page.nota).toContain(`pagina ${pagina + 1}`);
+      else expect(page.nota).toBeUndefined();
+      for (const row of page.rows) seen.add(row.id);
+    }
+    expect(seen.size).toBe(113);
+    await withTenant(appDb.db, tenantA, (tx) =>
+      tx.delete(orderTable).where(like(orderTable.sourceId, "page-%")),
+    );
     const sum = await call("resumen_datos", { datos: "waste_work_orders", agrupar_por: "mes" });
     expect(sum.total).toBe(2);
     expect(sum.grupos.reduce((n: number, g: { registros: number }) => n + g.registros, 0)).toBe(2);

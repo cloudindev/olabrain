@@ -141,7 +141,7 @@ describe("text chat runtime", () => {
   });
 
   it("reports unknown tools as errors and, out of tool rounds, answers with what it has", async () => {
-    const loop = Array.from({ length: 21 }, (_, i) => ({
+    const loop = Array.from({ length: 101 }, (_, i) => ({
       text: "",
       toolCalls: [{ id: `c${i}`, name: "no_existe", args: {} }],
       usage: { input: 1, output: 1 },
@@ -157,7 +157,7 @@ describe("text chat runtime", () => {
       await chat(model, { agentId, messages: [{ role: "user", content: "hola" }] }),
     );
     const results = evs.filter((e) => e.type === "tool_result");
-    expect(results).toHaveLength(21); // default 20 rounds + 1 model steps
+    expect(results).toHaveLength(101); // default 100 rounds + 1 model steps
     expect(results.every((r) => r.status === "error")).toBe(true);
     expect(model.requests[1]!.turns.at(-1)).toMatchObject({ role: "tool", isError: true });
     // The last request asks for an answer without more tools.
@@ -165,11 +165,76 @@ describe("text chat runtime", () => {
     expect(model.requests.at(-1)!.turns.at(-1)).toMatchObject({
       content: expect.stringContaining("límite de consultas"),
     });
+    expect(model.requests.at(-1)!.toolChoice).toBe("none");
     const text = evs
       .filter((e) => e.type === "delta")
       .map((e) => e.text)
       .join("");
     expect(text).toContain("Con lo que tengo");
+  });
+
+  describe("doesn't stop halfway", () => {
+    const u = { input: 1, output: 1 };
+    const query = (id: string) => ({
+      text: "",
+      toolCalls: [{ id, name: "no_existe", args: {} }],
+      usage: u,
+    });
+    const textOf = (evs: Awaited<ReturnType<typeof events>>) =>
+      evs
+        .filter((e) => e.type === "delta")
+        .map((e) => e.text)
+        .join("");
+    const run = async (model: FakeModel) =>
+      events(await chat(model, { agentId, messages: [{ role: "user", content: "órdenes" }] }));
+
+    it("goes on when it only announces the next query", async () => {
+      const model = new FakeModel([
+        query("a"),
+        { text: "Parto también el 27 y el 26 por separado.", toolCalls: [], usage: u },
+        query("b"),
+        { text: "En total hay 163 órdenes.", toolCalls: [], usage: u },
+      ]);
+      const text = textOf(await run(model));
+      expect(model.requests).toHaveLength(4);
+      expect(model.requests[2]!.turns.at(-1)).toMatchObject({
+        role: "user",
+        content: expect.stringContaining("no ha terminado"),
+      });
+      expect(text).toBe("Parto también el 27 y el 26 por separado.\n\nEn total hay 163 órdenes.");
+    });
+
+    it("goes on when it says nothing after its tools or the output is cut off", async () => {
+      const silent = new FakeModel([
+        query("a"),
+        { text: "", toolCalls: [], usage: u },
+        { text: "Son 163.", toolCalls: [], usage: u },
+      ]);
+      expect(textOf(await run(silent))).toBe("Son 163.");
+      const cut = new FakeModel([
+        { text: "Primera parte", toolCalls: [], usage: u, cutOff: true },
+        { text: "y segunda.", toolCalls: [], usage: u },
+      ]);
+      expect(textOf(await run(cut))).toBe("Primera parte\n\ny segunda.");
+    });
+
+    it("doesn't insist forever, and a finished answer ends at once", async () => {
+      const announces = { text: "Voy a mirar más.", toolCalls: [], usage: u };
+      const stubborn = new FakeModel([query("a"), ...Array.from({ length: 10 }, () => announces)]);
+      await run(stubborn);
+      expect(stubborn.requests).toHaveLength(5); // the query + the first try + 3 nudges
+
+      const done = new FakeModel([
+        query("a"),
+        { text: "Hay 163 órdenes. ¿Quieres el detalle?", toolCalls: [], usage: u },
+      ]);
+      await run(done);
+      expect(done.requests).toHaveLength(2);
+      // Without tools there is nothing to go on with, whatever it says.
+      const plain = new FakeModel([{ text: "Voy a ayudarte.", toolCalls: [], usage: u }]);
+      await run(plain);
+      expect(plain.requests).toHaveLength(1);
+    });
   });
 
   it("passes the attachments of a message to the model and rejects unsupported files", async () => {

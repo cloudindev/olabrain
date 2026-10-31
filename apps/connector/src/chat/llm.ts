@@ -5,7 +5,13 @@
  */
 import Anthropic from "@anthropic-ai/sdk";
 import { isImageAttachment, isTextAttachment, type Attachment } from "@brainagent/core";
-import { GoogleGenAI, type Content, type Part } from "@google/genai";
+import {
+  FinishReason,
+  FunctionCallingConfigMode,
+  GoogleGenAI,
+  type Content,
+  type Part,
+} from "@google/genai";
 import OpenAI from "openai";
 import modelsConfig from "../../../../config/models.json" with { type: "json" };
 
@@ -18,12 +24,20 @@ export type ChatTurn =
   | { role: "assistant"; content: string; toolCalls?: ToolCall[]; raw?: unknown }
   | { role: "tool"; callId: string; name: string; output: string; isError: boolean };
 
-export type StepRequest = { system: string; turns: ChatTurn[]; tools: ToolSpec[] };
+export type StepRequest = {
+  system: string;
+  turns: ChatTurn[];
+  tools: ToolSpec[];
+  /** "none": it must answer in text. The tools stay declared: the history refers to them. */
+  toolChoice?: "none";
+};
 export type StepResult = {
   text: string;
   toolCalls: ToolCall[];
   raw?: unknown;
   usage: { input: number; output: number };
+  /** The output limit cut it off: there is more to say, and any tool call was dropped. */
+  cutOff?: boolean;
 };
 
 export interface ChatModel {
@@ -123,6 +137,7 @@ class AnthropicModel implements ChatModel {
               // The connector validates every input against the tool's schema (ajv).
               eager_input_streaming: true,
             })),
+            ...(req.toolChoice ? { tool_choice: { type: "none" as const } } : {}),
           }
         : {}),
     });
@@ -145,7 +160,7 @@ class AnthropicModel implements ChatModel {
     };
     // A refusal or a cut-off output can leave a tool input incomplete: never run it.
     if (message.stop_reason === "refusal" || message.stop_reason === "max_tokens") {
-      return { text, toolCalls: [], usage };
+      return { text, toolCalls: [], usage, cutOff: message.stop_reason === "max_tokens" };
     }
     const toolCalls = message.content
       .filter((b): b is Anthropic.ToolUseBlock => b.type === "tool_use")
@@ -220,14 +235,21 @@ class GoogleModel implements ChatModel {
                   })),
                 },
               ],
+              ...(req.toolChoice
+                ? {
+                    toolConfig: { functionCallingConfig: { mode: FunctionCallingConfigMode.NONE } },
+                  }
+                : {}),
             }
           : {}),
       },
     });
     const parts: Part[] = [];
     let text = "";
+    let cutOff = false;
     const usage = { input: 0, output: 0 };
     for await (const chunk of stream) {
+      if (chunk.candidates?.[0]?.finishReason === FinishReason.MAX_TOKENS) cutOff = true;
       for (const part of chunk.candidates?.[0]?.content?.parts ?? []) {
         parts.push(part);
         if (part.text && !part.thought) {
@@ -240,6 +262,7 @@ class GoogleModel implements ChatModel {
         usage.output = chunk.usageMetadata.candidatesTokenCount ?? usage.output;
       }
     }
+    if (cutOff) return { text, toolCalls: [], usage, cutOff };
     const toolCalls = parts
       .filter((p) => p.functionCall?.name)
       .map((p, i) => ({
@@ -309,6 +332,7 @@ class OpenAIModel implements ChatModel {
               type: "function" as const,
               function: { name: t.name, description: t.description, parameters: t.parameters },
             })),
+            ...(req.toolChoice ? { tool_choice: "none" as const } : {}),
           }
         : {}),
     });
@@ -336,7 +360,7 @@ class OpenAIModel implements ChatModel {
         calls.set(d.index, call);
       }
     }
-    if (finish === "length") return { text, toolCalls: [], usage };
+    if (finish === "length") return { text, toolCalls: [], usage, cutOff: true };
     const toolCalls = [...calls.values()].map((c) => {
       let args: unknown = {};
       try {

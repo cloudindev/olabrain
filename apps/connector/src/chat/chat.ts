@@ -10,18 +10,40 @@
 import type { Attachment } from "@brainagent/core";
 import type { ConnectorContext } from "../context";
 import { addContactMemories, callTool } from "../router";
-import { buildChatModel, type ChatModel, type ChatTurn, type ToolSpec } from "./llm";
+import {
+  buildChatModel,
+  type ChatModel,
+  type ChatTurn,
+  type StepRequest,
+  type StepResult,
+  type ToolSpec,
+} from "./llm";
 import { extractFacts } from "./memory";
 import { buildInstructions, type RuntimeConfig } from "./prompt";
 
 export const MAX_HISTORY = 40;
 /** Tool rounds per reply when the agent's policy doesn't say (data-heavy questions). */
-export const DEFAULT_TOOL_STEPS = 20;
+export const DEFAULT_TOOL_STEPS = 100;
 /** Stop starting new tool rounds after this, to answer before the 300 s function limit. */
 const TOOL_BUDGET_MS = 200_000;
 /** What one tool result may add to the model's context (the rest is cut, with a note). */
 const MAX_TOOL_OUTPUT = 60_000;
 const REMEMBER_TOOL = "recordar_dato";
+/** Times one reply may be told to go on after stopping without finishing its work. */
+const MAX_NUDGES = 3;
+/** Its reply ends announcing another query ("Parto también el 27…") instead of making it. */
+const ANNOUNCES_MORE =
+  /^(?:ahora\s+)?(?:voy a|vuelvo a|l[oa]s? parto|parto|consulto|miro|compruebo|reviso|busco|repito|sigo|continúo|necesito consultar|déjame|un momento)\b/i;
+
+function announcesMore(text: string): boolean {
+  const last =
+    text
+      .trim()
+      .split(/(?<=[.!?…:])\s*/)
+      .filter(Boolean)
+      .at(-1) ?? "";
+  return ANNOUNCES_MORE.test(last);
+}
 
 export type ChatEvent =
   | { type: "delta"; text: string }
@@ -170,13 +192,20 @@ export async function* runChat(
   const usage = { prompt_tokens: 0, completion_tokens: 0 };
   const calls: { name: string; status: string; durationMs: number }[] = [];
   let finished = false;
+  let nudges = 0;
 
-  for (let step = 0; step <= maxSteps; step++) {
-    if (performance.now() - started > TOOL_BUDGET_MS) break;
-    const gen = model.step({ system, turns, tools });
+  /** One model call, streamed; steps of the same reply never run their texts together. */
+  async function* stream(request: StepRequest): AsyncGenerator<ChatEvent, StepResult> {
+    const gen = model.step(request);
     let next = await gen.next();
+    let first = true;
     while (!next.done) {
       firstTokenMs ??= Math.round(performance.now() - started);
+      if (first && fullText && !/\s$/.test(fullText)) {
+        fullText += "\n\n";
+        yield { type: "delta", text: "\n\n" };
+      }
+      first = false;
       yield { type: "delta", text: next.value };
       next = await gen.next();
     }
@@ -184,8 +213,29 @@ export async function* runChat(
     usage.prompt_tokens += result.usage.input;
     usage.completion_tokens += result.usage.output;
     fullText += result.text;
+    return result;
+  }
+
+  for (let step = 0; step <= maxSteps; step++) {
+    if (performance.now() - started > TOOL_BUDGET_MS) break;
+    const result = yield* stream({ system, turns, tools });
 
     if (!result.toolCalls.length) {
+      // Stopped with the work unfinished: cut off, silent after its tools, or only announcing.
+      const unfinished =
+        result.cutOff || (calls.length > 0 && (!result.text.trim() || announcesMore(result.text)));
+      if (unfinished && nudges < MAX_NUDGES) {
+        nudges++;
+        turns.push({ role: "assistant", content: result.text });
+        turns.push({
+          role: "user",
+          content:
+            "[Aviso del sistema] Tu respuesta no ha terminado. Si te falta alguna consulta, " +
+            "hazla ahora con la herramienta; si ya tienes los datos, da el resultado final. " +
+            "No repitas lo que ya has dicho.",
+        });
+        continue;
+      }
       finished = true;
       break;
     }
@@ -225,19 +275,11 @@ export async function* runChat(
         "queda incompleta y propón cómo seguir (por ejemplo, que el usuario escriba «continúa» " +
         "o acote la pregunta).",
     });
-    const gen = model.step({ system, turns, tools });
-    let next = await gen.next();
-    if (fullText && !/\s$/.test(fullText)) yield { type: "delta", text: "\n\n" };
-    while (!next.done) {
-      firstTokenMs ??= Math.round(performance.now() - started);
-      yield { type: "delta", text: next.value };
-      next = await gen.next();
+    yield* stream({ system, turns, tools, toolChoice: "none" });
+    if (!fullText.trim()) {
+      fullText = "No he podido terminar esta consulta. Prueba a acotarla por fechas o filtros.";
+      yield { type: "delta", text: fullText };
     }
-    const last = next.value;
-    usage.prompt_tokens += last.usage.input;
-    usage.completion_tokens += last.usage.output;
-    fullText += last.text;
-    // Any tool call it still asks for is ignored.
   }
 
   yield {

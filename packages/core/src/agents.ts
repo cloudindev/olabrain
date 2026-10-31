@@ -6,7 +6,7 @@ export const AGENT_STATUSES = ["draft", "active", "archived"] as const;
 
 export const agentPolicySchema = z.object({
   /** Max tool rounds the agent may chain in one reply (data-heavy questions need many). */
-  maxToolSteps: z.number().int().min(1).max(50).default(20),
+  maxToolSteps: z.number().int().min(1).max(100).default(100),
   /** Remember facts about each contact across conversations (RGPD: erasable per contact). */
   memoryEnabled: z.boolean().default(true),
 });
@@ -22,7 +22,7 @@ export const agentInputSchema = z.object({
   model: z.string().max(120).nullable(),
   presenceMode: z.enum(PRESENCE_MODES).default("voice"),
   status: z.enum(AGENT_STATUSES).default("draft"),
-  policy: agentPolicySchema.default({ maxToolSteps: 20, memoryEnabled: true }),
+  policy: agentPolicySchema.default({ maxToolSteps: 100, memoryEnabled: true }),
 });
 export type AgentInput = z.infer<typeof agentInputSchema>;
 

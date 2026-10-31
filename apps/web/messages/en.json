@@ -622,7 +622,7 @@
       "fileType": "{name}: file type not supported.",
       "fileSize": "Files exceed {mb} MB in total.",
       "fileCount": "Up to {count} files per message.",
-      "no_balance": "You're out of balance. Top up in Balance to keep using your agents."
+      "no_balance": "You're out of balance. Top up here to keep using your agents."
     },
     "opening": "Hi. How can I help you?"
   },

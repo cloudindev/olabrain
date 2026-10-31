@@ -47,6 +47,9 @@ TOOL_GUIDANCE = (
     "Antes de llamar a una herramienta, di en voz alta una frase muy corta como «Un momento, "
     "lo miro» para que la persona no espere en silencio. "
     "Usa las herramientas disponibles para consultar datos reales en lugar de suponer. "
+    "Si necesitas varias consultas, hazlas seguidas sin anunciarlas ni esperar a que te lo pidan: "
+    "si dices que vas a consultar algo, llama a la herramienta en ese mismo mensaje. "
+    "No termines hasta haber dado el resultado que te han pedido. "
     "Si una herramienta devuelve un error, explícalo con palabras sencillas. "
     "Antes de ejecutar una acción que modifica datos, el sistema te pedirá confirmación: "
     "explica al usuario exactamente qué vas a hacer y pregúntale si quiere continuar. "
@@ -124,7 +127,7 @@ class RuntimeAgent:
     persona_slug: str | None = None
     contact_id: str | None = None
     memory: list[str] = field(default_factory=list)
-    max_tool_steps: int = 4
+    max_tool_steps: int = 100
 
     @classmethod
     def from_config(cls, tenant_id: str, cfg: dict[str, Any]) -> RuntimeAgent:
@@ -159,7 +162,7 @@ class RuntimeAgent:
             persona_slug=persona.get("slug"),
             contact_id=memory_cfg.get("contactId") if memory_cfg else None,
             memory=memory_items,
-            max_tool_steps=int(policy.get("maxToolSteps") or 4),
+            max_tool_steps=int(policy.get("maxToolSteps") or 100),
         )
 
 

@@ -347,3 +347,17 @@ Implementa ADR-007 sin pagos (Stripe pendiente).
 **Consecuencias.**
 - Los clips y el retrato viven en `apps/web/public/cloe` y `public/personas/cloe.jpg`: quien tenga la URL puede abrirlos, igual que el widget del cliente. Lo privado es el personaje, no los ficheros.
 - La voz sale de `config/catalog-voices.json` por `slug`, así que el worker necesita una versión nueva para usarla.
+
+---
+
+## ADR-027 — Los agentes no se paran a mitad de una consulta (2026-10-31)
+
+**Contexto.** En preguntas con muchos datos el agente acababa sin responder o con «Parto también el 27…». Había tres causas: la respuesta final al agotar los pasos seguía ofreciendo herramientas y sus llamadas se ignoraban; una respuesta cortada, vacía tras usar herramientas o que solo anunciaba otra consulta se daba por terminada; y las listas se cortaban en 50 filas sin forma de ver las siguientes.
+
+**Decisión.**
+- El límite pasa a 100 pasos por respuesta para todos los agentes. El tope real sigue siendo el tiempo (200 s, por el límite de 300 s de la función).
+- La respuesta final se pide con `toolChoice: "none"` en los tres proveedores.
+- Si el modelo se queda cortado, callado o anunciando otra consulta, se le pide seguir, como mucho 3 veces por respuesta. El anuncio se detecta con una lista de frases en español, así que es una red de seguridad: la regla principal está en las instrucciones.
+- `ordenes_residuos`, `documentos_control` y `descargas_tacografo` aceptan `pagina`, de 50 en 50, con orden estable. El aviso remite a `resumen_datos` para contar o agrupar.
+
+**Consecuencias.** Una respuesta puede costar bastante más: cada paso reenvía el contexto y lo paga el monedero. Las conexiones existentes reciben `pagina` en su siguiente sincronización. El historial no guarda los resultados de las herramientas, así que al escribir «continúa» se repiten las consultas.

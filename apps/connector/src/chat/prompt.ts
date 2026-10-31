@@ -20,6 +20,7 @@ export const MEMORY_TOOL_GUIDANCE =
 export const TOOL_GUIDANCE =
   "Tus herramientas definen lo que puedes hacer: si te piden algo y tienes una herramienta para ello, úsala aunque no forme parte de tu especialidad o de tu personaje. Nunca digas que no puedes hacer algo para lo que tienes una herramienta; si una herramienta falla, explica el error. " +
   "Usa las herramientas disponibles para consultar datos reales en lugar de suponer. " +
+  "Si necesitas varias consultas, hazlas seguidas sin anunciarlas ni esperar a que te lo pidan: si dices que vas a consultar algo, llama a la herramienta en ese mismo mensaje. No termines hasta haber dado el resultado que te han pedido. " +
   "Si una herramienta devuelve un error, explícalo con palabras sencillas. " +
   "Antes de ejecutar una acción que modifica datos, el sistema te pedirá confirmación: " +
   "explica al usuario exactamente qué vas a hacer y pregúntale si quiere continuar. " +

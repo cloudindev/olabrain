@@ -622,7 +622,7 @@
       "fileType": "{name}: tipo de archivo no admitido.",
       "fileSize": "Los archivos superan {mb} MB en total.",
       "fileCount": "Máximo {count} archivos por mensaje.",
-      "no_balance": "Te has quedado sin saldo. Recarga en Saldo para seguir usando tus agentes."
+      "no_balance": "Te has quedado sin saldo. Recarga aquí para seguir usando tus agentes."
     },
     "opening": "Hola. ¿En qué te puedo ayudar?"
   },

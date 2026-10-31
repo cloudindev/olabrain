@@ -1,7 +1,7 @@
 /**
  * MyTutor tools (ADR-021): read-only, answered from the tenant's cache tables (never a
  * live call to MyTutor, except opening a PDF through a signed link). At most 50 rows,
- * always with `source: "mytutor"` and `synced_at` so the agent can cite where and when.
+ * always with `source: "ProfiECO"` and `synced_at` so the agent can cite where and when.
  * Workers' personal data (NIF, birth date, emails, personal phone, address) never reaches
  * the model.
  */
@@ -38,6 +38,7 @@ const LIMIT = 50;
 
 const desde = str("Desde (fecha AAAA-MM-DD)");
 const hasta = str("Hasta (fecha AAAA-MM-DD)");
+const pagina = int("Página de resultados, de 50 en 50 (por defecto, la 1)", { minimum: 1 });
 
 /** Group-by fields per entity for resumen_datos: SQL over the cached record. */
 const common = {
@@ -175,6 +176,7 @@ export const MYTUTOR_TOOLS: NativeToolDef[] = [
       matricula_o_tarjeta: str("Matrícula o número de tarjeta (opcional)"),
       desde,
       hasta,
+      pagina,
     }),
     mode: "read",
     autoConfirm: true,
@@ -183,7 +185,7 @@ export const MYTUTOR_TOOLS: NativeToolDef[] = [
     name: "documentos_control",
     description:
       "Documentos de control (ProfiDIGITAL) por estado y fechas de recogida, con enlace al PDF.",
-    inputSchema: schema({ estado: str("Estado (opcional)"), desde, hasta }),
+    inputSchema: schema({ estado: str("Estado (opcional)"), desde, hasta, pagina }),
     mode: "read",
     autoConfirm: true,
   },
@@ -191,10 +193,10 @@ export const MYTUTOR_TOOLS: NativeToolDef[] = [
     name: "ordenes_residuos",
     description:
       "Órdenes de trabajo de gestión de residuos entre dos fechas; filtra por cliente o matrícula.",
-    inputSchema: schema({ desde, hasta, texto: str("Cliente, matrícula o servicio (opcional)") }, [
-      "desde",
-      "hasta",
-    ]),
+    inputSchema: schema(
+      { desde, hasta, texto: str("Cliente, matrícula o servicio (opcional)"), pagina },
+      ["desde", "hasta"],
+    ),
     mode: "read",
     autoConfirm: true,
   },
@@ -249,6 +251,7 @@ export async function executeMytutorTool(
     where: (SQL | undefined)[],
     order: SQL[],
     withDeleted = false,
+    page?: number,
   ) =>
     ctx.tenantTx!(async (tx: Tx) => {
       const t = MYTUTOR_TABLES[entity];
@@ -262,34 +265,53 @@ export async function executeMytutorTool(
           .select()
           .from(t)
           .where(cond)
-          .orderBy(...order)
-          .limit(LIMIT),
+          // Tiebreaker: rows with the same date must not repeat or get lost between pages.
+          .orderBy(...order, asc(t.sourceId))
+          .limit(LIMIT)
+          .offset(((page ?? 1) - 1) * LIMIT),
         tx
           .select({ total: count(), syncedAt: max(t.syncedAt) })
           .from(t)
           .where(cond),
       ]);
-      return { rows: rows as Cached[], total: agg?.total ?? 0, syncedAt: agg?.syncedAt ?? null };
+      return {
+        rows: rows as Cached[],
+        total: agg?.total ?? 0,
+        syncedAt: agg?.syncedAt ?? null,
+        page,
+      };
     });
 
   const result = (
-    found: { rows: unknown[]; total: number; syncedAt: Date | null },
+    found: { rows: unknown[]; total: number; syncedAt: Date | null; page?: number },
     shaped: unknown[],
     extra: R = {},
-  ): NativeResult => ({
-    ok: true,
-    truncated: found.total > found.rows.length,
-    data: {
-      source: "mytutor",
-      synced_at: found.syncedAt?.toISOString() ?? null,
-      total: found.total,
-      ...(found.total > found.rows.length
-        ? { nota: `Se muestran ${found.rows.length} de ${found.total}; afina la búsqueda.` }
-        : {}),
-      ...extra,
-      rows: shaped,
-    },
-  });
+  ): NativeResult => {
+    const page = found.page ?? 1;
+    const more = found.total > (page - 1) * LIMIT + found.rows.length;
+    const next = found.page
+      ? `Es la página ${page}: pide pagina ${page + 1} para ver las siguientes.`
+      : "Afina la búsqueda para ver el resto.";
+    return {
+      ok: true,
+      truncated: more,
+      data: {
+        source: "ProfiECO",
+        synced_at: found.syncedAt?.toISOString() ?? null,
+        total: found.total,
+        ...(more
+          ? {
+              nota: `Se muestran ${found.rows.length} de ${found.total}. ${next} Para contar o agrupar usa resumen_datos, que no tiene límite.`,
+            }
+          : {}),
+        ...extra,
+        rows: shaped,
+      },
+    };
+  };
+
+  /** Page asked for by a tool that accepts `pagina` (always at least 1). */
+  const pageOf = (v: unknown) => Math.max(1, Math.floor(Number(v)) || 1);
 
   const t = MYTUTOR_TABLES;
   const like = (table: (typeof t)[MytutorEntity], text: unknown) => {
@@ -495,7 +517,13 @@ export async function executeMytutorTool(
         day(args.desde) ? gte(t.tach_files.occurredAt, day(args.desde)!) : undefined,
         day(args.hasta, true) ? lte(t.tach_files.occurredAt, day(args.hasta, true)!) : undefined,
       ];
-      const found = await find("tach_files", where, [desc(t.tach_files.occurredAt)]);
+      const found = await find(
+        "tach_files",
+        where,
+        [desc(t.tach_files.occurredAt)],
+        false,
+        pageOf(args.pagina),
+      );
       return result(
         found,
         found.rows.map((r) => {
@@ -520,7 +548,13 @@ export async function executeMytutorTool(
           ? lte(t.consignment_notes.occurredAt, day(args.hasta, true)!)
           : undefined,
       ];
-      const found = await find("consignment_notes", where, [desc(t.consignment_notes.occurredAt)]);
+      const found = await find(
+        "consignment_notes",
+        where,
+        [desc(t.consignment_notes.occurredAt)],
+        false,
+        pageOf(args.pagina),
+      );
       return result(
         found,
         found.rows.map((r) => {
@@ -547,7 +581,13 @@ export async function executeMytutorTool(
         lte(t.waste_work_orders.occurredAt, to),
         like(t.waste_work_orders, args.texto),
       ];
-      const found = await find("waste_work_orders", where, [desc(t.waste_work_orders.occurredAt)]);
+      const found = await find(
+        "waste_work_orders",
+        where,
+        [desc(t.waste_work_orders.occurredAt)],
+        false,
+        pageOf(args.pagina),
+      );
       return result(
         found,
         found.rows.map((r) => {
@@ -614,7 +654,7 @@ export async function executeMytutorTool(
           ok: true,
           truncated: false,
           data: {
-            source: "mytutor",
+            source: "ProfiECO",
             synced_at: agg?.syncedAt?.toISOString() ?? null,
             datos: entity,
             total: Number(agg?.total ?? 0),
