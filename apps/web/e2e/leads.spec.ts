@@ -44,16 +44,29 @@ test("a widget lead shows in the navbar badge, the list (with its agent) and the
       'Alojar 5 servidores en un rack', 'Interés alto, quiere precio esta semana'
     from agents where id = '${agentId}'`;
   execFileSync("psql", [process.env.DATABASE_URL_ADMIN!, "-X", "-q", "-c", sql]);
+  const second = `insert into leads (tenant_id, agent_id, agent_name, name, email, request)
+    select tenant_id, id, name, 'Marta Gil', 'marta@cliente.es', 'Pide presupuesto'
+    from agents where id = '${agentId}'`;
+  execFileSync("psql", [process.env.DATABASE_URL_ADMIN!, "-X", "-q", "-c", second]);
 
   await page.goto("/agents", { waitUntil: "networkidle" });
-  await expect(page.getByTestId("leads-badge")).toHaveText("1");
+  await expect(page.getByTestId("leads-badge")).toHaveText("2");
   await page.getByRole("link", { name: /Leads/ }).first().click();
   await expect(page).toHaveURL(/\/leads$/);
   await expect(page.getByText("Luis Sánchez").first()).toBeVisible();
   await expect(page.getByText("Lía").first()).toBeVisible();
-  await page.getByText("Luis Sánchez").first().click();
+  const row = (name: string) => page.getByRole("link", { name: new RegExp(name) });
+  await expect(row("Luis Sánchez")).toHaveAttribute("data-unread", "true");
+  await expect(row("Marta Gil")).toHaveAttribute("data-unread", "true");
+  await row("Luis Sánchez").click();
   await expect(page.getByText("Interés alto, quiere precio esta semana")).toBeVisible();
-  // Opened = read: the badge goes away.
-  await page.goto("/agents", { waitUntil: "networkidle" });
+  // Opened = read, with no reload and whatever its status: one less in the badge.
+  await expect(page.getByTestId("leads-badge")).toHaveText("1");
+  await expect(page.getByTestId("lead-status")).toHaveText("Nuevo");
+  await page.getByRole("link", { name: /Volver|←/ }).click();
+  await expect(page).toHaveURL(/\/leads$/);
+  await expect(row("Luis Sánchez")).not.toHaveAttribute("data-unread");
+  await expect(row("Marta Gil")).toHaveAttribute("data-unread", "true");
+  await row("Marta Gil").click();
   await expect(page.getByTestId("leads-badge")).toHaveCount(0);
 });

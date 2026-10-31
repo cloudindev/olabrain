@@ -8,6 +8,7 @@ import type { ReactNode } from "react";
 import { z } from "zod";
 import { AgentFace } from "@/components/avatar/agent-face";
 import { LeadFollowUp } from "@/components/leads/lead-follow-up";
+import { RefreshOnRead } from "@/components/leads/refresh-on-read";
 import { PageHeader } from "@/components/page-header";
 import { LEAD_TONE } from "@/lib/lead-status";
 import { requireTenant, tenantTx } from "@/lib/tenant";
@@ -97,6 +98,7 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
 
   return (
     <>
+      {lead.readAt ? null : <RefreshOnRead />}
       <p className="mb-4 text-sm">
         <Link href="/leads" className="text-ink-2 hover:text-ink">
           ← {t("back")}

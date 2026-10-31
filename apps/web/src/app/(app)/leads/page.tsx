@@ -74,10 +74,13 @@ export default async function LeadsPage() {
                 <li key={l.id}>
                   <Link
                     href={`/leads/${l.id}`}
+                    data-unread={unread || undefined}
                     className={cn(
-                      "flex flex-col gap-1.5 px-5 py-4 text-sm hover:bg-surface-2",
+                      "flex flex-col gap-1.5 px-5 py-4 text-sm",
                       COLS,
-                      unread ? "font-semibold text-ink" : "text-ink-2",
+                      unread
+                        ? "bg-surface-2 font-semibold text-ink hover:brightness-95"
+                        : "text-ink-2 hover:bg-surface-2",
                     )}
                   >
                     <span className="flex items-center gap-2 whitespace-nowrap text-xs lg:text-sm">
