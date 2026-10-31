@@ -49,7 +49,7 @@ export default async function LeadsPage() {
           {t("empty")}
         </Card>
       ) : (
-        <Card>
+        <Card className="overflow-hidden">
           <div
             className={cn(
               "hidden border-b border-line px-5 py-3 text-xs font-medium text-ink-3",
