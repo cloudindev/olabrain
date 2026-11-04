@@ -130,8 +130,9 @@ function ToolChips({ tools }: { tools: ToolEvent[] }) {
 /**
  * The agent's main view (ADR-013): the video avatar and one conversation where you can
  * write, attach files or start a voice call (its transcript joins the same thread).
- * Desktop: avatar 9:16 on the left, chat on the right. Mobile: full screen over the
- * avatar, with the last two messages floating above the controls.
+ * The avatar only shows during a call (ADR-029). Desktop: the chat alone, or avatar 9:16
+ * on the left and chat on the right in a call. Mobile: a full-screen chat, or in a call
+ * the avatar full screen with the last two messages floating above the controls.
  */
 export function AgentConsole({
   agent,
@@ -425,6 +426,23 @@ export function AgentConsole({
             ? "bg-ok"
             : "bg-ink-3";
   const callError = call.error ? t(`errors.${call.error}`) : null;
+  // The avatar only shows during a call; a text chat takes the whole width (ADR-029).
+  const voiceView = call.status === "connecting" || live;
+  const statusPill = (
+    <div
+      className={cn(
+        "flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-medium",
+        voiceView
+          ? "bg-white/85 text-[#16181c] shadow-sm backdrop-blur"
+          : "bg-surface-2 text-ink-2",
+      )}
+      aria-live="polite"
+      data-testid="agent-console-state"
+    >
+      <span className={cn("size-2 rounded-full", dot)} />
+      {status}
+    </div>
+  );
   const shownError = callError ?? error;
   const canSend = (input.trim().length > 0 || files.length > 0) && !busy;
   const visible = messages.filter(
@@ -439,11 +457,13 @@ export function AgentConsole({
   return (
     <div
       className={cn(
-        // Mobile: full-screen call-like view over the avatar.
+        // Mobile: full screen; in a call, a call-like view over the avatar.
         // 100dvh = the visible height (without Safari's toolbars), not the screen's.
-        "fixed inset-x-0 top-0 z-40 flex h-dvh flex-col overflow-hidden bg-[#f3f3f1]",
-        // Desktop: avatar column + chat panel.
-        "lg:static lg:z-auto lg:grid lg:h-[calc(100dvh-12.5rem)] lg:min-h-[560px] lg:grid-cols-[auto_1fr] lg:gap-6 lg:overflow-visible lg:bg-transparent",
+        "fixed inset-x-0 top-0 z-40 flex h-dvh flex-col overflow-hidden",
+        voiceView ? "bg-[#f3f3f1]" : "bg-paper",
+        // Desktop: in a call, avatar column + chat panel; otherwise the chat alone.
+        "lg:static lg:z-auto lg:grid lg:h-[calc(100dvh-12.5rem)] lg:min-h-[560px] lg:gap-6 lg:overflow-visible lg:bg-transparent",
+        voiceView ? "lg:grid-cols-[auto_1fr]" : "lg:grid-cols-1",
       )}
     >
       {/* Avatar */}
@@ -458,6 +478,8 @@ export function AgentConsole({
           "lg:relative lg:inset-auto lg:aspect-[9/16] lg:h-full lg:rounded-[28px] lg:border lg:border-line",
           "lg:shadow-[0_30px_80px_-40px_rgba(22,24,28,0.45)] lg:transition-[box-shadow] lg:duration-500",
           clip === "talking" && "lg:shadow-[0_30px_90px_-30px_var(--signal)]",
+          // Kept mounted (the greeting starts inside the click), hidden outside a call.
+          !voiceView && "hidden",
         )}
       >
         {/* Top bar: on mobile also navigation */}
@@ -469,14 +491,7 @@ export function AgentConsole({
           >
             <ArrowLeft className="size-5" />
           </Link>
-          <div
-            className="flex items-center gap-2 rounded-full bg-white/85 px-3 py-1.5 text-sm font-medium text-[#16181c] shadow-sm backdrop-blur"
-            aria-live="polite"
-            data-testid="agent-console-state"
-          >
-            <span className={cn("size-2 rounded-full", dot)} />
-            {status}
-          </div>
+          {voiceView ? statusPill : null}
           <div className="ml-auto flex items-center gap-2">
             {live && elapsed !== null ? (
               <span className="rounded-full bg-white/85 px-3 py-1.5 font-mono text-sm text-[#4a4d55] shadow-sm backdrop-blur">
@@ -510,7 +525,8 @@ export function AgentConsole({
       <section
         aria-label={t("title")}
         className={cn(
-          "relative z-10 mt-auto flex min-h-0 flex-col",
+          "relative z-10 flex min-h-0 flex-col",
+          voiceView ? "mt-auto" : "flex-1",
           "lg:mt-0 lg:overflow-hidden lg:rounded-[28px] lg:border lg:border-line lg:bg-surface lg:shadow-[0_1px_0_rgba(0,0,0,0.02)]",
         )}
         onDragOver={(e) => {
@@ -525,17 +541,63 @@ export function AgentConsole({
           if (!live && e.dataTransfer.files.length) void addFiles(e.dataTransfer.files);
         }}
       >
-        <header className="hidden items-center gap-3 border-b border-line px-5 py-3.5 lg:flex">
-          <h2 className="font-display text-lg font-semibold tracking-tight">{t("title")}</h2>
+        <header
+          className={cn(
+            "items-center gap-2 border-b border-line lg:gap-3 lg:px-5 lg:py-3.5",
+            voiceView
+              ? "hidden lg:flex"
+              : "flex px-3 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] lg:pt-3.5",
+          )}
+        >
+          {voiceView ? null : (
+            <Link
+              href="/agents"
+              aria-label={t("back")}
+              className="flex size-10 shrink-0 items-center justify-center rounded-full text-ink-2 hover:bg-surface-2 lg:hidden"
+            >
+              <ArrowLeft className="size-5" />
+            </Link>
+          )}
+          <h2 className="truncate font-display text-lg font-semibold tracking-tight">
+            {/* On mobile the page header is hidden: the chat names the agent. */}
+            {voiceView ? (
+              t("title")
+            ) : (
+              <>
+                <span className="lg:hidden">{agent.name}</span>
+                <span className="max-lg:hidden">{t("title")}</span>
+              </>
+            )}
+          </h2>
+          {voiceView ? null : statusPill}
           <button
             type="button"
             onClick={reset}
             disabled={busy || live || messages.length === 0}
-            className="ml-auto inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm text-ink-2 hover:bg-surface-2 hover:text-ink disabled:opacity-40"
+            aria-label={t("newConversation")}
+            className="ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-sm text-ink-2 hover:bg-surface-2 hover:text-ink disabled:opacity-40"
           >
             <RotateCcw className="size-4" />
-            {t("newConversation")}
+            <span className="max-lg:hidden">{t("newConversation")}</span>
           </button>
+          {voiceView ? null : (
+            <>
+              <Link
+                href={`/agents/${agent.id}?tab=customize`}
+                aria-label={t("tabs.customize")}
+                className="flex size-10 shrink-0 items-center justify-center rounded-full text-ink-2 hover:bg-surface-2 lg:hidden"
+              >
+                <SlidersHorizontal className="size-5" />
+              </Link>
+              <Link
+                href={`/agents/${agent.id}?tab=connections`}
+                aria-label={t("tabs.connections")}
+                className="flex size-10 shrink-0 items-center justify-center rounded-full text-ink-2 hover:bg-surface-2 lg:hidden"
+              >
+                <Plug className="size-5" />
+              </Link>
+            </>
+          )}
         </header>
 
         {pinned.length ? (
@@ -561,14 +623,16 @@ export function AgentConsole({
         <div
           className={cn(
             "flex flex-col gap-3 px-4 pb-3",
-            // Mobile: only the last two messages float above the controls.
-            "max-lg:[&>[data-msg]:not(:nth-last-child(-n+3))]:hidden",
+            // Mobile, in a call: only the last two messages float above the controls.
+            voiceView
+              ? "max-lg:[&>[data-msg]:not(:nth-last-child(-n+3))]:hidden"
+              : "min-h-0 flex-1 overflow-y-auto py-4",
             "lg:flex-1 lg:gap-5 lg:overflow-y-auto lg:px-6 lg:py-6",
           )}
           data-testid="chat-log"
         >
           {visible.length === 0 ? (
-            <div className="m-auto hidden max-w-sm text-center lg:block">
+            <div className={cn("m-auto max-w-sm text-center", voiceView && "hidden lg:block")}>
               <span className="mx-auto mb-4 flex size-12 items-center justify-center rounded-2xl bg-signal-soft text-signal">
                 <AudioLines className="size-6" />
               </span>
@@ -613,11 +677,16 @@ export function AgentConsole({
                     className={cn(
                       // Long tokens (URLs, code) wrap inside the bubble; on the phone a long
                       // reply scrolls instead of covering the avatar.
-                      "max-w-full text-[15px] leading-relaxed [overflow-wrap:anywhere] max-lg:max-h-[45dvh] max-lg:overflow-y-auto",
+                      "max-w-full text-[15px] leading-relaxed [overflow-wrap:anywhere]",
+                      voiceView && "max-lg:max-h-[45dvh] max-lg:overflow-y-auto",
                       m.role === "user" && "whitespace-pre-wrap",
                       m.role === "user"
-                        ? "rounded-2xl rounded-br-md bg-ink px-4 py-2.5 text-paper max-lg:bg-[#1f4f8f] max-lg:text-white max-lg:shadow-lg"
-                        : "rounded-2xl rounded-bl-md bg-surface-2 px-4 py-2.5 text-ink max-lg:bg-white/90 max-lg:text-[#16181c] max-lg:shadow-lg max-lg:backdrop-blur",
+                        ? "rounded-2xl rounded-br-md bg-ink px-4 py-2.5 text-paper"
+                        : "rounded-2xl rounded-bl-md bg-surface-2 px-4 py-2.5 text-ink",
+                      voiceView &&
+                        (m.role === "user"
+                          ? "max-lg:bg-[#1f4f8f] max-lg:text-white max-lg:shadow-lg"
+                          : "max-lg:bg-white/90 max-lg:text-[#16181c] max-lg:shadow-lg max-lg:backdrop-blur"),
                     )}
                     data-testid={m.role === "assistant" ? "assistant-message" : undefined}
                   >
@@ -753,7 +822,8 @@ export function AgentConsole({
               ) : null}
               <div
                 className={cn(
-                  "flex items-end gap-2 rounded-[26px] border border-line bg-surface p-1.5 shadow-lg transition lg:shadow-none",
+                  "flex items-end gap-2 rounded-[26px] border border-line bg-surface p-1.5 transition lg:shadow-none",
+                  voiceView && "shadow-lg",
                   "focus-within:border-line-strong focus-within:ring-2 focus-within:ring-focus/15",
                   dragging && "border-signal ring-2 ring-signal/20",
                 )}

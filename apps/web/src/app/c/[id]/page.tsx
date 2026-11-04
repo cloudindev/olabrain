@@ -62,6 +62,7 @@ export default async function SharedAgentPage({ params }: { params: Promise<{ id
       halo={{ mode: "multicolor", color: "#a6f55a" }}
       apiBase={`/api/share/${link.id}`}
       standalone
+      avatar={{ video: link.avatarVideo, image: link.avatarImage }}
     />
   );
 }

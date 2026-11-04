@@ -372,3 +372,14 @@ Implementa ADR-007 sin pagos (Stripe pendiente).
 - En voz, el worker añade la herramienta `mostrar_tabla(titulo, columnas, filas)`: la tabla se envía por el canal de datos (`agent.table`) al panel y al widget, se guarda en la transcripción y la voz solo resume. Máximo 100 filas, 12 columnas y 6.000 caracteres, por el límite de un paquete de datos de LiveKit; las filas que no caben se indican.
 
 **Consecuencias.** El modelo decide cuándo usar `mostrar_tabla`; puede olvidarlo y leer la lista en voz. En canales sin pantalla (teléfono) la tabla no se ve, pero queda en la transcripción.
+
+## ADR-029 — El vídeo del agente solo durante la llamada (2026-11-04)
+
+**Contexto.** En la consola el vídeo ocupaba la columna izquierda también al escribir, y el chat quedaba estrecho para tablas y respuestas largas. El enlace compartido no mostraba el vídeo en ninguna llamada.
+
+**Decisión.**
+- Consola: en texto, el chat ocupa todo el ancho (escritorio) o toda la pantalla con cabecera propia (móvil). Al pulsar voz, y mientras dura la llamada, vuelve la vista de llamada: vídeo a la izquierda en escritorio, y en móvil vídeo de fondo con los dos últimos mensajes encima. Al colgar se vuelve al chat.
+- Enlace compartido: la misma vista de llamada con el vídeo (o el retrato) del personaje. Ahí el agente saluda por voz, así que el vídeo solo alterna reposo y habla, sin el clip de saludo.
+- El vídeo queda montado pero oculto fuera de la llamada, para que el saludo pueda empezar dentro del clic.
+
+**Consecuencias.** El widget embebido no cambia: sigue sin vídeo.

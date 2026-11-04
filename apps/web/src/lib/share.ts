@@ -57,6 +57,8 @@ export type SharedLink = {
   agentName: string;
   agentRole: string;
   avatarImage: string | null;
+  /** The persona's video avatar folder, shown during a call. */
+  avatarVideo: string | null;
   config: ShareConfig;
 };
 
@@ -85,6 +87,7 @@ export const resolveShare = cache(async (channelId: string): Promise<SharedLink 
       agentName: row.agent.name,
       agentRole: row.agent.role,
       avatarImage: row.persona?.avatarUrl ?? null,
+      avatarVideo: row.persona?.avatarVideo ?? null,
       config: parsed.data,
     };
   });

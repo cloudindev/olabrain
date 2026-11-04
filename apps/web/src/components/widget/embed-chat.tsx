@@ -5,7 +5,7 @@ import { ArrowUp, FileText, Mic, PhoneOff, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AgentFace } from "@/components/avatar/agent-face";
-import type { VoiceState } from "@/components/avatar/avatar-stage";
+import { AvatarStage, useAvatarClip, type VoiceState } from "@/components/avatar/avatar-stage";
 import { RichText } from "@/components/agents/rich-text";
 import {
   CallStartError,
@@ -28,7 +28,8 @@ const nextId = () => `w${++seq}`;
  * The widget's panel, rendered in our iframe on the customer's site: text chat and a
  * voice call with the agent. The visitor is anonymous; the conversation id and its messages
  * live in sessionStorage, so a reload or another page of the site keeps the thread until
- * the tab is closed.
+ * the tab is closed. With `avatar` (shared link), a call shows the agent's video like the
+ * console: full screen behind the last messages on mobile, on the left on desktop.
  */
 export function EmbedChat({
   channelId,
@@ -37,6 +38,7 @@ export function EmbedChat({
   halo,
   apiBase = `/api/widget/${channelId}`,
   standalone = false,
+  avatar,
 }: {
   channelId: string;
   agent: { name: string; role: string; avatar: string | null };
@@ -46,6 +48,8 @@ export function EmbedChat({
   apiBase?: string;
   /** A full page of its own (shared link): no close button, centred column. */
   standalone?: boolean;
+  /** The persona's video folder or portrait, shown during a call. */
+  avatar?: { video: string | null; image: string | null };
 }) {
   const t = useTranslations("widget");
   const storageKey = `olabrain:${channelId}:conversation`;
@@ -60,6 +64,9 @@ export function EmbedChat({
   const call = useVoiceCall();
   const live = call.status === "live";
   const elapsed = useElapsed(call.startedAt);
+  // The agent greets by voice here, so the avatar only switches between idle and talking.
+  const { clip, greetingRef, onGreetingEnd } = useAvatarClip(agentState);
+  const stage = Boolean(avatar?.video || avatar?.image) && (call.status === "connecting" || live);
 
   useEffect(() => {
     try {
@@ -191,14 +198,22 @@ export function EmbedChat({
       )
     : null;
 
-  return (
+  const chat = (
     <div
       className={cn(
         "flex h-dvh flex-col overflow-x-hidden bg-paper text-ink",
         standalone && "mx-auto w-full max-w-3xl sm:border-x sm:border-line",
+        stage &&
+          "relative z-10 max-lg:bg-transparent lg:h-full lg:max-w-none lg:overflow-hidden lg:rounded-[28px] lg:border lg:border-line",
       )}
     >
-      <header className="flex items-center gap-3 border-b border-line bg-surface px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
+      <header
+        className={cn(
+          "flex items-center gap-3 border-b border-line bg-surface px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))]",
+          stage &&
+            "max-lg:border-transparent max-lg:bg-gradient-to-b max-lg:from-black/40 max-lg:to-transparent max-lg:text-white",
+        )}
+      >
         <span
           className={cn("relative rounded-full p-[3px]", speaking && "animate-pulse")}
           style={{ background: haloGradient(halo) }}
@@ -211,7 +226,7 @@ export function EmbedChat({
         </span>
         <div className="min-w-0 flex-1">
           <p className="truncate font-display text-base font-semibold">{agent.name}</p>
-          <p className="truncate text-xs text-ink-2">
+          <p className={cn("truncate text-xs text-ink-2", stage && "max-lg:text-white/80")}>
             {live
               ? `${t(`state.${agentState === "speaking" ? "speaking" : agentState === "thinking" ? "thinking" : "listening"}`)} · ${formatClock(elapsed ?? 0)}`
               : agent.role || t("ai")}
@@ -244,20 +259,35 @@ export function EmbedChat({
             type="button"
             onClick={close}
             aria-label={t("close")}
-            className="flex size-10 items-center justify-center rounded-full text-ink-2 hover:bg-surface-2"
+            className={cn(
+              "flex size-10 items-center justify-center rounded-full text-ink-2 hover:bg-surface-2",
+              stage && "max-lg:text-white",
+            )}
           >
             <X className="size-5" />
           </button>
         )}
       </header>
 
-      <div className="flex-1 overflow-y-auto px-4 py-4" data-testid="widget-log">
-        {messages.length === 0 ? (
+      <div
+        className={cn(
+          "flex-1 overflow-y-auto px-4 py-4",
+          stage && "max-lg:flex max-lg:flex-col max-lg:justify-end",
+        )}
+        data-testid="widget-log"
+      >
+        {messages.length === 0 && !stage ? (
           <p className="mx-auto mt-8 max-w-xs text-center text-sm text-ink-2">
             {t("empty", { name: agent.name })}
           </p>
         ) : null}
-        <div className="flex flex-col gap-3">
+        <div
+          className={cn(
+            "flex flex-col gap-3",
+            // Mobile, in a call: only the last two messages float over the video.
+            stage && "max-lg:[&>div:not(:nth-last-child(-n+2))]:hidden",
+          )}
+        >
           {messages
             .filter((m) => m.text || m.links?.length || (busy && m === messages.at(-1)))
             .map((m) => (
@@ -278,6 +308,11 @@ export function EmbedChat({
                         m.role === "user"
                           ? "rounded-br-md bg-ink text-paper"
                           : "rounded-bl-md bg-surface-2",
+                        stage && "max-lg:max-h-[40dvh] max-lg:overflow-y-auto max-lg:shadow-lg",
+                        stage &&
+                          (m.role === "user"
+                            ? "max-lg:bg-[#1f4f8f] max-lg:text-white"
+                            : "max-lg:bg-white/90 max-lg:text-[#16181c] max-lg:backdrop-blur"),
                       )}
                     >
                       {m.text ? m.role === "assistant" ? <RichText text={m.text} /> : m.text : "…"}
@@ -308,7 +343,10 @@ export function EmbedChat({
         </p>
       ) : null}
       <form
-        className="flex items-end gap-2 border-t border-line bg-surface px-3 py-3"
+        className={cn(
+          "flex items-end gap-2 border-t border-line bg-surface px-3 py-3",
+          stage && "max-lg:border-transparent max-lg:bg-transparent",
+        )}
         onSubmit={(e) => {
           e.preventDefault();
           void send();
@@ -338,7 +376,12 @@ export function EmbedChat({
           <ArrowUp className="size-5" />
         </button>
       </form>
-      <p className="bg-surface pb-[calc(env(safe-area-inset-bottom)+0.5rem)] text-center text-[11px] text-ink-3">
+      <p
+        className={cn(
+          "bg-surface pb-[calc(env(safe-area-inset-bottom)+0.5rem)] text-center text-[11px] text-ink-3",
+          stage && "max-lg:bg-transparent max-lg:text-white/80",
+        )}
+      >
         {t.rich("notice", {
           brand: (chunks) => (
             <a
@@ -359,6 +402,30 @@ export function EmbedChat({
         onFile={onFile}
         onTable={onTable}
       />
+    </div>
+  );
+  if (!avatar?.video && !avatar?.image) return chat;
+  return (
+    <div
+      className={cn(
+        "relative bg-paper",
+        stage && "lg:mx-auto lg:grid lg:h-dvh lg:max-w-6xl lg:grid-cols-[auto_1fr] lg:gap-6 lg:p-6",
+      )}
+    >
+      {/* Kept mounted so the clips are loaded when the call starts. */}
+      <AvatarStage
+        clip={clip}
+        onGreetingEnd={onGreetingEnd}
+        greetingRef={greetingRef}
+        src={avatar.video ?? undefined}
+        image={avatar.video ? undefined : (avatar.image ?? undefined)}
+        className={cn(
+          stage
+            ? "absolute inset-0 lg:relative lg:inset-auto lg:aspect-[9/16] lg:h-full lg:rounded-[28px] lg:border lg:border-line"
+            : "hidden",
+        )}
+      />
+      {chat}
     </div>
   );
 }
