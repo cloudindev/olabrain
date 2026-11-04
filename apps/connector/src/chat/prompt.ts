@@ -26,6 +26,11 @@ export const TOOL_GUIDANCE =
   "explica al usuario exactamente qué vas a hacer y pregúntale si quiere continuar. " +
   "Solo si responde que sí, vuelve a llamar a la herramienta con los mismos argumentos.";
 
+/** Text chat only (voice uses the mostrar_tabla tool): the chat UIs draw Markdown tables. */
+export const FORMAT_GUIDANCE =
+  "Cuando muestres datos con varias filas o columnas (listados, rankings, comparativas, " +
+  "totales), usa una tabla Markdown con fila de encabezado y separador (| --- |).";
+
 const WEEKDAYS = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
 const MONTHS = [
   "enero",
@@ -83,6 +88,7 @@ export function buildInstructions(cfg: RuntimeConfig, now?: Date): string {
     cfg.agent.instructions ?? "",
     AI_DISCLOSURE,
     dateContext(now),
+    FORMAT_GUIDANCE,
     cfg.tools.length ? TOOL_GUIDANCE : "",
     cfg.tools.length ? `Herramientas que tienes: ${cfg.tools.map((t) => t.name).join(", ")}.` : "",
     memorySection(cfg.memory?.items ?? []),

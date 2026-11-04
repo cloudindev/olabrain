@@ -241,6 +241,14 @@ export function AgentConsole({
     [pin],
   );
 
+  // A table the agent shows during a call: in the thread, while the voice summarizes it.
+  const onTable = useCallback((markdown: string) => {
+    setMessages((prev) => [
+      ...prev,
+      { id: nextId(), role: "assistant", text: markdown, source: "voice", tools: [] },
+    ]);
+  }, []);
+
   async function addFiles(list: FileList | File[]) {
     setError(null);
     const incoming = [...list];
@@ -825,6 +833,7 @@ export function AgentConsole({
         onState={setAgentState}
         onTranscript={onTranscript}
         onFile={onFile}
+        onTable={onTable}
       />
     </div>
   );

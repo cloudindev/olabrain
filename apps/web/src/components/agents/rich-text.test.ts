@@ -52,4 +52,31 @@ describe("RichText", () => {
     expect(out).toContain("</a>.");
     expect(html("[x](javascript:alert(1))")).not.toContain("<a");
   });
+
+  it("draws Markdown tables with header, alignment and escaped pipes", () => {
+    const out = html(
+      "**Top 10**\n\n| # | Cliente | Órdenes |\n|---|---|---:|\n| 1 | **FCC Aqualia** | 142 |\n| 2 | A \\| B | 55 |\n\nFin",
+    );
+    expect(out).toContain('<div class="max-w-full overflow-x-auto rounded-xl border');
+    expect(out).toContain('<th class="px-2.5 py-2 font-semibold sm:px-3 text-left">Cliente</th>');
+    expect(out).toContain('<th class="px-2.5 py-2 font-semibold sm:px-3 text-right">Órdenes</th>');
+    expect(out).toContain(
+      '<td class="px-2.5 py-2 align-top sm:px-3 whitespace-nowrap text-left"><strong>FCC Aqualia</strong></td>',
+    );
+    expect(out).toContain(">A | B</td>");
+    expect(out).toContain('text-right">142</td>');
+    expect(out).not.toContain("---");
+    expect(out).toContain("<p>Fin</p>");
+  });
+
+  it("keeps a lone pipe line as text and tolerates a row still streaming", () => {
+    expect(html("a | b\n| solo |")).not.toContain("<table");
+    const out = html("| a | b |\n|---|---|\n| 1 | 2");
+    expect(out).toContain("<table");
+    expect(out).toContain(">2</td>");
+  });
+
+  it("never injects HTML from a table cell", () => {
+    expect(html("| x |\n|---|\n| <script>alert(1)</script> |")).toContain("&lt;script&gt;");
+  });
 });

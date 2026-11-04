@@ -7,6 +7,7 @@ from brainagent_agent.agent_runtime import (
     build_function_tools,
     date_context,
     llm_config_for,
+    table_markdown,
 )
 from brainagent_agent.config import LLMConfig
 
@@ -111,7 +112,7 @@ async def test_chat_bridge_delegates_confirmation_to_the_connector() -> None:
 def test_function_tools_use_the_connector_schema() -> None:
     agent = RuntimeAgent.from_config("t-1", CONFIG)
     tools = build_function_tools(
-        ToolBridge(client=FakeConnector([]), agent=agent, conversation_id=None)
+        ToolBridge(client=FakeConnector([]), agent=agent, conversation_id=None, channel="chat")
     )  # type: ignore[arg-type]
     assert len(tools) == 1
     info = tools[0].info  # type: ignore[union-attr]
@@ -127,3 +128,41 @@ def test_date_context_is_spanish_and_in_the_agent_timezone() -> None:
     assert text.startswith("Hoy es martes, 20 de octubre de 2026 (2026-10-20)")
     assert "RuntimeAgent" not in text
     assert "Hoy es" in RuntimeAgent.from_config("t-1", CONFIG).instructions
+
+
+async def test_voice_shows_tables_on_screen_instead_of_reading_them() -> None:
+    agent = RuntimeAgent.from_config("t-1", CONFIG)
+    bridge = ToolBridge(client=FakeConnector([]), agent=agent, conversation_id=None)  # type: ignore[arg-type]
+    shown: list[str] = []
+
+    async def on_table(markdown: str) -> None:
+        shown.append(markdown)
+
+    bridge.on_table = on_table
+    tools = build_function_tools(bridge)
+    table = next(t for t in tools if t.info.name == "mostrar_tabla")  # type: ignore[union-attr]
+    out = await table(  # type: ignore[operator]
+        raw_arguments={
+            "titulo": "Top clientes",
+            "columnas": ["#", "Cliente", "Órdenes"],
+            "filas": [["1", "FCC Aqualia, S.A.", "142"], ["2", "A|B", 55]],
+        }
+    )
+    assert "No la leas" in out
+    assert shown == [
+        "**Top clientes**\n\n| # | Cliente | Órdenes |\n|---|---|---|\n"
+        "| 1 | FCC Aqualia, S.A. | 142 |\n| 2 | A\\|B | 55 |"
+    ]
+    assert "mostrar_tabla" not in [
+        t.info.name  # type: ignore[union-attr]
+        for t in build_function_tools(
+            ToolBridge(client=FakeConnector([]), agent=agent, conversation_id=None, channel="chat")  # type: ignore[arg-type]
+        )
+    ]
+
+
+def test_table_markdown_caps_rows_and_pads_cells() -> None:
+    md = table_markdown(None, ["a", "b"], [["1"]] + [["x", "y"]] * 150)
+    assert md.splitlines()[2] == "| 1 |  |"
+    assert md.count("\n| x | y |") == 99
+    assert md.endswith("_(51 filas más no mostradas)_")

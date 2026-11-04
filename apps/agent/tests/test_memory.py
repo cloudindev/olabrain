@@ -57,7 +57,7 @@ def test_no_memory_without_contact() -> None:
     tools = build_function_tools(
         ToolBridge(client=FakeConnector(), agent=agent, conversation_id=None)
     )  # type: ignore[arg-type]
-    assert tools == []
+    assert "recordar_dato" not in [t.info.name for t in tools]  # type: ignore[union-attr]
 
 
 async def test_recordar_dato_tool_saves_an_explicit_fact() -> None:

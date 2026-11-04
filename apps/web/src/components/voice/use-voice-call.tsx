@@ -147,21 +147,33 @@ export type SharedFile = { label: string; url: string };
 
 /** Topic on which the voice worker shares files a tool produced (agent.files). */
 const FILES_TOPIC = "agent.files";
+/** Tables the agent shows during a call, as Markdown (agent.table). */
+const TABLE_TOPIC = "agent.table";
 const decoder = new TextDecoder();
 
 function Probe({
   onState,
   onTranscript,
   onFile,
+  onTable,
 }: {
   onState: (s: VoiceState) => void;
   onTranscript?: (lines: VoiceLine[]) => void;
   onFile?: (file: SharedFile) => void;
+  onTable?: (markdown: string) => void;
 }) {
   useDataChannel(FILES_TOPIC, (msg) => {
     try {
       const file = JSON.parse(decoder.decode(msg.payload)) as SharedFile;
       if (typeof file.url === "string" && /^https:\/\//.test(file.url)) onFile?.(file);
+    } catch {
+      // ignore malformed messages
+    }
+  });
+  useDataChannel(TABLE_TOPIC, (msg) => {
+    try {
+      const { markdown } = JSON.parse(decoder.decode(msg.payload)) as { markdown?: unknown };
+      if (typeof markdown === "string" && markdown.trim()) onTable?.(markdown);
     } catch {
       // ignore malformed messages
     }
@@ -200,11 +212,13 @@ export function VoiceRoom({
   onState,
   onTranscript,
   onFile,
+  onTable,
 }: {
   room: Room | null;
   onState: (s: VoiceState) => void;
   onTranscript?: (lines: VoiceLine[]) => void;
   onFile?: (file: SharedFile) => void;
+  onTable?: (markdown: string) => void;
 }) {
   useEffect(() => {
     if (!room) onState("disconnected");
@@ -213,7 +227,7 @@ export function VoiceRoom({
   return (
     <RoomContext.Provider value={room}>
       <RoomAudioRenderer />
-      <Probe onState={onState} onTranscript={onTranscript} onFile={onFile} />
+      <Probe onState={onState} onTranscript={onTranscript} onFile={onFile} onTable={onTable} />
     </RoomContext.Provider>
   );
 }

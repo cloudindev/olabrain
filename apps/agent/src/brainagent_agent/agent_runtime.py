@@ -56,6 +56,50 @@ TOOL_GUIDANCE = (
     "Solo si responde que sí, vuelve a llamar a la herramienta con los mismos argumentos."
 )
 
+SHOW_TABLE = "mostrar_tabla"
+# Voice calls only: the table goes to the screen (and the transcript), the voice summarizes.
+TABLE_GUIDANCE = (
+    "Cuando un resultado tenga varias filas o columnas (listados, rankings, comparativas, "
+    f"totales por cliente o por fecha), no lo leas entero: muéstralo con {SHOW_TABLE} y di "
+    "en voz solo lo más importante en una o dos frases."
+)
+TABLE_MAX_ROWS = 100
+TABLE_MAX_COLS = 12
+# Sent as one LiveKit data packet (JSON, UTF-8): stay well under its ~15 KB limit.
+TABLE_MAX_CHARS = 6_000
+
+
+def _cell(value: Any) -> str:
+    text = "" if value is None else str(value)
+    return " ".join(text.replace("|", "\\|").split())[:200]
+
+
+def table_markdown(title: str | None, columns: list[Any], rows: list[Any]) -> str:
+    """A Markdown table (the chat UIs render it with borders), capped in rows, columns and
+    size; the rows left out are counted below it."""
+    cols = [_cell(c) for c in columns[:TABLE_MAX_COLS]]
+    lines = [
+        "| " + " | ".join(cols) + " |",
+        "|" + "|".join("---" for _ in cols) + "|",
+    ]
+    size = sum(len(line) for line in lines)
+    shown = 0
+    for row in rows[:TABLE_MAX_ROWS]:
+        cells = list(row) if isinstance(row, list) else [row]
+        cells = (cells + [""] * len(cols))[: len(cols)]
+        line = "| " + " | ".join(_cell(c) for c in cells) + " |"
+        if size + len(line) > TABLE_MAX_CHARS:
+            break
+        lines.append(line)
+        size += len(line)
+        shown += 1
+    out = "\n".join(lines)
+    if title and title.strip():
+        out = f"**{_cell(title)}**\n\n{out}"
+    if shown < len(rows):
+        out += f"\n\n_({len(rows) - shown} filas más no mostradas)_"
+    return out
+
 
 WEEKDAYS = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"]
 MONTHS = [
@@ -219,6 +263,8 @@ class ToolBridge:
     # Files a tool produced (e.g. an invoice PDF link) are shown in the conversation UI
     # instead of being read aloud: (label, url).
     on_file: Callable[[str, str], Awaitable[None]] | None = None
+    # Tables the agent shows during a voice call (Markdown), instead of reading them aloud.
+    on_table: Callable[[str], Awaitable[None]] | None = None
     _pending: dict[str, _Pending] = field(default_factory=dict)
 
     def user_message_received(self) -> None:
@@ -275,9 +321,54 @@ class ToolBridge:
 
 def build_function_tools(bridge: ToolBridge) -> list[llm.Tool]:
     """One LiveKit raw function tool per connector tool (works in voice and text), plus
-    `recordar_dato` when the agent remembers the contact."""
+    `recordar_dato` when the agent remembers the contact and `mostrar_tabla` in voice."""
     out: list[llm.Tool] = []
     agent = bridge.agent
+    if bridge.channel == "voice":
+
+        async def show_table(raw_arguments: dict[str, Any]) -> str:
+            args = raw_arguments or {}
+            columns = args.get("columnas")
+            rows = args.get("filas")
+            if not isinstance(columns, list) or not columns or not isinstance(rows, list):
+                return "ERROR: faltan las columnas o las filas"
+            if bridge.on_table:
+                # Showing it must never break the call.
+                with contextlib.suppress(Exception):
+                    await bridge.on_table(table_markdown(args.get("titulo"), columns, rows))
+            return (
+                "Tabla mostrada en la pantalla. No la leas: resume en voz lo más importante "
+                "en una o dos frases."
+            )
+
+        out.append(
+            function_tool(
+                show_table,
+                raw_schema={
+                    "name": SHOW_TABLE,
+                    "description": "Muestra una tabla en la pantalla de la persona durante la "
+                    "llamada. Úsala para resultados con varias filas o columnas en lugar de "
+                    "leerlos en voz alta.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "titulo": {"type": "string", "description": "Título breve"},
+                            "columnas": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                                "description": "Encabezados de las columnas",
+                            },
+                            "filas": {
+                                "type": "array",
+                                "items": {"type": "array", "items": {"type": "string"}},
+                                "description": "Filas, cada una con un valor por columna",
+                            },
+                        },
+                        "required": ["columnas", "filas"],
+                    },
+                },
+            )
+        )
     if agent.contact_id:
         contact_id = agent.contact_id
 

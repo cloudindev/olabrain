@@ -1,8 +1,9 @@
+import { cn } from "@brainagent/ui";
 import { Fragment, type ReactNode } from "react";
 
 /**
  * Minimal, safe Markdown for agent replies: paragraphs, bullet and numbered lists,
- * ``` code blocks ```, **bold**, *italic* and `code`. Builds React nodes (never HTML), so model output
+ * | tables |, ``` code blocks ```, **bold**, *italic* and `code`. Builds React nodes (never HTML), so model output
  * can't inject markup.
  */
 export function RichText({ text }: { text: string }) {
@@ -41,6 +42,66 @@ export function RichText({ text }: { text: string }) {
     }
   };
 
+  let table: string[][] = [];
+  const flushTable = () => {
+    if (!table.length) return;
+    const rows = table;
+    table = [];
+    const sep = rows.length > 1 && rows[1]!.every((c) => /^:?-+:?$/.test(c)) ? rows[1] : null;
+    // A single pipe line without a header separator is just text.
+    if (!sep && rows.length < 2) {
+      paragraph.push(`| ${rows[0]!.join(" | ")} |`);
+      return flushParagraph();
+    }
+    const head = sep ? rows[0]! : null;
+    const body = sep ? rows.slice(2) : rows;
+    const width = Math.max(...rows.map((r) => r.length));
+    const align = (i: number) => {
+      const s = sep?.[i] ?? "";
+      return s.endsWith(":") ? (s.startsWith(":") ? "text-center" : "text-right") : "text-left";
+    };
+    const cells = (row: string[]) => Array.from({ length: width }, (_, i) => row[i] ?? "");
+    blocks.push(
+      <div
+        key={blocks.length}
+        className="max-w-full overflow-x-auto rounded-xl border border-ink/15 [overflow-wrap:normal]"
+      >
+        <table className="min-w-full border-collapse text-[0.92em] leading-snug tabular-nums">
+          {head ? (
+            <thead className="bg-ink/5">
+              <tr>
+                {cells(head).map((c, i) => (
+                  <th key={i} className={cn("px-2.5 py-2 font-semibold sm:px-3", align(i))}>
+                    {inline(c)}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+          ) : null}
+          <tbody>
+            {body.map((row, r) => (
+              <tr key={r} className={cn((head || r > 0) && "border-t border-ink/10")}>
+                {cells(row).map((c, i) => (
+                  <td
+                    key={i}
+                    // Short values (numbers, dates, codes) stay on one line; text wraps.
+                    className={cn(
+                      "px-2.5 py-2 align-top sm:px-3",
+                      c.length <= 16 ? "whitespace-nowrap" : "min-w-24",
+                      align(i),
+                    )}
+                  >
+                    {inline(c)}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>,
+    );
+  };
+
   let code: string[] | null = null;
   for (const raw of text.split("\n")) {
     const line = raw.trimEnd();
@@ -59,6 +120,7 @@ export function RichText({ text }: { text: string }) {
       } else {
         flushParagraph();
         flushList();
+        flushTable();
         code = [];
       }
       continue;
@@ -67,6 +129,13 @@ export function RichText({ text }: { text: string }) {
       code.push(raw);
       continue;
     }
+    if (/^\s*\|/.test(line)) {
+      flushParagraph();
+      flushList();
+      table.push(tableCells(line));
+      continue;
+    }
+    flushTable();
     const bullet = /^\s*[-*•]\s+(.*)$/.exec(line);
     const numbered = /^\s*\d+[.)]\s+(.*)$/.exec(line);
     if (bullet || numbered) {
@@ -83,10 +152,20 @@ export function RichText({ text }: { text: string }) {
       paragraph.push(line.replace(/^#{1,6}\s+/, ""));
     }
   }
+  flushTable();
   if (code) paragraph.push(...code); // unclosed fence: plain text
   flushParagraph();
   flushList();
   return <div className="flex min-w-0 flex-col gap-2">{blocks}</div>;
+}
+
+/** "| a | b \\| c |" -> ["a", "b | c"]; the closing pipe may be missing while streaming. */
+function tableCells(line: string): string[] {
+  const inner = line
+    .trim()
+    .replace(/^\|/, "")
+    .replace(/(?<!\\)\|$/, "");
+  return inner.split(/(?<!\\)\|/).map((c) => c.trim().replace(/\\\|/g, "|"));
 }
 
 /** **bold**, *italic*, `code`, [links](https://…) and bare https:// URLs. */

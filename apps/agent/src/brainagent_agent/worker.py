@@ -34,6 +34,7 @@ from livekit.agents.worker import ServerEnvOption
 from livekit.plugins import silero
 
 from .agent_runtime import (
+    TABLE_GUIDANCE,
     RuntimeAgent,
     ToolBridge,
     build_agent_llm,
@@ -59,6 +60,8 @@ OPENING_LINE = "Hola. ¿En qué te puedo ayudar?"
 METRICS_TOPIC = "lab.metrics"
 # Files a tool produced during a call (shown as a download card, never read aloud).
 FILES_TOPIC = "agent.files"
+# Tables the agent shows during a call (Markdown), summarized aloud instead of read.
+TABLE_TOPIC = "agent.table"
 DEFAULT_AGENT_NAME = "brainagent-lab"
 
 
@@ -93,6 +96,8 @@ def build_session(
     tools: list[llm.Tool] | None = None,
 ) -> tuple[AgentSession, Agent]:
     instructions = runtime_agent.instructions if runtime_agent else LIA.instructions
+    if runtime_agent:
+        instructions += f"\n\n{TABLE_GUIDANCE}"
     # With client_greeting the web plays the greeting with its own voice. Gemini Live's
     # proactive audio may still greet on its own after a few seconds of silence, so the
     # greeting also goes into the history as already said, not only in the instructions.
@@ -282,6 +287,15 @@ async def entrypoint(ctx: JobContext) -> None:
             if cfg.conversation_id
             else None
         )
+
+        async def _show_table(markdown: str) -> None:
+            await ctx.room.local_participant.publish_data(
+                json.dumps({"markdown": markdown}), reliable=True, topic=TABLE_TOPIC
+            )
+            if recorder:
+                recorder.add("assistant", markdown)
+
+        bridge.on_table = _show_table
 
         @session.on("conversation_item_added")
         def _on_item(ev: ConversationItemAddedEvent) -> None:

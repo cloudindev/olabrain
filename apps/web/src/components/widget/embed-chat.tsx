@@ -170,6 +170,10 @@ export function EmbedChat({
     setMessages((prev) => [...prev, { id: nextId(), role: "assistant", text: "", links: [file] }]);
   }, []);
 
+  const onTable = useCallback((markdown: string) => {
+    setMessages((prev) => [...prev, { id: nextId(), role: "assistant", text: markdown }]);
+  }, []);
+
   function startVoice() {
     setError(null);
     void call.start(async () => {
@@ -353,6 +357,7 @@ export function EmbedChat({
         onState={setAgentState}
         onTranscript={onTranscript}
         onFile={onFile}
+        onTable={onTable}
       />
     </div>
   );

@@ -361,3 +361,14 @@ Implementa ADR-007 sin pagos (Stripe pendiente).
 - `ordenes_residuos`, `documentos_control` y `descargas_tacografo` aceptan `pagina`, de 50 en 50, con orden estable. El aviso remite a `resumen_datos` para contar o agrupar.
 
 **Consecuencias.** Una respuesta puede costar bastante más: cada paso reenvía el contexto y lo paga el monedero. Las conexiones existentes reciben `pagina` en su siguiente sincronización. El historial no guarda los resultados de las herramientas, así que al escribir «continúa» se repiten las consultas.
+
+## ADR-028 — Tablas en el chat y en la voz (2026-11-04)
+
+**Contexto.** Los resultados en filas y columnas llegaban como tabla Markdown y se veían como texto con barras. En voz el agente no debe leer tablas en alto.
+
+**Decisión.**
+- `RichText` dibuja las tablas Markdown (encabezado, alineación con `:`, bordes redondeados y desplazamiento lateral si no caben). Se construyen nodos React, nunca HTML.
+- En texto, las instrucciones piden tabla Markdown para listados, rankings y comparativas.
+- En voz, el worker añade la herramienta `mostrar_tabla(titulo, columnas, filas)`: la tabla se envía por el canal de datos (`agent.table`) al panel y al widget, se guarda en la transcripción y la voz solo resume. Máximo 100 filas, 12 columnas y 6.000 caracteres, por el límite de un paquete de datos de LiveKit; las filas que no caben se indican.
+
+**Consecuencias.** El modelo decide cuándo usar `mostrar_tabla`; puede olvidarlo y leer la lista en voz. En canales sin pantalla (teléfono) la tabla no se ve, pero queda en la transcripción.
