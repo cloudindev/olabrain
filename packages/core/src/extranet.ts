@@ -47,6 +47,8 @@ export const customerInviteSchema = z.object({
     .max(254)
     .transform((e) => e.trim().toLowerCase()),
   personName: z.string().trim().max(120).default(""),
+  /** false: only create the access and return the link; nothing is emailed. */
+  sendEmail: z.boolean().default(true),
 });
 
 export const CUSTOMER_ORDER_STATUSES = ["pending", "entered", "rejected"] as const;

@@ -14,13 +14,16 @@ import { Logo } from "@/components/logo";
 export function ExtranetLogin({
   linkId,
   agent,
+  initialEmail = "",
 }: {
   linkId: string;
   agent: { name: string; role: string; avatar: string | null };
+  /** From the personal link (?email=) the organization shared. */
+  initialEmail?: string;
 }) {
   const t = useTranslations("extranet");
   const router = useRouter();
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(initialEmail);
   const [code, setCode] = useState("");
   const [step, setStep] = useState<"email" | "code">("email");
   const [error, setError] = useState<string | null>(null);

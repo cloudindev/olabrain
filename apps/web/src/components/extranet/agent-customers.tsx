@@ -1,9 +1,9 @@
 "use client";
 
 import { Badge, Button, Card, Field, Input, Select, cn } from "@brainagent/ui";
-import { Search, UserPlus } from "lucide-react";
+import { Check, ChevronDown, Copy, Link2, Mail, Search, UserPlus } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import {
   inviteCustomer,
   manageCustomer,
@@ -31,11 +31,14 @@ export function AgentCustomers({
   agentId,
   connections,
   accounts,
+  linkUrl,
   canEdit,
 }: {
   agentId: string;
   connections: { id: string; name: string }[];
   accounts: CustomerAccountRow[];
+  /** The extranet's sign-in page, null until it is published. */
+  linkUrl: string | null;
   canEdit: boolean;
 }) {
   const t = useTranslations("extranetPanel.customers");
@@ -47,6 +50,8 @@ export function AgentCustomers({
   const [email, setEmail] = useState("");
   const [personName, setPersonName] = useState("");
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
+  const [shown, setShown] = useState<string | null>(null);
+  const [created, setCreated] = useState<{ url: string; emailed: boolean } | null>(null);
   const [pending, start] = useTransition();
   const [searching, startSearch] = useTransition();
 
@@ -97,7 +102,17 @@ export function AgentCustomers({
                 </div>
                 <Badge tone={TONE[a.status]}>{t(`status.${a.status}`)}</Badge>
                 {canEdit ? (
-                  <div className="flex gap-1">
+                  <div className="flex flex-wrap gap-1">
+                    {linkUrl && a.status !== "disabled" ? (
+                      <button
+                        type="button"
+                        aria-expanded={shown === a.id}
+                        onClick={() => setShown(shown === a.id ? null : a.id)}
+                        className="rounded-full px-3 py-1.5 text-xs font-medium text-ink-2 hover:bg-surface-2 hover:text-ink"
+                      >
+                        {shown === a.id ? t("hideLink") : t("showLink")}
+                      </button>
+                    ) : null}
                     {a.status === "disabled" ? (
                       <ActionButton
                         agentId={agentId}
@@ -130,6 +145,15 @@ export function AgentCustomers({
                     />
                   </div>
                 ) : null}
+                {linkUrl && shown === a.id ? (
+                  <div className="w-full">
+                    <CopyLink
+                      url={`${linkUrl}?email=${encodeURIComponent(a.email)}`}
+                      label={t("copyLink")}
+                      copied={t("copied")}
+                    />
+                  </div>
+                ) : null}
               </li>
             ))}
           </ul>
@@ -141,31 +165,7 @@ export function AgentCustomers({
           <UserPlus className="size-4" /> {t("inviteTitle")}
         </h3>
         <p className="mb-4 text-sm text-ink-2">{t("inviteHint")}</p>
-        <form
-          className="flex flex-col gap-4"
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (!customer) return;
-            setMessage(null);
-            start(async () => {
-              const res = await inviteCustomer(agentId, {
-                connectionId,
-                erpCustomerRef: customer.ref,
-                email,
-                personName,
-              });
-              if (res.ok) {
-                setCustomer(null);
-                setEmail("");
-                setPersonName("");
-                setQuery("");
-              }
-              setMessage(
-                res.ok ? { ok: true, text: t("invited") } : { ok: false, text: res.error },
-              );
-            });
-          }}
-        >
+        <form className="flex flex-col gap-4" onSubmit={(e) => e.preventDefault()}>
           {connections.length > 1 ? (
             <Field label={t("erp")} htmlFor="x-conn">
               <Select
@@ -275,13 +275,41 @@ export function AgentCustomers({
               {message.text}
             </p>
           ) : null}
-          <Button
-            type="submit"
+          {created ? (
+            <div
+              className="flex flex-col gap-2 rounded-xl border border-line bg-surface-2 p-3 text-sm"
+              data-testid="invite-result"
+            >
+              <p className="font-medium text-ok">
+                {created.emailed ? t("createdEmailed") : t("createdLink")}
+              </p>
+              <CopyLink url={created.url} label={t("copyLink")} copied={t("copied")} />
+            </div>
+          ) : null}
+          <InviteMenu
             disabled={!canEdit || pending || !customer || !email.includes("@")}
-            data-testid="customer-invite"
-          >
-            {pending ? t("inviting") : t("invite")}
-          </Button>
+            pending={pending}
+            onPick={(sendEmail) => {
+              if (!customer) return;
+              setMessage(null);
+              setCreated(null);
+              start(async () => {
+                const res = await inviteCustomer(agentId, {
+                  connectionId,
+                  erpCustomerRef: customer.ref,
+                  email,
+                  personName,
+                  sendEmail,
+                });
+                if (!res.ok) return setMessage({ ok: false, text: res.error });
+                setCreated({ url: res.url, emailed: res.emailed });
+                setCustomer(null);
+                setEmail("");
+                setPersonName("");
+                setQuery("");
+              });
+            }}
+          />
         </form>
       </Card>
     </div>
@@ -323,5 +351,119 @@ function ActionButton({
     >
       {label}
     </button>
+  );
+}
+
+/** «Dar acceso» with a menu: only create the link, or create it and email the invitation. */
+function InviteMenu({
+  disabled,
+  pending,
+  onPick,
+}: {
+  disabled: boolean;
+  pending: boolean;
+  onPick: (sendEmail: boolean) => void;
+}) {
+  const t = useTranslations("extranetPanel.customers");
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent | KeyboardEvent) => {
+      if (e instanceof KeyboardEvent ? e.key === "Escape" : !ref.current?.contains(e.target as Node))
+        setOpen(false);
+    };
+    document.addEventListener("mousedown", close);
+    document.addEventListener("keydown", close);
+    return () => {
+      document.removeEventListener("mousedown", close);
+      document.removeEventListener("keydown", close);
+    };
+  }, [open]);
+
+  const options = [
+    { email: false, icon: Link2, label: t("generateLink"), hint: t("generateLinkHint") },
+    { email: true, icon: Mail, label: t("generateAndEmail"), hint: t("generateAndEmailHint") },
+  ];
+
+  return (
+    <div ref={ref} className="relative">
+      <Button
+        type="button"
+        className="w-full justify-between"
+        disabled={disabled}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+        data-testid="customer-invite"
+      >
+        {pending ? t("inviting") : t("invite")}
+        <ChevronDown className={cn("size-4 transition", open && "rotate-180")} />
+      </Button>
+      {open ? (
+        <div
+          role="menu"
+          className="absolute inset-x-0 bottom-full z-20 mb-2 overflow-hidden rounded-xl border border-line bg-surface shadow-[0_18px_40px_-20px_rgba(0,0,0,0.45)]"
+        >
+          {options.map((o) => (
+            <button
+              key={String(o.email)}
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setOpen(false);
+                onPick(o.email);
+              }}
+              className="flex w-full gap-3 px-3 py-2.5 text-left text-sm hover:bg-surface-2"
+              data-testid={o.email ? "invite-email" : "invite-link"}
+            >
+              <o.icon className="mt-0.5 size-4 shrink-0 text-ink-2" />
+              <span>
+                <span className="block font-medium text-ink">{o.label}</span>
+                <span className="block text-xs text-ink-2">{o.hint}</span>
+              </span>
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function CopyLink({
+  url,
+  label,
+  copied,
+}: {
+  url: string;
+  label: string;
+  copied: string;
+}) {
+  const [done, setDone] = useState(false);
+  const copy = () =>
+    void navigator.clipboard.writeText(url).then(() => {
+      setDone(true);
+      setTimeout(() => setDone(false), 1800);
+    });
+  return (
+    <div className="flex items-center gap-2">
+      <input
+        readOnly
+        value={url}
+        onFocus={(e) => e.currentTarget.select()}
+        className="min-w-0 flex-1 rounded-lg border border-line bg-surface px-2 py-1.5 font-mono text-xs text-ink"
+        data-testid="invite-url"
+      />
+      <button
+        type="button"
+        onClick={copy}
+        aria-label={label}
+        title={done ? copied : label}
+        className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-line hover:bg-surface"
+      >
+        {done ? <Check className="size-4 text-ok" /> : <Copy className="size-4" />}
+      </button>
+    </div>
   );
 }

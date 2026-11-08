@@ -155,7 +155,7 @@ export default async function AgentPage({
             .limit(1)
         : [];
     const [extranetLink] =
-      tab === "publish" && extranet
+      (tab === "publish" || tab === "customers") && extranet
         ? await tx
             .select({ id: channels.id, enabled: channels.enabled, config: channels.config })
             .from(channels)
@@ -376,6 +376,11 @@ export default async function AgentPage({
           agentId={id}
           connections={data.erpConnections}
           accounts={data.accounts}
+          linkUrl={
+            data.extranetLink
+              ? `${env().APP_URL.replace(/\/$/, "")}/x/${data.extranetLink.id}`
+              : null
+          }
           canEdit={ctx.role === "owner" || ctx.role === "admin"}
         />
       ) : null}

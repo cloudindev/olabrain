@@ -259,10 +259,38 @@ test("an extranet agent: customer access, sign-in with a code, an order and its 
   await expect(page.getByLabel("Email de la persona")).toHaveValue("persona5@ejemplo.test");
   await page.getByLabel("Nombre (opcional)").fill("Marta");
   await page.getByTestId("customer-invite").click();
-  await expect(page.getByRole("status")).toHaveText("Invitación enviada.");
+  await page.getByTestId("invite-email").click();
+  await expect(page.getByTestId("invite-result")).toContainText("invitación enviada");
   await expect(page.getByTestId("customer-list")).toContainText("Marta");
   const invitation = await mailTo("persona5@ejemplo.test", /te da acceso/);
-  expect(invitation.body).toContain(extranetPath);
+  expect(invitation.body).toContain(`${extranetPath}?email=persona5%40ejemplo.test`);
+
+  // «Generar enlace» only: the access exists, the link is shown, and nothing is emailed.
+  await page.getByLabel("Cliente del ERP").fill("1129");
+  await page
+    .getByTestId("erp-results")
+    .getByRole("button", { name: /corporate_name-1\b/ })
+    .click();
+  await page.getByLabel("Email de la persona").fill("solo-enlace@ejemplo.test");
+  await page.getByTestId("customer-invite").click();
+  await page.getByTestId("invite-link").click();
+  await expect(page.getByTestId("invite-result")).toContainText("No se ha enviado ningún email");
+  const personal = await page.getByTestId("invite-url").inputValue();
+  expect(personal).toContain(`${extranetPath}?email=solo-enlace%40ejemplo.test`);
+  // The link can be seen again later from the customer's row.
+  const linkRow = page
+    .getByTestId("customer-list")
+    .getByRole("listitem")
+    .filter({ hasText: "solo-enlace@ejemplo.test" });
+  await linkRow.getByRole("button", { name: "Ver enlace" }).click();
+  await expect(linkRow.getByTestId("invite-url")).toHaveValue(personal);
+  await page.waitForTimeout(1_500);
+  expect(mails.some((m) => m.to === "solo-enlace@ejemplo.test")).toBe(false);
+  // The personal link opens the sign-in with the email filled in.
+  const viaLink = await browser.newPage();
+  await viaLink.goto(personal, { waitUntil: "networkidle" });
+  await expect(viaLink.getByLabel("Email")).toHaveValue("solo-enlace@ejemplo.test");
+  await viaLink.close();
 
   // Marta signs in from her own browser.
   const guest = await browser.newContext();
@@ -398,7 +426,11 @@ test("an extranet agent: customer access, sign-in with a code, an order and its 
 
   // Taking her access away ends her session at once.
   await page.goto(`${agentUrl}?tab=customers`, { waitUntil: "networkidle" });
-  await page.getByRole("button", { name: "Quitar acceso" }).click();
+  const martaRow = page
+    .getByTestId("customer-list")
+    .getByRole("listitem")
+    .filter({ hasText: "Marta" });
+  await martaRow.getByRole("button", { name: "Quitar acceso" }).click();
   await expect(page.getByTestId("customer-list")).toContainText("Sin acceso");
   await g.reload({ waitUntil: "networkidle" });
   await expect(g.getByRole("button", { name: "Enviar código" })).toBeVisible();

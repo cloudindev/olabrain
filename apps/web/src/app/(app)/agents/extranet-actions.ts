@@ -148,7 +148,15 @@ async function sendInvitation(
   );
 }
 
-export async function inviteCustomer(agentId: string, input: unknown): Promise<ActionResult> {
+/** The sign-in link for one person, with their email already filled in. */
+function personalLink(url: string, email: string) {
+  return `${url}?email=${encodeURIComponent(email)}`;
+}
+
+export async function inviteCustomer(
+  agentId: string,
+  input: unknown,
+): Promise<{ ok: true; url: string; emailed: boolean } | { ok: false; error: string }> {
   const ctx = await requireTenant("admin");
   const parsed = customerInviteSchema.safeParse(input);
   if (!z.uuid().safeParse(agentId).success || !parsed.success)
@@ -196,14 +204,15 @@ export async function inviteCustomer(agentId: string, input: unknown): Promise<A
       action: "extranet.customer.invite",
       targetType: "customer_account",
       targetId: account.id,
-      data: { customer: parsed.data.erpCustomerRef },
+      data: { customer: parsed.data.erpCustomerRef, emailed: parsed.data.sendEmail },
     });
     return { agentName: agent.name, url } as const;
   });
   if ("error" in result) return { ok: false, error: result.error! };
-  await sendInvitation(ctx, result.agentName, result.url, parsed.data);
+  const link = personalLink(result.url, parsed.data.email);
+  if (parsed.data.sendEmail) await sendInvitation(ctx, result.agentName, link, parsed.data);
   revalidatePath(`/agents/${agentId}`);
-  return { ok: true };
+  return { ok: true, url: link, emailed: parsed.data.sendEmail };
 }
 
 const accountAction = z.enum(["enable", "disable", "resend", "delete"]);
@@ -252,7 +261,12 @@ export async function manageCustomer(
     if (result.account.status === "disabled")
       return { ok: false, error: "Activa el acceso antes de reenviar la invitación" };
     if (!result.url) return { ok: false, error: "Publica primero el enlace de la extranet" };
-    await sendInvitation(ctx, result.agentName, result.url, result.account);
+    await sendInvitation(
+      ctx,
+      result.agentName,
+      personalLink(result.url, result.account.email),
+      result.account,
+    );
   }
   revalidatePath(`/agents/${agentId}`);
   return { ok: true };
