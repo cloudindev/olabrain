@@ -3,17 +3,23 @@ import { Hono } from "hono";
 import { createApp, type AppOptions } from "./app";
 import { createContext } from "./context";
 import { env } from "./env";
+import type { CustomerOrderEvent } from "./extranet";
 
 export { createApp, type AppOptions } from "./app";
 export { createContext, type ConnectorContext } from "./context";
 export { env } from "./env";
+export type { CustomerOrderEvent } from "./extranet";
 
 /**
  * The connector built from environment variables. `basePath` mounts it under a prefix
  * (e.g. "/connector" when served by apps/web on Vercel, ADR-011).
  */
 export function createConnectorFromEnv(
-  opts: AppOptions & { basePath?: string; poolMax?: number } = {},
+  opts: AppOptions & {
+    basePath?: string;
+    poolMax?: number;
+    onCustomerOrder?: (order: CustomerOrderEvent) => Promise<void>;
+  } = {},
 ) {
   const e = env();
   const ctx = createContext({
@@ -27,6 +33,7 @@ export function createConnectorFromEnv(
     logLevel: e.LOG_LEVEL,
     linkKey: e.CONNECTOR_SERVICE_TOKEN,
     mytutorApiUrl: e.MYTUTOR_API_URL,
+    onCustomerOrder: opts.onCustomerOrder,
     microsoft:
       e.MICROSOFT_CLIENT_ID && e.MICROSOFT_CLIENT_SECRET
         ? {

@@ -19,6 +19,7 @@ export function NewAgentForm({ personas }: { personas: PersonaOption[] }) {
   const [selected, setSelected] = useState<PersonaOption | null>(null);
   const [name, setName] = useState("");
   const [role, setRole] = useState("");
+  const [kind, setKind] = useState<"standard" | "extranet">("standard");
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
 
@@ -76,12 +77,38 @@ export function NewAgentForm({ personas }: { personas: PersonaOption[] }) {
                   // Empty name: the persona's, shown as placeholder.
                   name: name.trim() || selected.name,
                   role,
+                  kind,
                 });
                 if (res && !res.ok) setError(res.error);
               });
             }}
           >
             <p className="text-sm italic text-ink-2">«{selected.greeting}»</p>
+            <fieldset className="flex flex-col gap-2">
+              <legend className="mb-1.5 text-sm font-medium text-ink">{t("kind")}</legend>
+              {(["standard", "extranet"] as const).map((k) => (
+                <label
+                  key={k}
+                  className={cn(
+                    "flex cursor-pointer gap-3 rounded-xl border px-3 py-2.5 text-sm transition",
+                    kind === k ? "border-ink bg-surface-2" : "border-line hover:border-line-strong",
+                  )}
+                >
+                  <input
+                    type="radio"
+                    name="agent-kind"
+                    value={k}
+                    checked={kind === k}
+                    onChange={() => setKind(k)}
+                    className="mt-0.5 accent-current"
+                  />
+                  <span>
+                    <span className="block font-medium">{t(`kinds.${k}`)}</span>
+                    <span className="block text-xs text-ink-2">{t(`kinds.${k}Hint`)}</span>
+                  </span>
+                </label>
+              ))}
+            </fieldset>
             <Field label={t("name")} htmlFor="agent-name">
               <Input
                 id="agent-name"

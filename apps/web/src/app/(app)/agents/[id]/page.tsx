@@ -1,8 +1,31 @@
-import { SHARE_LINK, WEB_WIDGET } from "@brainagent/core";
-import { agentTools, agents, channels, connections, personas, tools } from "@brainagent/db";
+import {
+  EXTRANET_LINK,
+  EXTRANET_PROVIDERS,
+  SHARE_LINK,
+  WEB_WIDGET,
+  extranetConfigSchema,
+} from "@brainagent/core";
+import {
+  agentTools,
+  agents,
+  channels,
+  connections,
+  customerAccounts,
+  customerOrders,
+  personas,
+  tools,
+} from "@brainagent/db";
 import { cn } from "@brainagent/ui";
-import { and, asc, eq, inArray, isNull, or } from "drizzle-orm";
-import { ArrowLeft, MessageCircle, Plug, SlidersHorizontal, Code2 } from "lucide-react";
+import { and, asc, count, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
+import {
+  ArrowLeft,
+  ClipboardList,
+  MessageCircle,
+  Plug,
+  SlidersHorizontal,
+  Code2,
+  Users,
+} from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -12,13 +35,18 @@ import { AgentConsole } from "@/components/agents/agent-console";
 import { AgentPublish } from "@/components/agents/agent-publish";
 import { AgentCustomize } from "@/components/agents/agent-customize";
 import { AgentFace } from "@/components/avatar/agent-face";
+import { AgentCustomers } from "@/components/extranet/agent-customers";
+import { AgentExtranetLink } from "@/components/extranet/agent-extranet-link";
+import { AgentOrders } from "@/components/extranet/agent-orders";
 import { LinkPending } from "@/components/shell/link-pending";
 import { modelCatalog } from "@/lib/models";
 import { env } from "@/lib/env";
 import { requireTenant, tenantTx } from "@/lib/tenant";
 
-const TABS = ["chat", "customize", "connections", "publish"] as const;
+const TABS = ["chat", "customize", "connections", "customers", "orders", "publish"] as const;
 type Tab = (typeof TABS)[number];
+/** Customers and orders only exist for extranet agents (ADR-030). */
+const EXTRANET_TABS: readonly Tab[] = ["customers", "orders"];
 /** Old links (?tab=general|tools|test) keep working. */
 const LEGACY: Record<string, Tab> = { general: "customize", tools: "connections", test: "chat" };
 const TAB_ICONS = {
@@ -26,6 +54,8 @@ const TAB_ICONS = {
   customize: SlidersHorizontal,
   connections: Plug,
   publish: Code2,
+  customers: Users,
+  orders: ClipboardList,
 };
 
 export default async function AgentPage({
@@ -39,11 +69,17 @@ export default async function AgentPage({
   const { tab: rawTab = "", connection: rawConnection } = await searchParams;
   const connectionId = z.uuid().safeParse(rawConnection).success ? rawConnection! : null;
   if (!z.uuid().safeParse(id).success) notFound();
-  const tab: Tab = (TABS as readonly string[]).includes(rawTab)
+  const requested: Tab = (TABS as readonly string[]).includes(rawTab)
     ? (rawTab as Tab)
     : (LEGACY[rawTab] ?? "chat");
 
   const ctx = await requireTenant("builder");
+  const [{ kind } = { kind: "standard" as const }] = await tenantTx(ctx, (tx) =>
+    tx.select({ kind: agents.kind }).from(agents).where(eq(agents.id, id)).limit(1),
+  );
+  const extranet = kind === "extranet";
+  const tabs = TABS.filter((k) => extranet || !EXTRANET_TABS.includes(k));
+  const tab: Tab = tabs.includes(requested) ? requested : "chat";
   const t = await getTranslations("console");
   const ta = await getTranslations("agents");
   // Each tab loads only what it shows (switching tabs re-renders this page).
@@ -118,6 +154,58 @@ export default async function AgentPage({
             .where(and(eq(channels.agentId, id), eq(channels.kind, WEB_WIDGET)))
             .limit(1)
         : [];
+    const [extranetLink] =
+      tab === "publish" && extranet
+        ? await tx
+            .select({ id: channels.id, enabled: channels.enabled, config: channels.config })
+            .from(channels)
+            .where(and(eq(channels.agentId, id), eq(channels.kind, EXTRANET_LINK)))
+            .limit(1)
+        : [];
+    const accounts =
+      tab === "customers"
+        ? await tx
+            .select({
+              id: customerAccounts.id,
+              email: customerAccounts.email,
+              personName: customerAccounts.personName,
+              customerName: customerAccounts.customerName,
+              erpCustomerRef: customerAccounts.erpCustomerRef,
+              status: customerAccounts.status,
+              lastLoginAt: customerAccounts.lastLoginAt,
+            })
+            .from(customerAccounts)
+            .where(eq(customerAccounts.agentId, id))
+            .orderBy(asc(customerAccounts.customerName), asc(customerAccounts.email))
+        : [];
+    const erpConnections =
+      tab === "customers"
+        ? await tx
+            .select({ id: connections.id, name: connections.name })
+            .from(connections)
+            .where(
+              and(
+                eq(connections.agentId, id),
+                inArray(sql<string>`${connections.config}->>'provider'`, [...EXTRANET_PROVIDERS]),
+              ),
+            )
+            .orderBy(asc(connections.name))
+        : [];
+    const orders =
+      tab === "orders"
+        ? await tx
+            .select()
+            .from(customerOrders)
+            .where(eq(customerOrders.agentId, id))
+            .orderBy(desc(customerOrders.createdAt))
+            .limit(200)
+        : [];
+    const [unreadOrders] = extranet
+      ? await tx
+          .select({ n: count() })
+          .from(customerOrders)
+          .where(and(eq(customerOrders.agentId, id), isNull(customerOrders.readAt)))
+      : [];
     const [share] =
       tab === "publish"
         ? await tx
@@ -140,6 +228,17 @@ export default async function AgentPage({
     );
     return {
       agent,
+      accounts,
+      erpConnections,
+      orders,
+      unreadOrders: unreadOrders?.n ?? 0,
+      extranetLink: extranetLink
+        ? {
+            id: extranetLink.id,
+            enabled: extranetLink.enabled,
+            ...extranetConfigSchema.parse(extranetLink.config ?? {}),
+          }
+        : null,
       personaList,
       toolList,
       connectionList,
@@ -209,7 +308,7 @@ export default async function AgentPage({
           aria-label={ta("title")}
           className="inline-flex rounded-full border border-line bg-surface p-1 shadow-sm"
         >
-          {TABS.map((key) => {
+          {tabs.map((key) => {
             const Icon = TAB_ICONS[key];
             return (
               <Link
@@ -224,6 +323,14 @@ export default async function AgentPage({
                 <span className={tab === key ? undefined : "max-sm:sr-only"}>
                   {t(`tabs.${key}`)}
                 </span>
+                {key === "orders" && data.unreadOrders ? (
+                  <span
+                    className="rounded-full bg-signal px-1.5 text-[11px] font-semibold text-signal-ink"
+                    data-testid="orders-badge"
+                  >
+                    {data.unreadOrders}
+                  </span>
+                ) : null}
               </Link>
             );
           })}
@@ -264,7 +371,24 @@ export default async function AgentPage({
           }
         />
       ) : null}
-      {tab === "publish" ? (
+      {tab === "customers" ? (
+        <AgentCustomers
+          agentId={id}
+          connections={data.erpConnections}
+          accounts={data.accounts}
+          canEdit={ctx.role === "owner" || ctx.role === "admin"}
+        />
+      ) : null}
+      {tab === "orders" ? <AgentOrders orders={data.orders} canEdit /> : null}
+      {tab === "publish" && extranet ? (
+        <AgentExtranetLink
+          agentId={id}
+          link={data.extranetLink}
+          appUrl={env().APP_URL.replace(/\/$/, "")}
+          canEdit={ctx.role === "owner" || ctx.role === "admin"}
+        />
+      ) : null}
+      {tab === "publish" && !extranet ? (
         <AgentPublish
           agent={{ id: agent.id, name: agent.name, avatar: persona?.avatarUrl ?? null }}
           widget={data.widget}

@@ -78,6 +78,8 @@ export const resolveShare = cache(async (channelId: string): Promise<SharedLink 
       .where(and(eq(channels.id, channelId), eq(channels.kind, SHARE_LINK)))
       .limit(1);
     if (!row || !row.channel.enabled || row.agent.status === "archived") return null;
+    // Extranet agents only answer identified customers (ADR-030).
+    if (row.agent.kind === "extranet") return null;
     const parsed = shareConfigSchema.safeParse(row.channel.config);
     if (!parsed.success) return null;
     return {

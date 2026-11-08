@@ -7,6 +7,8 @@ import {
   agents,
   contactMemories,
   contacts,
+  customerAccounts,
+  customerOrders,
   auditLog,
   connections,
   conversations,
@@ -259,14 +261,12 @@ describe("contacts and memory", () => {
         .insert(contacts)
         .values({ tenantId: tenantB, displayName: "Cliente de B", email: "b@example.com" })
         .returning();
-      await tx
-        .insert(contactMemories)
-        .values({
-          tenantId: tenantB,
-          contactId: c!.id,
-          content: "Prefiere llamadas por la tarde",
-          source: "auto",
-        });
+      await tx.insert(contactMemories).values({
+        tenantId: tenantB,
+        contactId: c!.id,
+        content: "Prefiere llamadas por la tarde",
+        source: "auto",
+      });
       return c!.id;
     });
     const seenByA = await withTenant(app.db, tenantA, (tx) => tx.select().from(contactMemories));
@@ -293,6 +293,59 @@ describe("contacts and memory", () => {
         ),
       ),
     ).toMatch(/duplicate key/);
+  });
+});
+
+describe("extranet (ADR-030)", () => {
+  it("customer accounts and orders are private to the tenant and bound to its own connection", async () => {
+    const [connA, account, order] = await withTenant(app.db, tenantA, async (tx) => {
+      const [conn] = await tx
+        .insert(connections)
+        .values({ tenantId: tenantA, agentId: agentA, kind: "native", name: "ERP A", config: {} })
+        .returning();
+      const [acc] = await tx
+        .insert(customerAccounts)
+        .values({
+          tenantId: tenantA,
+          agentId: agentA,
+          connectionId: conn!.id,
+          erpCustomerRef: "1129",
+          email: "compras@cliente.test",
+        })
+        .returning();
+      const [ord] = await tx
+        .insert(customerOrders)
+        .values({
+          tenantId: tenantA,
+          number: 1,
+          connectionId: conn!.id,
+          erpCustomerRef: "1129",
+          customerAccountId: acc!.id,
+          lines: [{ ref: "1", name: "Recogida", quantity: 1 }],
+        })
+        .returning();
+      return [conn!.id, acc!.id, ord!.id];
+    });
+    const seen = await withTenant(app.db, tenantB, async (tx) => ({
+      accounts: await tx.select().from(customerAccounts).where(eq(customerAccounts.id, account)),
+      orders: await tx.select().from(customerOrders).where(eq(customerOrders.id, order)),
+    }));
+    expect(seen.accounts).toHaveLength(0);
+    expect(seen.orders).toHaveLength(0);
+    // Tenant B cannot bind one of its customers to tenant A's ERP connection or agent.
+    expect(
+      await pgError(
+        withTenant(app.db, tenantB, (tx) =>
+          tx.insert(customerAccounts).values({
+            tenantId: tenantB,
+            agentId: agentB,
+            connectionId: connA,
+            erpCustomerRef: "1129",
+            email: "intruso@b.test",
+          }),
+        ),
+      ),
+    ).toMatch(/foreign key|violates/);
   });
 });
 

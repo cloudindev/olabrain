@@ -1,8 +1,15 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
-import { WIDGET_LIMITS, type LabConfig } from "@brainagent/core";
-import { auditLog, conversations, messages, withTenant } from "@brainagent/db";
-import { and, asc, eq, sql } from "drizzle-orm";
+import { EXTRANET_LIMITS, WIDGET_LIMITS, type LabConfig } from "@brainagent/core";
+import {
+  auditLog,
+  conversations,
+  messages,
+  usageEvents,
+  withTenant,
+  type Tx,
+} from "@brainagent/db";
+import { and, asc, count, eq, gt, gte, sql, sum } from "drizzle-orm";
 import { z } from "zod";
 import { chargeChatReply, hasBalance } from "@/lib/billing";
 import { callConnector } from "@/lib/connector-app";
@@ -23,11 +30,74 @@ export type PublicTarget = {
   tenantId: string;
   agentId: string;
   agentName: string;
-  /** conversations.channel: "widget" limits tools to the public ones; "share" doesn't. */
-  channel: "widget" | "share";
+  /**
+   * conversations.channel: "widget" limits tools to the public ones; "share" doesn't;
+   * "extranet" gets only the customer's own tools (ADR-030).
+   */
+  channel: "widget" | "share" | "extranet";
   /** Wallet ledger concept of each reply. */
   billingLabel: string;
+  /** Extranet: the signed-in customer; limits and conversations go by account. */
+  customer?: { accountId: string; contactId: string | null; monthlyLimitEur: number };
 };
+
+/** Extranet usage of one customer account: last hour, and spend this calendar month. */
+async function customerUsage(tx: Tx, accountId: string) {
+  const hourAgo = new Date(Date.now() - 60 * 60 * 1000);
+  const now = new Date();
+  const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+  const mine = eq(conversations.customerAccountId, accountId);
+  const [calls] = await tx
+    .select({ n: count() })
+    .from(conversations)
+    .where(
+      and(
+        mine,
+        sql`${conversations.config}->>'mode' = 'voice'`,
+        gt(conversations.startedAt, hourAgo),
+      ),
+    );
+  const [msgs] = await tx
+    .select({ n: count() })
+    .from(messages)
+    .innerJoin(conversations, eq(conversations.id, messages.conversationId))
+    .where(and(mine, eq(messages.role, "user"), gt(messages.createdAt, hourAgo)));
+  const [spent] = await tx
+    .select({ eur: sum(usageEvents.priceEur) })
+    .from(usageEvents)
+    .innerJoin(conversations, eq(conversations.id, usageEvents.conversationId))
+    .where(and(mine, gte(usageEvents.createdAt, monthStart)));
+  return { calls: calls?.n ?? 0, messages: msgs?.n ?? 0, spentEur: Number(spent?.eur ?? 0) };
+}
+
+/** "limit" when the visitor or the customer went over its limits; null otherwise. */
+async function overLimit(
+  tx: Tx,
+  target: PublicTarget,
+  visitor: string,
+  kind: "messages" | "calls",
+): Promise<"limit" | null> {
+  if (target.customer) {
+    const usage = await customerUsage(tx, target.customer.accountId);
+    const cap = target.customer.monthlyLimitEur;
+    if (cap > 0 && usage.spentEur >= cap) return "limit";
+    return kind === "messages"
+      ? usage.messages >= EXTRANET_LIMITS.messagesPerAccountHour
+        ? "limit"
+        : null
+      : usage.calls >= EXTRANET_LIMITS.callsPerAccountHour
+        ? "limit"
+        : null;
+  }
+  const usage = await visitorUsage(tx, target.id, visitor, target.channel);
+  return kind === "messages"
+    ? usage.messages >= WIDGET_LIMITS.messagesPerVisitorHour
+      ? "limit"
+      : null
+    : usage.calls >= WIDGET_LIMITS.callsPerVisitorHour
+      ? "limit"
+      : null;
+}
 
 const bodySchema = z.object({
   message: z.string().trim().min(1).max(4000),
@@ -50,8 +120,7 @@ export async function publicChat(request: Request, target: PublicTarget): Promis
 
   const setup = await withTenant(db(), tenantId, async (tx) => {
     if (!(await hasBalance(tx, tenantId))) return { error: "no_balance" as const };
-    const usage = await visitorUsage(tx, target.id, visitor, target.channel);
-    if (usage.messages >= WIDGET_LIMITS.messagesPerVisitorHour) return { error: "limit" as const };
+    if (await overLimit(tx, target, visitor, "messages")) return { error: "limit" as const };
     let conversationId = parsed.data.conversationId ?? null;
     if (conversationId) {
       // Only this visitor's conversation of this widget.
@@ -63,7 +132,10 @@ export async function publicChat(request: Request, target: PublicTarget): Promis
             eq(conversations.id, conversationId),
             eq(conversations.channel, target.channel),
             sql`${conversations.config}->>'channelId' = ${target.id}`,
-            sql`${conversations.config}->>'visitor' = ${visitor}`,
+            // A customer's conversation follows its account, not its browser.
+            target.customer
+              ? eq(conversations.customerAccountId, target.customer.accountId)
+              : sql`${conversations.config}->>'visitor' = ${visitor}`,
           ),
         )
         .limit(1);
@@ -76,6 +148,8 @@ export async function publicChat(request: Request, target: PublicTarget): Promis
           tenantId,
           agentId,
           channel: target.channel,
+          customerAccountId: target.customer?.accountId ?? null,
+          contactId: target.customer?.contactId ?? null,
           config: { channelId: target.id, visitor, mode: "chat" },
         })
         .returning({ id: conversations.id });
@@ -110,7 +184,7 @@ export async function publicChat(request: Request, target: PublicTarget): Promis
       body: JSON.stringify({
         agentId,
         conversationId: setup.conversationId,
-        contactId: null,
+        contactId: target.customer?.contactId ?? null,
         messages: setup.history,
       }),
     });
@@ -181,20 +255,24 @@ export async function publicChat(request: Request, target: PublicTarget): Promis
 export async function publicVoice(request: Request, target: PublicTarget): Promise<Response> {
   const e = env();
   const visitor = visitorKey(clientIp(request.headers), e.BETTER_AUTH_SECRET);
+  const callSeconds = target.customer ? EXTRANET_LIMITS.callSeconds : WIDGET_LIMITS.callSeconds;
   const config: LabConfig = {
     agent_id: target.agentId,
-    max_session_seconds: WIDGET_LIMITS.callSeconds,
+    max_session_seconds: callSeconds,
+    // Memory per contact for identified customers.
+    ...(target.customer?.contactId ? { contact_id: target.customer.contactId } : {}),
   };
   const started = await withTenant(db(), target.tenantId, async (tx) => {
     if (!(await hasBalance(tx, target.tenantId))) return { error: "no_balance" as const };
-    const usage = await visitorUsage(tx, target.id, visitor, target.channel);
-    if (usage.calls >= WIDGET_LIMITS.callsPerVisitorHour) return { error: "limit" as const };
+    if (await overLimit(tx, target, visitor, "calls")) return { error: "limit" as const };
     const [conversation] = await tx
       .insert(conversations)
       .values({
         tenantId: target.tenantId,
         agentId: target.agentId,
         channel: target.channel,
+        customerAccountId: target.customer?.accountId ?? null,
+        contactId: target.customer?.contactId ?? null,
         config: { ...config, channelId: target.id, visitor, mode: "voice" },
       })
       .returning({ id: conversations.id });
@@ -229,6 +307,6 @@ export async function publicVoice(request: Request, target: PublicTarget): Promi
     conversationId: started.conversationId,
     roomName: labRoomName(started.conversationId),
     agentName: target.agentName,
-    maxSeconds: WIDGET_LIMITS.callSeconds,
+    maxSeconds: callSeconds,
   });
 }

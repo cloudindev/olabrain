@@ -160,7 +160,14 @@
     "memoryHint": "Remembers facts about each person across conversations. View and delete them in Contacts.",
     "role": "Role",
     "rolePlaceholder": "Personal assistant, Support, Sales, Operations…",
-    "noRole": "No role"
+    "noRole": "No role",
+    "kind": "Agent type",
+    "kinds": {
+      "standard": "Assistant",
+      "standardHint": "For your team or website: chat, voice and your connections.",
+      "extranet": "Customer extranet",
+      "extranetHint": "Your customers sign in with their email and only see their own data and orders."
+    }
   },
   "chat": {
     "placeholder": "Type a message…",
@@ -584,7 +591,9 @@
       "chat": "Conversation",
       "customize": "Customize",
       "connections": "Connections",
-      "publish": "Publish"
+      "publish": "Publish",
+      "customers": "Customers",
+      "orders": "Orders"
     },
     "back": "Agents",
     "title": "Conversation",
@@ -709,7 +718,8 @@
       "limit": "You've reached the usage limit for now. Please try later.",
       "mic": "We need permission to use your microphone.",
       "no_balance": "This assistant is not available right now."
-    }
+    },
+    "signOut": "Sign out"
   },
   "publish": {
     "introTitle": "Publish {name} on your website",
@@ -995,5 +1005,91 @@
     "wrong": "Wrong password.",
     "tooMany": "Too many attempts. Wait a few minutes.",
     "generic": "Couldn't check it. Try again."
+  },
+  "extranet": {
+    "assistant": "Customer service",
+    "intro": "Customer area. Enter the email the company registered for you and we'll send you a sign-in code.",
+    "email": "Email",
+    "code": "6-digit code",
+    "codeSent": "If {email} has access, we've sent you a code. Check your inbox (and spam).",
+    "sendCode": "Send code",
+    "enter": "Sign in",
+    "checking": "Checking…",
+    "otherEmail": "Use another email",
+    "invalidEmail": "Invalid email.",
+    "wrongCode": "Wrong code.",
+    "expired": "The code has expired or was already used. Ask for a new one.",
+    "generic": "Couldn't check it. Please try again."
+  },
+  "extranetPanel": {
+    "customers": {
+      "title": "Customers with access",
+      "hint": "Each person is bound to one customer of your ERP and will only see that customer's data and orders.",
+      "empty": "You haven't given access to any customer yet.",
+      "noErp": "First connect ProfiECO to this agent (Connections tab) to register your customers.",
+      "ref": "ref. {ref}",
+      "lastLogin": "last sign-in {date}",
+      "neverLogged": "not signed in yet",
+      "status": {
+        "invited": "Invited",
+        "active": "Active",
+        "disabled": "No access"
+      },
+      "enable": "Enable",
+      "disable": "Disable",
+      "resend": "Resend invitation",
+      "delete": "Delete",
+      "deleteConfirm": "Remove {email}'s access? Their orders are kept.",
+      "inviteTitle": "Give a customer access",
+      "inviteHint": "Find the customer in your ERP and enter the person's email. We'll send them an invitation.",
+      "erp": "ERP",
+      "customer": "ERP customer",
+      "customerPlaceholder": "Name or tax ID",
+      "searching": "Searching…",
+      "change": "Change",
+      "email": "Person's email",
+      "emailHint": "We suggest the ERP's billing emails.",
+      "person": "Name (optional)",
+      "personPlaceholder": "e.g. Marta, purchasing",
+      "invite": "Give access and send invitation",
+      "inviting": "Sending…",
+      "invited": "Invitation sent."
+    },
+    "orders": {
+      "empty": "No orders yet. They'll show up here when your customers place them through the extranet.",
+      "footer": "Orders are not sent to the ERP: enter them there and mark them here. The customer gets an email on every change.",
+      "number": "#{n}",
+      "lines": "{n, plural, one {# line} other {# lines}}",
+      "status": {
+        "pending": "Pending",
+        "entered": "Entered",
+        "rejected": "Rejected"
+      },
+      "placedBy": "Placed by {who}",
+      "ref": "Ref.",
+      "item": "Service or item",
+      "quantity": "Quantity",
+      "lineNote": "Detail",
+      "note": "Customer's comment",
+      "erpReference": "ERP reference",
+      "statusNote": "Comment for the customer",
+      "statusNoteHint": "Included in the email we send them.",
+      "markEntered": "Mark as entered",
+      "markRejected": "Reject",
+      "markPending": "Back to pending",
+      "saved": "Saved."
+    },
+    "link": {
+      "title": "Customer area",
+      "hint": "Your customers sign in with their email and a code, and talk to the agent by chat or voice.",
+      "enabled": "Enabled",
+      "copy": "Copy link",
+      "open": "Open",
+      "voice": "Allow voice calls",
+      "limit": "Spend cap per customer and month",
+      "limitHint": "0 = no cap. When reached, the agent stops answering that customer until next month.",
+      "saved": "Saved.",
+      "footer": "This agent has no widget or shared link: it only serves identified customers."
+    }
   }
 }

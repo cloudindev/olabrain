@@ -36,6 +36,8 @@ const tenantId = () =>
 
 export const presenceMode = pgEnum("presence_mode", ["text", "voice"]);
 export const agentStatus = pgEnum("agent_status", ["draft", "active", "archived"]);
+/** "extranet": an agent for the organization's own customers (ADR-030). */
+export const agentKind = pgEnum("agent_kind", ["standard", "extranet"]);
 
 /** tenant_id NULL = global catalog persona (readable by every tenant, writable by none). */
 export const personas = pgTable(
@@ -79,6 +81,7 @@ export const agents = pgTable(
     presenceMode: presenceMode("presence_mode").notNull().default("voice"),
     policy: jsonb("policy").$type<Record<string, unknown>>().notNull().default({}),
     status: agentStatus("status").notNull().default("draft"),
+    kind: agentKind("kind").notNull().default("standard"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -96,6 +99,11 @@ export const conversations = pgTable(
     agentId: uuid("agent_id"),
     contactId: uuid("contact_id"),
     channel: text("channel").notNull(),
+    /**
+     * Extranet (ADR-030): the identified customer speaking. Set only by the server; the
+     * Tool Router scopes every customer tool to this account's ERP customer.
+     */
+    customerAccountId: uuid("customer_account_id"),
     startedByUserId: uuid("started_by_user_id").references(() => users.id, {
       onDelete: "set null",
     }),
@@ -666,4 +674,133 @@ export const mytutorSyncRuns = pgTable(
     finishedAt: timestamp("finished_at", { withTimezone: true }),
   },
   (t) => [index("mytutor_sync_runs_conn_idx").on(t.connectionId, t.startedAt)],
+);
+
+// --- Extranet: the organization's customers (ADR-030) ----------------------------------
+
+export const customerAccountStatus = pgEnum("customer_account_status", [
+  "invited",
+  "active",
+  "disabled",
+]);
+export const customerOrderStatus = pgEnum("customer_order_status", [
+  "pending",
+  "entered",
+  "rejected",
+]);
+
+/**
+ * A person of a customer company who may use an extranet agent. Bound by the organization
+ * to one customer of the ERP (connection + erp_customer_ref): that is all they can see.
+ */
+export const customerAccounts = pgTable(
+  "customer_accounts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: tenantId(),
+    agentId: uuid("agent_id").notNull(),
+    connectionId: uuid("connection_id").notNull(),
+    /** The customer's id in the ERP (e.g. ProfiECO client id). */
+    erpCustomerRef: text("erp_customer_ref").notNull(),
+    /** Snapshot of the customer's name in the ERP, for the panel and the agent. */
+    customerName: text("customer_name").notNull().default(""),
+    /** Lower-case. */
+    email: text("email").notNull(),
+    personName: text("person_name").notNull().default(""),
+    contactId: uuid("contact_id"),
+    status: customerAccountStatus("status").notNull().default("invited"),
+    /** Bumped when access is revoked: every open session of the account stops working. */
+    sessionEpoch: integer("session_epoch").notNull().default(0),
+    invitedByUserId: uuid("invited_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    lastLoginAt: timestamp("last_login_at", { withTimezone: true }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique("customer_accounts_id_tenant_uq").on(t.id, t.tenantId),
+    unique("customer_accounts_agent_email_uq").on(t.agentId, t.email),
+    index("customer_accounts_tenant_idx").on(t.tenantId),
+    foreignKey({
+      name: "customer_accounts_agent_fk",
+      columns: [t.agentId, t.tenantId],
+      foreignColumns: [agents.id, agents.tenantId],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "customer_accounts_connection_fk",
+      columns: [t.connectionId, t.tenantId],
+      foreignColumns: [connections.id, connections.tenantId],
+    }).onDelete("cascade"),
+  ],
+);
+
+/** One-time sign-in codes (only an HMAC of the code is kept). */
+export const customerLoginCodes = pgTable(
+  "customer_login_codes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: tenantId(),
+    accountId: uuid("account_id").notNull(),
+    codeHash: text("code_hash").notNull(),
+    attempts: integer("attempts").notNull().default(0),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    usedAt: timestamp("used_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index("customer_login_codes_account_idx").on(t.accountId, t.createdAt),
+    foreignKey({
+      name: "customer_login_codes_account_fk",
+      columns: [t.accountId, t.tenantId],
+      foreignColumns: [customerAccounts.id, customerAccounts.tenantId],
+    }).onDelete("cascade"),
+  ],
+);
+
+export type CustomerOrderLine = {
+  ref: string;
+  name: string;
+  quantity: number;
+  note?: string;
+};
+
+/**
+ * Orders a customer placed through an extranet agent. Never written to the ERP: they wait
+ * in the agent's «Pedidos» until the organization enters (or rejects) them.
+ */
+export const customerOrders = pgTable(
+  "customer_orders",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: tenantId(),
+    /** Human number, per organization (shown to the customer and the team). */
+    number: integer("number").notNull(),
+    agentId: uuid("agent_id"),
+    customerAccountId: uuid("customer_account_id"),
+    connectionId: uuid("connection_id").notNull(),
+    erpCustomerRef: text("erp_customer_ref").notNull(),
+    customerName: text("customer_name").notNull().default(""),
+    /** Who placed it (snapshot: the account may be deleted). */
+    placedBy: text("placed_by").notNull().default(""),
+    conversationId: uuid("conversation_id"),
+    lines: jsonb("lines").$type<CustomerOrderLine[]>().notNull(),
+    note: text("note").notNull().default(""),
+    status: customerOrderStatus("status").notNull().default("pending"),
+    /** The order's reference in the ERP, once entered. */
+    erpReference: text("erp_reference"),
+    /** The team's note to the customer (e.g. why it was rejected). */
+    statusNote: text("status_note").notNull().default(""),
+    handledByUserId: uuid("handled_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    readAt: timestamp("read_at", { withTimezone: true }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique("customer_orders_tenant_number_uq").on(t.tenantId, t.number),
+    index("customer_orders_tenant_created_idx").on(t.tenantId, t.createdAt),
+    index("customer_orders_customer_idx").on(t.connectionId, t.erpCustomerRef),
+  ],
 );

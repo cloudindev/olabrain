@@ -191,6 +191,16 @@ set -a; . ./.env.production; set +a
 pnpm --filter @brainagent/db wallet:grant <tenantId> <euros> "Motivo"
 ```
 
+## Extranet de clientes (ADR-030)
+
+1. Crea un agente y elige **Extranet de clientes**. Se crea con su enlace `/x/{id}` (pestaña Publicar: activar, voz y tope de gasto por cliente y mes).
+2. En **Conexiones**, conecta ProfiECO al agente y espera a la primera sincronización.
+3. En **Clientes**, busca el cliente del ERP (nombre, CIF o id), escribe el email de la persona y pulsa «Dar acceso». Le llega la invitación con el enlace.
+4. La persona entra con su email y el código que recibe. Solo ve su cliente: órdenes, documentos, catálogo y sus pedidos.
+5. Los pedidos llegan a **Pedidos** (y por email a owners y admins). Introdúcelos en el ERP y márcalos; el cliente recibe un email con cada cambio.
+
+Quitar acceso cierra al momento todas las sesiones de esa persona. En local, los emails (invitaciones, códigos) salen por `SMTP_HOST`/`SMTP_PORT` (Mailpit en :1025/:8025); sin servidor SMTP se escriben en la consola de `next dev`.
+
 ## MyTutor (ADR-021)
 
 - **Conectar:** en un agente, «Conexiones» → MyTutor. Pide email, contraseña e id de empresa;

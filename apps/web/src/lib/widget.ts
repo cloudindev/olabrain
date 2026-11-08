@@ -46,6 +46,8 @@ export async function resolveChannel(channelId: string): Promise<PublicChannel |
       .where(and(eq(channels.id, channelId), eq(channels.kind, WEB_WIDGET)))
       .limit(1);
     if (!row || !row.channel.enabled || row.agent.status === "archived") return null;
+    // Extranet agents only answer identified customers (ADR-030).
+    if (row.agent.kind === "extranet") return null;
     const parsed = widgetConfigSchema.safeParse(row.channel.config);
     return {
       id: row.channel.id,

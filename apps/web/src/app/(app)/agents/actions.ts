@@ -1,6 +1,8 @@
 "use server";
 
 import {
+  AGENT_KINDS,
+  EXTRANET_LINK,
   SHARE_LINK,
   WEB_WIDGET,
   agentInputSchema,
@@ -35,6 +37,8 @@ const createSchema = z.object({
   personaId: z.uuid(),
   name: z.string().trim().min(1).max(80),
   role: z.string().trim().max(80).default(""),
+  /** "extranet": an agent for the organization's customers (ADR-030). */
+  kind: z.enum(AGENT_KINDS).default("standard"),
 });
 
 export async function createAgent(input: z.input<typeof createSchema>): Promise<ActionResult> {
@@ -63,8 +67,17 @@ export async function createAgent(input: z.input<typeof createSchema>): Promise<
         role: parsed.data.role,
         personaId: persona.id,
         presenceMode: "voice",
+        kind: parsed.data.kind,
       })
       .returning({ id: agents.id });
+    // An extranet agent is reached only through its own link: created with the agent.
+    if (parsed.data.kind === "extranet")
+      await tx.insert(channels).values({
+        tenantId: ctx.tenantId,
+        agentId: row!.id,
+        kind: EXTRANET_LINK,
+        config: { voice: true, monthlyLimitEur: 20 },
+      });
     // New agents start without tools: connections belong to one agent and are added from it.
     return row!.id;
   });
@@ -215,11 +228,12 @@ export async function saveWidget(
     };
   const saved = await tenantTx(ctx, async (tx) => {
     const [agent] = await tx
-      .select({ id: agents.id })
+      .select({ id: agents.id, kind: agents.kind })
       .from(agents)
       .where(eq(agents.id, agentId))
       .limit(1);
-    if (!agent) return false;
+    // Extranet agents only answer identified customers (ADR-030): no public widget.
+    if (!agent || agent.kind === "extranet") return false;
     const own = new Set(
       (
         await tx
@@ -268,11 +282,11 @@ export async function saveShareLink(agentId: string, input: unknown): Promise<Ac
   const newHash = parsed.data.password ? await hashSharePassword(parsed.data.password) : null;
   const result = await tenantTx(ctx, async (tx) => {
     const [agent] = await tx
-      .select({ id: agents.id })
+      .select({ id: agents.id, kind: agents.kind })
       .from(agents)
       .where(eq(agents.id, agentId))
       .limit(1);
-    if (!agent) return "not_found" as const;
+    if (!agent || agent.kind === "extranet") return "not_found" as const;
     const [current] = await tx
       .select({ config: channels.config })
       .from(channels)

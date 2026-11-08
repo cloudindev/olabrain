@@ -383,3 +383,17 @@ Implementa ADR-007 sin pagos (Stripe pendiente).
 - El vídeo queda montado pero oculto fuera de la llamada, para que el saludo pueda empezar dentro del clic.
 
 **Consecuencias.** El widget embebido no cambia: sigue sin vídeo.
+
+## ADR-030 — Agentes de extranet para los clientes de la empresa (2026-11-08)
+
+**Contexto.** Una empresa con su ERP conectado quiere que sus clientes consulten sus propios datos (pedidos, órdenes, documentos) y hagan pedidos nuevos hablando con un agente. Es sensible: un cliente no puede ver jamás datos de otro cliente ni de la empresa, y un LLM no es una barrera de seguridad.
+
+**Decisión.**
+- **Tipo de agente** `agents.kind = extranet`, elegido al crearlo. Solo se publica por su enlace `/x/{id}` (canal `extranet`); el widget y el enlace compartido no admiten agentes de extranet.
+- **Identidad impuesta por el sistema.** La empresa da de alta a cada persona (`customer_accounts`) ligándola a un cliente de su ERP (`connection_id` + `erp_customer_ref`). La persona entra con un código de 6 cifras enviado a ese email (10 min, 5 intentos, 3 códigos por 15 min; solo se guarda un HMAC). La sesión es una cookie HMAC ligada a la cuenta y a `session_epoch`: quitar el acceso cierra todas sus sesiones. La pantalla de entrada responde igual exista o no el email.
+- **Alcance desde la conversación.** Las rutas de la extranet crean la conversación con `customer_account_id`; el Tool Router lee de ahí el cliente, nunca de los argumentos ni del worker de voz. En una conversación de cliente solo existen las herramientas de cliente, definidas en el conector (`catalogo`, `nuevo_pedido`, `mis_pedidos` y, en ProfiECO, `mis_ordenes` y `mis_documentos`), sin parámetro de cliente y con `additionalProperties: false`. Las herramientas propias de la empresa no se cargan. Cada consulta filtra por el cliente y cada fila se vuelve a comprobar antes de devolverla; una fila ajena se descarta y queda en `audit_log` (`extranet.rows_blocked`). Una conversación de extranet sin cuenta válida, o de un agente de extranet fuera de su enlace, no tiene herramientas. La empresa probando el agente desde el panel conserva sus herramientas.
+- **ProfiECO.** Órdenes por `client_id`; documentos de control por el cliente del cargador (`shipper.clientId`, copiado en la caché como `client_id`); catálogo = servicios del cliente más los generales (sin `clientId`), nunca los de otro cliente.
+- **Pedidos sin escritura en el ERP.** `nuevo_pedido` solo admite referencias del catálogo del cliente, pide confirmación (el mismo flujo de escrituras) y guarda el pedido en `customer_orders` como pendiente. El equipo (owners y admins) recibe un email; en «Pedidos» lo marca como introducido (con su referencia en el ERP) o rechazado, y el cliente recibe un email. El envío al ERP queda para más adelante.
+- **Coste.** Tope de gasto por cliente y mes en la configuración del enlace (20 € por defecto, 0 = sin tope) y 60 mensajes y 6 llamadas por hora y cuenta. Lo paga el monedero de la empresa.
+
+**Consecuencias.** Solo ProfiECO puede servir a una extranet por ahora; Holded y WHMCS necesitan sus herramientas de cliente. Los documentos de control solo aparecen tras la siguiente sincronización (cuando se copia `client_id`). El aviso de pedido al equipo se envía desde la web: con el conector como proceso aparte (desarrollo local) no se envía. Las facturas de Coverde dependen de integrar Libra ERP.

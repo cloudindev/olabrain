@@ -2,6 +2,7 @@ import type { Database } from "@brainagent/db";
 import pino, { type Logger } from "pino";
 import type { GoogleApp } from "./adapters/native/googledrive";
 import type { MicrosoftApp } from "./adapters/native/microsoft365";
+import type { CustomerOrderEvent } from "./extranet";
 import { createSafeFetch, type EgressPolicy, type SafeFetcher } from "./egress";
 import { Vault, parseMasterKey } from "./vault";
 
@@ -22,6 +23,8 @@ export type ConnectorContext = {
   linkKey?: string;
   /** MyTutor API base URL (MYTUTOR_API_URL). */
   mytutorApiUrl: string;
+  /** Called after an extranet customer places an order (the web app emails the team). */
+  onCustomerOrder?: (order: CustomerOrderEvent) => Promise<void>;
 };
 
 export function createLogger(level = "info"): Logger {
@@ -58,6 +61,7 @@ export function createContext(opts: {
   google?: GoogleApp | null;
   linkKey?: string;
   mytutorApiUrl?: string;
+  onCustomerOrder?: (order: CustomerOrderEvent) => Promise<void>;
 }): ConnectorContext {
   const policy = { allowedPrivateHosts: opts.allowedPrivateHosts };
   return {
@@ -77,5 +81,6 @@ export function createContext(opts: {
     google: opts.google ?? null,
     linkKey: opts.linkKey,
     mytutorApiUrl: opts.mytutorApiUrl ?? "https://api.my-tutor.es/v1",
+    onCustomerOrder: opts.onCustomerOrder,
   };
 }

@@ -40,6 +40,13 @@ import type { ConnectorContext } from "./context";
 import { CONTACT_INPUT_SCHEMA, capturedContactFromArgs } from "./adapters/native/smtp";
 import { NativeToolError } from "./adapters/native/types";
 import {
+  CustomerToolError,
+  customerInstructions,
+  customerTools,
+  executeCustomerTool,
+  extranetAccess,
+} from "./extranet";
+import {
   executeTool,
   limitsOf,
   saveCapturedContact,
@@ -162,6 +169,9 @@ export async function listTools(
   agentId: string,
   conversationId?: string | null,
 ): Promise<Tool[]> {
+  // Extranet (ADR-030): an identified customer only gets the customer tools, scoped to it.
+  const access = await extranetAccess(ctx, tenantId, agentId, conversationId);
+  if (access) return access.kind === "customer" ? customerTools(access.scope) : [];
   const allowed = await visitorToolFilter(ctx, tenantId, conversationId);
   const rows = (await loadAgentTools(ctx, tenantId, agentId)).filter(
     (t) => !allowed || allowed.has(t.id),
@@ -317,6 +327,8 @@ export async function agentRuntimeConfig(
   );
   if (!row) return null;
   const toolList = await listTools(ctx, tenantId, agentId, conversationId);
+  const access = await extranetAccess(ctx, tenantId, agentId, conversationId);
+  const customerNote = access?.kind === "customer" ? customerInstructions(access.scope) : "";
   // Here and not in the prompt builders: text and voice both get it.
   const leadToolName = [LEAD_TOOL, EMAIL_LEAD_TOOL].find((n) => toolList.some((t) => t.name === n));
   return {
@@ -324,9 +336,13 @@ export async function agentRuntimeConfig(
       id: row.agent.id,
       name: row.agent.name,
       role: row.agent.role,
-      instructions: leadToolName
-        ? `${row.agent.instructions ?? ""}\n\n${LEAD_GUIDANCE.replace("{tool}", leadToolName)}`.trim()
-        : row.agent.instructions,
+      instructions: [
+        row.agent.instructions ?? "",
+        leadToolName ? LEAD_GUIDANCE.replace("{tool}", leadToolName) : "",
+        customerNote,
+      ]
+        .filter((p) => p.trim())
+        .join("\n\n"),
       model: row.agent.model,
       presenceMode: row.agent.presenceMode,
       policy: row.agent.policy,
@@ -394,11 +410,23 @@ export async function callTool(
 ): Promise<ToolCallResult> {
   const started = performance.now();
   const elapsed = () => Math.round(performance.now() - started);
-  const allowed = await visitorToolFilter(ctx, input.tenantId, input.conversationId);
-  const all = (await loadAgentTools(ctx, input.tenantId, input.agentId)).filter(
-    (t) => !allowed || allowed.has(t.id),
-  );
-  const tool = all.find((t) => t.name === input.toolName);
+  // Extranet (ADR-030): the scope comes from the stored conversation, never from the call.
+  const access = await extranetAccess(ctx, input.tenantId, input.agentId, input.conversationId);
+  const customer = access?.kind === "customer" ? access.scope : null;
+  const allowed = access
+    ? null
+    : await visitorToolFilter(ctx, input.tenantId, input.conversationId);
+  const all = access
+    ? []
+    : (await loadAgentTools(ctx, input.tenantId, input.agentId)).filter(
+        (t) => !allowed || allowed.has(t.id),
+      );
+  const customerTool = customer
+    ? customerTools(customer).find((t) => t.name === input.toolName)
+    : undefined;
+  const tool:
+    Pick<AgentToolRow, "id" | "name" | "inputSchema" | "mode" | "confirmation"> | undefined =
+    customerTool ?? all.find((t) => t.name === input.toolName);
 
   const log = async (
     status: "ok" | "error" | "needs_confirmation" | "timeout",
@@ -409,7 +437,8 @@ export async function callTool(
         tenantId: input.tenantId,
         conversationId: input.conversationId,
         agentId: input.agentId,
-        toolId: tool?.id ?? null,
+        // Customer tools are built in: no row in `tools`.
+        toolId: customer ? null : (tool?.id ?? null),
         toolName: input.toolName,
         status,
         durationMs: elapsed(),
@@ -419,7 +448,7 @@ export async function callTool(
     );
   };
 
-  if (!tool && allowed && input.toolName === LEAD_TOOL) {
+  if (!tool && allowed && !access && input.toolName === LEAD_TOOL) {
     try {
       const contact = capturedContactFromArgs(input.args);
       await saveCapturedContact(ctx, input.tenantId, input.conversationId, contact);
@@ -532,15 +561,40 @@ export async function callTool(
     }
   }
 
+  if (customer) {
+    try {
+      const res = await executeCustomerTool(
+        ctx,
+        customer,
+        tool.name,
+        input.args,
+        input.conversationId,
+      );
+      await log("ok", res.data);
+      return { status: "ok", result: res.data, durationMs: elapsed(), truncated: res.truncated };
+    } catch (e) {
+      const known = e instanceof CustomerToolError;
+      await log("error", { error: known ? e.message : "customer_tool_failed" });
+      if (!known)
+        ctx.log.warn({ tool: tool.name, err: (e as Error).message }, "customer tool failed");
+      return {
+        status: "error",
+        error: known ? e.message : "No se ha podido completar la consulta.",
+        durationMs: elapsed(),
+      };
+    }
+  }
+
+  const agentTool = tool as AgentToolRow;
   const [conn] = await withTenant(ctx.db, input.tenantId, (tx) =>
-    tx.select().from(connections).where(eq(connections.id, tool.connectionId)).limit(1),
+    tx.select().from(connections).where(eq(connections.id, agentTool.connectionId)).limit(1),
   );
 
   try {
     const res = await executeTool(
       ctx,
       conn as ConnectionRow,
-      tool,
+      agentTool,
       input.args,
       input.conversationId,
     );

@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@brainagent/ui";
-import { ArrowUp, FileText, Mic, PhoneOff, X } from "lucide-react";
+import { ArrowUp, FileText, LogOut, Mic, PhoneOff, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AgentFace } from "@/components/avatar/agent-face";
@@ -39,6 +39,7 @@ export function EmbedChat({
   apiBase = `/api/widget/${channelId}`,
   standalone = false,
   avatar,
+  session,
 }: {
   channelId: string;
   agent: { name: string; role: string; avatar: string | null };
@@ -50,10 +51,14 @@ export function EmbedChat({
   standalone?: boolean;
   /** The persona's video folder or portrait, shown during a call. */
   avatar?: { video: string | null; image: string | null };
+  /** Extranet: who is signed in, and where to sign out (ADR-030). */
+  session?: { id: string; label: string; logoutUrl: string };
 }) {
   const t = useTranslations("widget");
-  const storageKey = `olabrain:${channelId}:conversation`;
-  const messagesKey = `olabrain:${channelId}:messages`;
+  // Per signed-in account too: another person in the same tab never sees this thread.
+  const scope = session ? `${channelId}:${session.id}` : channelId;
+  const storageKey = `olabrain:${scope}:conversation`;
+  const messagesKey = `olabrain:${scope}:messages`;
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
@@ -191,6 +196,18 @@ export function EmbedChat({
   }
 
   const close = () => window.parent?.postMessage({ type: "olabrain:close" }, "*");
+  async function signOut() {
+    if (!session) return;
+    if (live) await call.hangUp();
+    try {
+      sessionStorage.removeItem(storageKey);
+      sessionStorage.removeItem(messagesKey);
+    } catch {
+      // ignore
+    }
+    await fetch(session.logoutUrl, { method: "POST" }).catch(() => null);
+    window.location.reload();
+  }
   const speaking = live && agentState === "speaking";
   const callError = call.error
     ? t(
@@ -226,11 +243,21 @@ export function EmbedChat({
         </span>
         <div className="min-w-0 flex-1">
           <p className="truncate font-display text-base font-semibold">{agent.name}</p>
-          <p className={cn("truncate text-xs text-ink-2", stage && "max-lg:text-white/80")}>
-            {live
-              ? `${t(`state.${agentState === "speaking" ? "speaking" : agentState === "thinking" ? "thinking" : "listening"}`)} · ${formatClock(elapsed ?? 0)}`
-              : agent.role || t("ai")}
-          </p>
+          {session && !live ? (
+            <p
+              className={cn("truncate text-xs text-ink-2", stage && "max-lg:text-white/80")}
+              data-testid="extranet-session"
+            >
+              {session.label}
+            </p>
+          ) : null}
+          {session && !live ? null : (
+            <p className={cn("truncate text-xs text-ink-2", stage && "max-lg:text-white/80")}>
+              {live
+                ? `${t(`state.${agentState === "speaking" ? "speaking" : agentState === "thinking" ? "thinking" : "listening"}`)} · ${formatClock(elapsed ?? 0)}`
+                : agent.role || t("ai")}
+            </p>
+          )}
         </div>
         {voice ? (
           live ? (
@@ -253,6 +280,20 @@ export function EmbedChat({
               <Mic className="size-5" />
             </button>
           )
+        ) : null}
+        {session ? (
+          <button
+            type="button"
+            onClick={() => void signOut()}
+            aria-label={t("signOut")}
+            title={t("signOut")}
+            className={cn(
+              "flex size-10 items-center justify-center rounded-full text-ink-2 hover:bg-surface-2",
+              stage && "max-lg:text-white",
+            )}
+          >
+            <LogOut className="size-5" />
+          </button>
         ) : null}
         {standalone ? null : (
           <button

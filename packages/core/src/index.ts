@@ -8,3 +8,4 @@ export * from "./attachments";
 export * from "./channels";
 export * from "./pricing";
 export * from "./mytutor";
+export * from "./extranet";

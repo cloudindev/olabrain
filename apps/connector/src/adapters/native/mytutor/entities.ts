@@ -312,7 +312,8 @@ export const ENTITIES: EntitySpec[] = [
           r.originPlace,
           r.deliveryPlace,
         ),
-        raw: trim(r),
+        // The shipper's client: what scopes a document to a customer (extranet, ADR-030).
+        raw: { ...trim(r), client_id: str(shipper.clientId) },
       };
     },
   },

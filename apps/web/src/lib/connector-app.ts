@@ -1,12 +1,18 @@
 import "server-only";
 import { createConnectorFromEnv } from "@brainagent/connector";
 import { env } from "./env";
+import { notifyCustomerOrder } from "./extranet-orders";
 
 let connector: ReturnType<typeof createConnectorFromEnv> | undefined;
 
 /** apps/connector mounted in this app under /connector (ADR-011), one per process. */
 export function connectorApp() {
-  connector ??= createConnectorFromEnv({ basePath: "/connector", poolMax: 5 });
+  connector ??= createConnectorFromEnv({
+    basePath: "/connector",
+    poolMax: 5,
+    // Extranet orders (ADR-030): the team is emailed from here, where the mailer lives.
+    onCustomerOrder: notifyCustomerOrder,
+  });
   return connector;
 }
 

@@ -160,7 +160,14 @@
     "memoryHint": "Recuerda datos de cada persona entre conversaciones. Puedes verlos y borrarlos en Contactos.",
     "role": "Función",
     "rolePlaceholder": "Asistente personal, Soporte, Ventas, Operaciones…",
-    "noRole": "Sin función"
+    "noRole": "Sin función",
+    "kind": "Tipo de agente",
+    "kinds": {
+      "standard": "Asistente",
+      "standardHint": "Para tu equipo o tu web: chat, voz y tus conexiones.",
+      "extranet": "Extranet de clientes",
+      "extranetHint": "Tus clientes entran con su email y solo ven sus datos y pedidos."
+    }
   },
   "chat": {
     "placeholder": "Escribe un mensaje…",
@@ -584,7 +591,9 @@
       "chat": "Conversación",
       "customize": "Personalizar",
       "connections": "Conexiones",
-      "publish": "Publicar"
+      "publish": "Publicar",
+      "customers": "Clientes",
+      "orders": "Pedidos"
     },
     "back": "Agentes",
     "title": "Conversación",
@@ -709,7 +718,8 @@
       "limit": "Has alcanzado el límite de uso por ahora. Inténtalo más tarde.",
       "mic": "Necesitamos permiso para usar el micrófono.",
       "no_balance": "Este asistente no está disponible ahora mismo."
-    }
+    },
+    "signOut": "Salir"
   },
   "publish": {
     "introTitle": "Publica a {name} en tu web",
@@ -995,5 +1005,91 @@
     "wrong": "Contraseña incorrecta.",
     "tooMany": "Demasiados intentos. Espera unos minutos.",
     "generic": "No se ha podido comprobar. Inténtalo de nuevo."
+  },
+  "extranet": {
+    "assistant": "Atención a clientes",
+    "intro": "Área de clientes. Escribe el email con el que te ha dado de alta la empresa y te enviaremos un código de acceso.",
+    "email": "Email",
+    "code": "Código de 6 cifras",
+    "codeSent": "Si {email} tiene acceso, te hemos enviado un código. Revisa tu correo (también el spam).",
+    "sendCode": "Enviar código",
+    "enter": "Entrar",
+    "checking": "Comprobando…",
+    "otherEmail": "Usar otro email",
+    "invalidEmail": "Email no válido.",
+    "wrongCode": "Código incorrecto.",
+    "expired": "El código ha caducado o ya se ha usado. Pide uno nuevo.",
+    "generic": "No se ha podido comprobar. Inténtalo de nuevo."
+  },
+  "extranetPanel": {
+    "customers": {
+      "title": "Clientes con acceso",
+      "hint": "Cada persona queda ligada a un cliente de tu ERP y solo verá sus datos y sus pedidos.",
+      "empty": "Aún no has dado acceso a ningún cliente.",
+      "noErp": "Conecta primero ProfiECO a este agente (pestaña Conexiones) para dar de alta a tus clientes.",
+      "ref": "ref. {ref}",
+      "lastLogin": "último acceso {date}",
+      "neverLogged": "aún no ha entrado",
+      "status": {
+        "invited": "Invitado",
+        "active": "Activo",
+        "disabled": "Sin acceso"
+      },
+      "enable": "Dar acceso",
+      "disable": "Quitar acceso",
+      "resend": "Reenviar invitación",
+      "delete": "Eliminar",
+      "deleteConfirm": "¿Eliminar el acceso de {email}? Sus pedidos se conservan.",
+      "inviteTitle": "Dar acceso a un cliente",
+      "inviteHint": "Busca el cliente en tu ERP y escribe el email de la persona. Le enviaremos una invitación.",
+      "erp": "ERP",
+      "customer": "Cliente del ERP",
+      "customerPlaceholder": "Nombre o CIF",
+      "searching": "Buscando…",
+      "change": "Cambiar",
+      "email": "Email de la persona",
+      "emailHint": "Sugerimos los emails de facturación del ERP.",
+      "person": "Nombre (opcional)",
+      "personPlaceholder": "Ej. Marta, de compras",
+      "invite": "Dar acceso y enviar invitación",
+      "inviting": "Enviando…",
+      "invited": "Invitación enviada."
+    },
+    "orders": {
+      "empty": "Todavía no hay pedidos. Aparecerán aquí cuando tus clientes los hagan desde la extranet.",
+      "footer": "Los pedidos no se envían al ERP: introdúcelos allí y márcalos aquí. El cliente recibe un email con cada cambio.",
+      "number": "nº {n}",
+      "lines": "{n, plural, one {# línea} other {# líneas}}",
+      "status": {
+        "pending": "Pendiente",
+        "entered": "Introducido",
+        "rejected": "Rechazado"
+      },
+      "placedBy": "Hecho por {who}",
+      "ref": "Ref.",
+      "item": "Servicio o artículo",
+      "quantity": "Cantidad",
+      "lineNote": "Detalle",
+      "note": "Comentario del cliente",
+      "erpReference": "Referencia en el ERP",
+      "statusNote": "Comentario para el cliente",
+      "statusNoteHint": "Va en el email que le enviamos.",
+      "markEntered": "Marcar como introducido",
+      "markRejected": "Rechazar",
+      "markPending": "Volver a pendiente",
+      "saved": "Guardado."
+    },
+    "link": {
+      "title": "Área de clientes",
+      "hint": "Tus clientes entran con su email y un código, y hablan con el agente por chat o voz.",
+      "enabled": "Activa",
+      "copy": "Copiar enlace",
+      "open": "Abrir",
+      "voice": "Permitir llamadas de voz",
+      "limit": "Tope de gasto por cliente y mes",
+      "limitHint": "0 = sin tope. Al llegar, el agente deja de responder a ese cliente hasta el mes siguiente.",
+      "saved": "Guardado.",
+      "footer": "Este agente no tiene widget ni enlace compartido: solo atiende a clientes identificados."
+    }
   }
 }
