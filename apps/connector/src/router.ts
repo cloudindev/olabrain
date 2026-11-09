@@ -370,6 +370,57 @@ export async function agentRuntimeConfig(
   };
 }
 
+/**
+ * Text chat: the writes still waiting for the user's yes in this conversation, with the
+ * exact arguments that were shown. Each chat message is a new request and the model does
+ * not see its earlier tool calls, so without this it cannot repeat the same call and every
+ * "sí" would only ask again. The hash check in callTool is unchanged.
+ */
+export async function pendingActions(
+  ctx: ConnectorContext,
+  tenantId: string,
+  conversationId: string,
+): Promise<{ tool: string; args: Record<string, unknown> }[]> {
+  const rows = await withTenant(ctx.db, tenantId, (tx) =>
+    tx
+      .select({ tool: toolCalls.toolName, args: toolCalls.request, response: toolCalls.response })
+      .from(toolCalls)
+      .where(
+        and(
+          eq(toolCalls.conversationId, conversationId),
+          eq(toolCalls.status, "needs_confirmation"),
+          gt(toolCalls.createdAt, new Date(Date.now() - CONFIRMATION_TTL_MS)),
+        ),
+      )
+      .orderBy(desc(toolCalls.createdAt))
+      .limit(5),
+  );
+  const out: { tool: string; args: Record<string, unknown> }[] = [];
+  for (const row of rows) {
+    if (out.some((o) => o.tool === row.tool)) continue; // only the latest per tool
+    const id = (row.response as { confirmationId?: unknown } | null)?.confirmationId;
+    const args = row.args as Record<string, unknown> | null;
+    // A capped or redacted log can't reproduce the call: it would only ask again.
+    if (typeof id !== "string" || !args || "truncated" in args) continue;
+    if (JSON.stringify(args).includes("[redacted]")) continue;
+    const [open] = await withTenant(ctx.db, tenantId, (tx) =>
+      tx
+        .select({ id: pendingConfirmations.id })
+        .from(pendingConfirmations)
+        .where(
+          and(
+            eq(pendingConfirmations.id, id),
+            isNull(pendingConfirmations.usedAt),
+            gt(pendingConfirmations.expiresAt, new Date()),
+          ),
+        )
+        .limit(1),
+    );
+    if (open) out.push({ tool: row.tool, args });
+  }
+  return out;
+}
+
 export function argsHash(args: Record<string, unknown>): string {
   return createHash("sha256").update(stableStringify(args)).digest("hex");
 }

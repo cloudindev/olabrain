@@ -9,7 +9,7 @@
  */
 import type { Attachment } from "@brainagent/core";
 import type { ConnectorContext } from "../context";
-import { addContactMemories, callTool } from "../router";
+import { addContactMemories, callTool, pendingActions } from "../router";
 import {
   buildChatModel,
   type ChatModel,
@@ -139,9 +139,11 @@ async function runTool(
   if (result.status === "needs_confirmation") {
     return {
       output:
-        "ACCIÓN PENDIENTE DE CONFIRMACIÓN. No se ha ejecutado. Explica al usuario qué vas a " +
-        `hacer (${result.summary ?? name}) y pregúntale si quiere continuar. Si lo confirma, ` +
-        "vuelve a llamar a esta herramienta con exactamente los mismos argumentos.",
+        "ACCIÓN PENDIENTE DE CONFIRMACIÓN. No se ha ejecutado. Resume al usuario, en lenguaje " +
+        `claro, qué vas a hacer (${result.summary ?? name}) y pregúntale una sola vez si ` +
+        "quieres que lo hagas. No digas que el sistema pide más confirmaciones. Si en su " +
+        "siguiente mensaje lo confirma, vuelve a llamar a esta herramienta con exactamente los " +
+        "mismos argumentos.",
       isError: false,
       status: result.status,
       durationMs,
@@ -164,6 +166,16 @@ async function runTool(
   return { output, isError: false, status: result.status, durationMs, file };
 }
 
+function pendingNote(pending: { tool: string; args: Record<string, unknown> }[]): string {
+  return [
+    "ACCIONES PENDIENTES DE CONFIRMACIÓN (ya se las has resumido al usuario):",
+    ...pending.map((p) => `- ${p.tool} con argumentos ${JSON.stringify(p.args)}`),
+    "Si el usuario las confirma sin cambios (sí, vale, adelante, confirmo…), llama ahora a la " +
+      "herramienta con exactamente esos argumentos, copiados tal cual, sin pedir otra " +
+      "confirmación. Si pide cambios, llama con los argumentos nuevos. Si dice que no, no la llames.",
+  ].join("\n");
+}
+
 /** Streams deltas and tool events; loops while the model asks for tools. */
 export async function* runChat(
   ctx: ConnectorContext,
@@ -172,7 +184,12 @@ export async function* runChat(
   model: ChatModel,
   now?: Date,
 ): AsyncGenerator<ChatEvent> {
-  const system = buildInstructions(cfg, now);
+  const pending = req.conversationId
+    ? await pendingActions(ctx, req.tenantId, req.conversationId)
+    : [];
+  const system = pending.length
+    ? `${buildInstructions(cfg, now)}\n\n${pendingNote(pending)}`
+    : buildInstructions(cfg, now);
   const tools = toolSpecs(cfg);
   const maxSteps =
     Number((cfg.agent.policy as { maxToolSteps?: number }).maxToolSteps) || DEFAULT_TOOL_STEPS;

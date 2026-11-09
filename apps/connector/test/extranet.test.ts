@@ -17,7 +17,7 @@ import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createContext } from "../src/context";
 import type { CustomerOrderEvent } from "../src/extranet";
-import { agentRuntimeConfig, callTool, listTools } from "../src/router";
+import { agentRuntimeConfig, callTool, listTools, pendingActions } from "../src/router";
 import { createTenant, dropTenant, testDbs } from "./helpers";
 
 /**
@@ -326,6 +326,8 @@ describe("orders", () => {
     const args = { lineas: [{ referencia: "s-x", cantidad: 2, nota: "Lunes" }], nota: "Urgente" };
     const first = await call(conv.x, "nuevo_pedido", args);
     expect(first.status).toBe("needs_confirmation");
+    // The next chat request is told the exact pending call, so one "sí" is enough.
+    expect(await pendingActions(ctx, tenantA, conv.x)).toEqual([{ tool: "nuevo_pedido", args }]);
     // Text chat: valid only with a user message stored after the request.
     await withTenant(appDb.db, tenantA, (tx) =>
       tx
@@ -334,6 +336,7 @@ describe("orders", () => {
     );
     const done = await call(conv.x, "nuevo_pedido", args, { confirm: true });
     expect(done.status).toBe("ok");
+    expect(await pendingActions(ctx, tenantA, conv.x)).toEqual([]);
     expect(done.result).toMatchObject({
       estado: "pendiente",
       lineas: [{ referencia: "s-x", cantidad: 2 }],
