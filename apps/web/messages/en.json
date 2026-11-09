@@ -1019,7 +1019,8 @@
     "invalidEmail": "Invalid email.",
     "wrongCode": "Wrong code.",
     "expired": "The code has expired or was already used. Ask for a new one.",
-    "generic": "Couldn't check it. Please try again."
+    "generic": "Couldn't check it. Please try again.",
+    "emailUnavailable": "We cannot send emails right now. Let the company that gave you access know."
   },
   "extranetPanel": {
     "customers": {
@@ -1062,7 +1063,9 @@
       "copyLink": "Copy link",
       "copied": "Copied",
       "showLink": "Show link",
-      "hideLink": "Hide link"
+      "hideLink": "Hide link",
+      "createdEmailFailed": "Access created, but the email could not be sent. Copy the link and share it yourself.",
+      "emailNotReady": "Email sending is not configured. Your customers cannot receive their sign-in code until an email server is set up."
     },
     "orders": {
       "empty": "No orders yet. They'll show up here when your customers place them through the extranet.",

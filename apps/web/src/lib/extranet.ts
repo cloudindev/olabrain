@@ -20,7 +20,7 @@ import {
 import { and, count, desc, eq, gt, isNull, sql } from "drizzle-orm";
 import { cache } from "react";
 import { db } from "@/lib/db";
-import { sendEmail } from "@/lib/email";
+import { trySendEmail } from "@/lib/email";
 import { env } from "@/lib/env";
 
 /**
@@ -165,7 +165,7 @@ export async function requestLoginCode(link: ExtranetLink, email: string): Promi
     return code;
   });
   if (!sent) return;
-  await sendEmail(
+  await trySendEmail(
     email,
     `Tu código de acceso: ${sent}`,
     [

@@ -20,7 +20,7 @@ import {
 import { and, asc, eq, ilike, isNull, or, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { sendEmail } from "@/lib/email";
+import { trySendEmail } from "@/lib/email";
 import { env } from "@/lib/env";
 import { requireTenant, tenantTx, type TenantContext } from "@/lib/tenant";
 import type { ActionResult } from "./actions";
@@ -130,8 +130,8 @@ async function sendInvitation(
   agentName: string,
   url: string,
   account: { email: string; personName: string },
-) {
-  await sendEmail(
+): Promise<boolean> {
+  return trySendEmail(
     account.email,
     `${ctx.tenantName} te da acceso a su área de clientes`,
     [
@@ -156,7 +156,9 @@ function personalLink(url: string, email: string) {
 export async function inviteCustomer(
   agentId: string,
   input: unknown,
-): Promise<{ ok: true; url: string; emailed: boolean } | { ok: false; error: string }> {
+): Promise<
+  { ok: true; url: string; emailed: boolean; emailFailed: boolean } | { ok: false; error: string }
+> {
   const ctx = await requireTenant("admin");
   const parsed = customerInviteSchema.safeParse(input);
   if (!z.uuid().safeParse(agentId).success || !parsed.success)
@@ -210,9 +212,11 @@ export async function inviteCustomer(
   });
   if ("error" in result) return { ok: false, error: result.error! };
   const link = personalLink(result.url, parsed.data.email);
-  if (parsed.data.sendEmail) await sendInvitation(ctx, result.agentName, link, parsed.data);
+  // The access exists either way; if the email fails the link is shown to be shared by hand.
+  const emailed =
+    parsed.data.sendEmail && (await sendInvitation(ctx, result.agentName, link, parsed.data));
   revalidatePath(`/agents/${agentId}`);
-  return { ok: true, url: link, emailed: parsed.data.sendEmail };
+  return { ok: true, url: link, emailed, emailFailed: parsed.data.sendEmail && !emailed };
 }
 
 const accountAction = z.enum(["enable", "disable", "resend", "delete"]);
@@ -261,12 +265,17 @@ export async function manageCustomer(
     if (result.account.status === "disabled")
       return { ok: false, error: "Activa el acceso antes de reenviar la invitación" };
     if (!result.url) return { ok: false, error: "Publica primero el enlace de la extranet" };
-    await sendInvitation(
+    const sent = await sendInvitation(
       ctx,
       result.agentName,
       personalLink(result.url, result.account.email),
       result.account,
     );
+    if (!sent)
+      return {
+        ok: false,
+        error: "No se ha podido enviar el email. Usa «Ver enlace» y compártelo tú.",
+      };
   }
   revalidatePath(`/agents/${agentId}`);
   return { ok: true };
@@ -314,7 +323,7 @@ export async function updateOrderStatus(orderId: string, input: unknown): Promis
   if (!result) return { ok: false, error: "Pedido no encontrado" };
   if (result.changed && result.email && parsed.data.status !== "pending") {
     const n = result.order.number;
-    await sendEmail(
+    const sent = await trySendEmail(
       result.email,
       `Tu pedido nº ${n} ha sido ${STATUS_ES[parsed.data.status]}`,
       [
@@ -327,6 +336,8 @@ export async function updateOrderStatus(orderId: string, input: unknown): Promis
         .filter((l, i, all) => l || all[i - 1])
         .join("\n"),
     );
+    if (!sent)
+      return { ok: false, error: "Estado guardado, pero no se ha podido avisar al cliente por email." };
   }
   if (result.order.agentId) revalidatePath(`/agents/${result.order.agentId}`);
   return { ok: true };
@@ -342,3 +353,4 @@ export async function markOrderRead(orderId: string): Promise<void> {
       .where(and(eq(customerOrders.id, orderId), isNull(customerOrders.readAt))),
   );
 }
+

@@ -31,3 +31,21 @@ export async function sendEmail(to: string, subject: string, text: string): Prom
     );
   }
 }
+
+/** False in production while no SMTP server is configured (SMTP_HOST left at its default). */
+export function emailReady(): boolean {
+  const e = env();
+  return e.NODE_ENV !== "production" || e.SMTP_HOST !== "localhost";
+}
+
+/** Like sendEmail, but reports failure instead of throwing. */
+export async function trySendEmail(to: string, subject: string, text: string): Promise<boolean> {
+  if (!emailReady()) return false;
+  try {
+    await sendEmail(to, subject, text);
+    return true;
+  } catch (error) {
+    console.error(`[email] not sent: ${(error as Error).message}`);
+    return false;
+  }
+}

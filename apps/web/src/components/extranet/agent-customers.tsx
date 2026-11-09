@@ -32,6 +32,7 @@ export function AgentCustomers({
   connections,
   accounts,
   linkUrl,
+  emailReady,
   canEdit,
 }: {
   agentId: string;
@@ -39,6 +40,8 @@ export function AgentCustomers({
   accounts: CustomerAccountRow[];
   /** The extranet's sign-in page, null until it is published. */
   linkUrl: string | null;
+  /** False when this deployment has no email server: customers could not get their code. */
+  emailReady: boolean;
   canEdit: boolean;
 }) {
   const t = useTranslations("extranetPanel.customers");
@@ -51,7 +54,11 @@ export function AgentCustomers({
   const [personName, setPersonName] = useState("");
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
   const [shown, setShown] = useState<string | null>(null);
-  const [created, setCreated] = useState<{ url: string; emailed: boolean } | null>(null);
+  const [created, setCreated] = useState<{
+    url: string;
+    emailed: boolean;
+    emailFailed: boolean;
+  } | null>(null);
   const [pending, start] = useTransition();
   const [searching, startSearch] = useTransition();
 
@@ -75,6 +82,15 @@ export function AgentCustomers({
 
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+      {emailReady ? null : (
+        <p
+          role="alert"
+          className="rounded-xl border border-bad/40 bg-bad/10 px-4 py-3 text-sm text-ink lg:col-span-2"
+          data-testid="email-not-ready"
+        >
+          {t("emailNotReady")}
+        </p>
+      )}
       <Card className="overflow-hidden">
         <header className="border-b border-line px-5 py-4">
           <h2 className="font-display text-lg font-semibold">{t("title")}</h2>
@@ -280,8 +296,12 @@ export function AgentCustomers({
               className="flex flex-col gap-2 rounded-xl border border-line bg-surface-2 p-3 text-sm"
               data-testid="invite-result"
             >
-              <p className="font-medium text-ok">
-                {created.emailed ? t("createdEmailed") : t("createdLink")}
+              <p className={cn("font-medium", created.emailFailed ? "text-bad" : "text-ok")}>
+                {created.emailFailed
+                  ? t("createdEmailFailed")
+                  : created.emailed
+                    ? t("createdEmailed")
+                    : t("createdLink")}
               </p>
               <CopyLink url={created.url} label={t("copyLink")} copied={t("copied")} />
             </div>
@@ -302,7 +322,7 @@ export function AgentCustomers({
                   sendEmail,
                 });
                 if (!res.ok) return setMessage({ ok: false, text: res.error });
-                setCreated({ url: res.url, emailed: res.emailed });
+                setCreated({ url: res.url, emailed: res.emailed, emailFailed: res.emailFailed });
                 setCustomer(null);
                 setEmail("");
                 setPersonName("");

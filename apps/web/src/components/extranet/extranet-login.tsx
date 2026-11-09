@@ -49,7 +49,16 @@ export function ExtranetLogin({
               if (res.ok) {
                 setStep("code");
                 setCode("");
-              } else setError(t(res.status === 400 ? "invalidEmail" : "generic"));
+              } else
+                setError(
+                  t(
+                    res.status === 400
+                      ? "invalidEmail"
+                      : res.status === 503
+                        ? "emailUnavailable"
+                        : "generic",
+                  ),
+                );
               return;
             }
             const res = await post("verify", { email, code });

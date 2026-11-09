@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { emailReady } from "@/lib/email";
 import { requestLoginCode, resolveExtranet } from "@/lib/extranet";
 import { sameOrigin } from "@/lib/public-voice";
 
@@ -21,6 +22,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   if (!parsed.success) return Response.json({ error: "invalid_email" }, { status: 400 });
   const link = await resolveExtranet(id);
   if (!link) return Response.json({ error: "not_found" }, { status: 404 });
+  // Checked before looking the email up, so the answer still says nothing about who has access.
+  if (!emailReady()) return Response.json({ error: "email_unavailable" }, { status: 503 });
   await requestLoginCode(link, parsed.data.email.trim().toLowerCase());
   return Response.json({ ok: true });
 }

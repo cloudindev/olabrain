@@ -40,6 +40,7 @@ import { AgentExtranetLink } from "@/components/extranet/agent-extranet-link";
 import { AgentOrders } from "@/components/extranet/agent-orders";
 import { LinkPending } from "@/components/shell/link-pending";
 import { modelCatalog } from "@/lib/models";
+import { emailReady } from "@/lib/email";
 import { env } from "@/lib/env";
 import { requireTenant, tenantTx } from "@/lib/tenant";
 
@@ -376,6 +377,7 @@ export default async function AgentPage({
           agentId={id}
           connections={data.erpConnections}
           accounts={data.accounts}
+          emailReady={emailReady()}
           linkUrl={
             data.extranetLink
               ? `${env().APP_URL.replace(/\/$/, "")}/x/${data.extranetLink.id}`

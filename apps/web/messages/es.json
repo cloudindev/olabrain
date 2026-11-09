@@ -1019,7 +1019,8 @@
     "invalidEmail": "Email no válido.",
     "wrongCode": "Código incorrecto.",
     "expired": "El código ha caducado o ya se ha usado. Pide uno nuevo.",
-    "generic": "No se ha podido comprobar. Inténtalo de nuevo."
+    "generic": "No se ha podido comprobar. Inténtalo de nuevo.",
+    "emailUnavailable": "No podemos enviar emails ahora mismo. Avisa a la empresa que te dio acceso."
   },
   "extranetPanel": {
     "customers": {
@@ -1062,7 +1063,9 @@
       "copyLink": "Copiar enlace",
       "copied": "Copiado",
       "showLink": "Ver enlace",
-      "hideLink": "Ocultar enlace"
+      "hideLink": "Ocultar enlace",
+      "createdEmailFailed": "Acceso creado, pero no se ha podido enviar el email. Copia el enlace y compártelo tú.",
+      "emailNotReady": "El envío de emails no está configurado. Tus clientes no podrán recibir el código para entrar hasta que se configure un servidor de correo."
     },
     "orders": {
       "empty": "Todavía no hay pedidos. Aparecerán aquí cuando tus clientes los hagan desde la extranet.",
