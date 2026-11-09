@@ -201,6 +201,8 @@ pnpm --filter @brainagent/db wallet:grant <tenantId> <euros> "Motivo"
 
 Quitar acceso cierra al momento todas las sesiones de esa persona. En local, los emails (invitaciones, códigos) salen por `SMTP_HOST`/`SMTP_PORT` (Mailpit en :1025/:8025); sin servidor SMTP se escriben en la consola de `next dev`.
 
+**Email en producción.** Sale por Resend (región UE) con el dominio verificado `olabrain.com`. En Vercel (Production): `SMTP_HOST=smtp.resend.com`, `SMTP_PORT=465`, `SMTP_USER=resend`, `SMTP_PASSWORD` = clave de API de Resend (Sensitive) y `EMAIL_FROM="OlaBrain <no-reply@olabrain.com>"`. Las variables nuevas solo se aplican tras un redespliegue. Si `SMTP_HOST` falta en producción, la extranet responde «no podemos enviar emails» y el panel muestra un aviso en la pestaña Clientes. Al rotar la clave de Resend, actualiza `SMTP_PASSWORD` y redespliega.
+
 ## MyTutor (ADR-021)
 
 - **Conectar:** en un agente, «Conexiones» → MyTutor. Pide email, contraseña e id de empresa;
