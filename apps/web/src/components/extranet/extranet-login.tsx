@@ -5,7 +5,6 @@ import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { AgentFace } from "@/components/avatar/agent-face";
-import { Logo } from "@/components/logo";
 
 /**
  * Extranet sign-in (ADR-030): the customer's email, then the 6-digit code we email them.
@@ -14,14 +13,18 @@ import { Logo } from "@/components/logo";
 export function ExtranetLogin({
   linkId,
   agent,
+  org,
   initialEmail = "",
 }: {
   linkId: string;
   agent: { name: string; role: string; avatar: string | null };
+  /** The organization's logo, under the agent's name. */
+  org?: { name: string; logo: string | null };
   /** From the personal link (?email=) the organization shared. */
   initialEmail?: string;
 }) {
   const t = useTranslations("extranet");
+  const tw = useTranslations("widget");
   const router = useRouter();
   const [email, setEmail] = useState(initialEmail);
   const [code, setCode] = useState("");
@@ -75,6 +78,15 @@ export function ExtranetLogin({
           <h1 className="font-display text-xl font-semibold">{agent.name}</h1>
           <p className="text-sm text-ink-2">{agent.role || t("assistant")}</p>
         </div>
+        {org?.logo ? (
+          // eslint-disable-next-line @next/next/no-img-element -- a data URL
+          <img
+            src={org.logo}
+            alt={org.name}
+            className="max-h-14 max-w-[200px] object-contain"
+            data-testid="extranet-org-logo"
+          />
+        ) : null}
         <p className="text-sm text-ink-2">
           {step === "email" ? t("intro") : t("codeSent", { email })}
         </p>
@@ -129,7 +141,20 @@ export function ExtranetLogin({
             {t("otherEmail")}
           </button>
         ) : null}
-        <Logo className="mt-2 h-4 opacity-70" />
+        <p className="text-[11px] text-ink-3">
+          {tw.rich("notice", {
+            brand: (chunks) => (
+              <a
+                href="https://www.olabrain.com"
+                target="_blank"
+                rel="noopener"
+                className="font-medium text-ink-2 underline-offset-2 hover:text-ink hover:underline"
+              >
+                {chunks}
+              </a>
+            ),
+          })}
+        </p>
       </form>
     </main>
   );

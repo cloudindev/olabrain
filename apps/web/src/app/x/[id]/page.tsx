@@ -35,10 +35,12 @@ export default async function ExtranetPage({
   if (!link) notFound();
   const agent = { name: link.agentName, role: link.agentRole, avatar: link.avatarImage };
   const account = await extranetAccount(link, (await cookies()).get(extranetCookieName(id))?.value);
-  if (!account) return (
+  if (!account)
+    return (
       <ExtranetLogin
         linkId={link.id}
         agent={agent}
+        org={{ name: link.orgName, logo: link.orgLogo }}
         initialEmail={typeof email === "string" ? email.slice(0, 254) : ""}
       />
     );

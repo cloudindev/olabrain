@@ -292,10 +292,28 @@ test("an extranet agent: customer access, sign-in with a code, an order and its 
   await expect(viaLink.getByLabel("Email")).toHaveValue("solo-enlace@ejemplo.test");
   await viaLink.close();
 
+  // The organization's logo shows on the sign-in page, with a plain "by OlaBrain" line.
+  await page.goto("/settings/organization", { waitUntil: "networkidle" });
+  await page.getByTestId("org-logo-input").setInputFiles({
+    name: "logo.png",
+    mimeType: "image/png",
+    buffer: Buffer.from(
+      "iVBORw0KGgoAAAANSUhEUgAAAAgAAAAECAYAAACzzX7wAAAAE0lEQVR4nGP4z8DwnxHGYIBRGQB0kQX9QYXl4wAAAABJRU5ErkJggg==",
+      "base64",
+    ),
+  });
+  await expect(page.getByText("Logotipo guardado.")).toBeVisible();
+  await expect(page.getByTestId("org-logo")).toHaveAttribute(
+    "src",
+    /^data:image\/(webp|png);base64,/,
+  );
+
   // Marta signs in from her own browser.
   const guest = await browser.newContext();
   const g = await guest.newPage();
   await g.goto(`${baseURL}${extranetPath}`, { waitUntil: "networkidle" });
+  await expect(g.getByTestId("extranet-org-logo")).toBeVisible();
+  await expect(g.getByText("Agente IA by OlaBrain")).toBeVisible();
   // An unknown email gets the same answer, and no code.
   await g.getByLabel("Email").fill("nadie@ejemplo.test");
   await g.getByRole("button", { name: "Enviar código" }).click();

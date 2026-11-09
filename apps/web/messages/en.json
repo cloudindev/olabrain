@@ -962,7 +962,15 @@
       "cancel": "Cancel",
       "canceled": "Invitation canceled.",
       "linkHint": "The invited person must sign in (or sign up) with the same email to accept.",
-      "readOnly": "Only owners and admins can manage members and invitations."
+      "readOnly": "Only owners and admins can manage members and invitations.",
+      "logo": "Logo",
+      "logoHint": "Shown on the customer area of your extranet agents. PNG, JPG, WebP or SVG; we resize it to 480×160.",
+      "noLogo": "No logo",
+      "uploadLogo": "Upload logo",
+      "changeLogo": "Change",
+      "removeLogo": "Remove",
+      "logoSaved": "Logo saved.",
+      "logoRemoved": "Logo removed."
     },
     "preferences": {
       "languageTitle": "Language",

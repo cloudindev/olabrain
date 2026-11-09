@@ -14,6 +14,7 @@ import {
   customerAccounts,
   customerLoginCodes,
   personas,
+  tenants,
   withTenant,
   type Tx,
 } from "@brainagent/db";
@@ -37,6 +38,9 @@ export type ExtranetLink = {
   agentRole: string;
   avatarImage: string | null;
   avatarVideo: string | null;
+  /** The organization's logo (data URL) and name, shown on the sign-in page. */
+  orgLogo: string | null;
+  orgName: string;
   config: ExtranetConfig;
 };
 
@@ -65,6 +69,11 @@ export const resolveExtranet = cache(async (channelId: string): Promise<Extranet
       .limit(1);
     if (!row || !row.channel.enabled) return null;
     if (row.agent.kind !== "extranet" || row.agent.status === "archived") return null;
+    const [org] = await tx
+      .select({ name: tenants.name, logo: tenants.logo })
+      .from(tenants)
+      .where(eq(tenants.id, tenantId))
+      .limit(1);
     return {
       id: row.channel.id,
       tenantId,
@@ -73,6 +82,8 @@ export const resolveExtranet = cache(async (channelId: string): Promise<Extranet
       agentRole: row.agent.role,
       avatarImage: row.persona?.avatarUrl ?? null,
       avatarVideo: row.persona?.avatarVideo ?? null,
+      orgLogo: org?.logo || null,
+      orgName: org?.name ?? "",
       config: extranetConfigSchema.parse(row.channel.config ?? {}),
     };
   });

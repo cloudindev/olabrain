@@ -2,16 +2,17 @@
 
 import { ROLES, type Role } from "@brainagent/core";
 import { Badge, Button, Field, Input, Select } from "@brainagent/ui";
-import { Check, Copy } from "lucide-react";
+import { Check, Copy, ImagePlus, Trash2 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
-import { useId, useState, useTransition, type FormEvent } from "react";
+import { useId, useRef, useState, useTransition, type FormEvent } from "react";
 import {
   cancelInvitation,
   inviteMember,
   removeMember,
   renameOrganization,
   updateMemberRole,
+  updateOrganizationLogo,
 } from "@/app/(app)/settings/actions";
 import { StatusLine, useResultMessage } from "./profile-forms";
 
@@ -61,6 +62,112 @@ export function OrgNameForm({ initialName, canEdit }: { initialName: string; can
       </Field>
       <StatusLine msg={msg} />
     </form>
+  );
+}
+
+/** Fits the image in 480×160 and re-encodes it (WebP, else PNG): small and script-free. */
+async function shrinkLogo(file: File): Promise<string> {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const el = new Image();
+      el.onload = () => resolve(el);
+      el.onerror = reject;
+      el.src = url;
+    });
+    const scale = Math.min(1, 480 / img.naturalWidth, 160 / img.naturalHeight);
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
+    canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
+    canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height);
+    const webp = canvas.toDataURL("image/webp", 0.9);
+    return webp.startsWith("data:image/webp") ? webp : canvas.toDataURL("image/png");
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+export function OrgLogoForm({
+  initialLogo,
+  canEdit,
+}: {
+  initialLogo: string | null;
+  canEdit: boolean;
+}) {
+  const t = useTranslations("settings.organization");
+  const router = useRouter();
+  const input = useRef<HTMLInputElement>(null);
+  const [logo, setLogo] = useState(initialLogo);
+  const [pending, start] = useTransition();
+  const { msg, show } = useResultMessage();
+
+  const save = (next: string | null) =>
+    start(async () => {
+      const res = await updateOrganizationLogo(next);
+      show(res, next ? t("logoSaved") : t("logoRemoved"));
+      if (res.ok) {
+        setLogo(next);
+        router.refresh();
+      }
+    });
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div>
+        <p className="text-sm font-medium text-ink">{t("logo")}</p>
+        <p className="text-xs text-ink-2">{t("logoHint")}</p>
+      </div>
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex h-20 w-48 items-center justify-center rounded-xl border border-dashed border-line bg-surface-2 p-2">
+          {logo ? (
+            // eslint-disable-next-line @next/next/no-img-element -- a data URL
+            <img
+              src={logo}
+              alt={t("logo")}
+              className="max-h-full max-w-full object-contain"
+              data-testid="org-logo"
+            />
+          ) : (
+            <span className="text-xs text-ink-3">{t("noLogo")}</span>
+          )}
+        </div>
+        {canEdit ? (
+          <div className="flex gap-2">
+            <input
+              ref={input}
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/svg+xml"
+              className="hidden"
+              data-testid="org-logo-input"
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                e.target.value = "";
+                if (!file) return;
+                try {
+                  save(await shrinkLogo(file));
+                } catch {
+                  show({ ok: false, error: "invalid" }, "");
+                }
+              }}
+            />
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={pending}
+              onClick={() => input.current?.click()}
+            >
+              <ImagePlus className="size-4" /> {logo ? t("changeLogo") : t("uploadLogo")}
+            </Button>
+            {logo ? (
+              <Button type="button" variant="ghost" disabled={pending} onClick={() => save(null)}>
+                <Trash2 className="size-4" /> {t("removeLogo")}
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+      <StatusLine msg={msg} />
+    </div>
   );
 }
 

@@ -128,6 +128,27 @@ export async function renameOrganization(name: string): Promise<SettingsResult> 
   }
 }
 
+/** Small raster images only (the browser resizes before upload); SVG could carry scripts. */
+const LOGO_RE = /^data:image\/(png|webp|jpeg);base64,[A-Za-z0-9+/]+=*$/;
+const LOGO_MAX_CHARS = 200_000;
+
+/** The organization's logo, shown on its customer extranet (ADR-030). null removes it. */
+export async function updateOrganizationLogo(logo: string | null): Promise<SettingsResult> {
+  try {
+    const ctx = await requireTenant("admin");
+    if (logo !== null && (logo.length > LOGO_MAX_CHARS || !LOGO_RE.test(logo)))
+      return { ok: false, error: "invalid" };
+    await auth().api.updateOrganization({
+      headers: await headers(),
+      body: { organizationId: ctx.tenantId, data: { logo: logo ?? "" } },
+    });
+    revalidatePath("/", "layout");
+    return { ok: true };
+  } catch (error) {
+    return fail(error);
+  }
+}
+
 /** A membership of the active tenant, with its effective role. */
 async function tenantMember(tenantId: string, memberId: string) {
   if (!z.uuid().safeParse(memberId).success) return null;

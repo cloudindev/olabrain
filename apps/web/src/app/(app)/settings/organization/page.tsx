@@ -1,5 +1,5 @@
 import { effectiveRole } from "@brainagent/core";
-import { invitations, memberships, users } from "@brainagent/db";
+import { invitations, memberships, tenants, users } from "@brainagent/db";
 import { Card, CardHeader } from "@brainagent/ui";
 import { and, asc, desc, eq, gt } from "drizzle-orm";
 import { getTranslations } from "next-intl/server";
@@ -7,6 +7,7 @@ import {
   InvitationsList,
   InviteForm,
   MembersList,
+  OrgLogoForm,
   OrgNameForm,
 } from "@/components/settings/organization-forms";
 import { db } from "@/lib/db";
@@ -32,6 +33,11 @@ export default async function OrganizationPage() {
     .where(eq(memberships.organizationId, ctx.tenantId))
     .orderBy(asc(memberships.createdAt));
   const canManage = ctx.role === "owner" || ctx.role === "admin";
+  const [org] = await db()
+    .select({ logo: tenants.logo })
+    .from(tenants)
+    .where(eq(tenants.id, ctx.tenantId))
+    .limit(1);
   const pending = canManage
     ? await db()
         .select({
@@ -65,6 +71,9 @@ export default async function OrganizationPage() {
         <CardHeader title={t("detailsTitle")} />
         <div className="p-5">
           <OrgNameForm initialName={ctx.tenantName} canEdit={canManage} />
+        </div>
+        <div className="border-t border-line p-5">
+          <OrgLogoForm initialLogo={org?.logo || null} canEdit={canManage} />
         </div>
       </Card>
 
