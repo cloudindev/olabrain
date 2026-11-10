@@ -67,14 +67,52 @@ type AgentToolRow = ToolRow & {
   confirmation: "required" | "auto";
   connectionId: string;
   connectionKind: ConnectionRow["kind"];
+  connectionName: string;
 };
+
+const TOOL_NAME_MAX = 64;
+
+function slug(text: string): string {
+  return text
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
+/**
+ * Tool names must be unique per agent (CLAUDE.md §5), but two connections of the same
+ * kind (say, ProfiECO of two companies) bring the same names. Those get the connection's
+ * name as a suffix, and their description says which connection they read. Listing and
+ * calling both go through here, so the names always resolve back to the right tool.
+ */
+export function disambiguateToolNames<
+  T extends { id: string; name: string; description: string; connectionName: string },
+>(rows: T[]): T[] {
+  const count = new Map<string, number>();
+  for (const r of rows) count.set(r.name, (count.get(r.name) ?? 0) + 1);
+  const taken = new Set(rows.filter((r) => count.get(r.name) === 1).map((r) => r.name));
+  return rows.map((r) => {
+    if (count.get(r.name) === 1) return r;
+    const suffix = slug(r.connectionName) || "conexion";
+    let name = `${r.name}_${suffix}`.slice(0, TOOL_NAME_MAX).replace(/_+$/, "");
+    if (taken.has(name)) name = `${name.slice(0, TOOL_NAME_MAX - 7)}_${r.id.slice(0, 6)}`;
+    taken.add(name);
+    return {
+      ...r,
+      name,
+      description: `[Conexión «${r.connectionName}»] ${r.description}`,
+    };
+  });
+}
 
 async function loadAgentTools(
   ctx: ConnectorContext,
   tenantId: string,
   agentId: string,
 ): Promise<AgentToolRow[]> {
-  return withTenant(ctx.db, tenantId, (tx) =>
+  const rows = await withTenant(ctx.db, tenantId, (tx) =>
     tx
       .select({
         id: tools.id,
@@ -88,6 +126,7 @@ async function loadAgentTools(
         limits: tools.limits,
         connectionId: tools.connectionId,
         connectionKind: connections.kind,
+        connectionName: connections.name,
       })
       .from(agentTools)
       .innerJoin(tools, eq(tools.id, agentTools.toolId))
@@ -102,8 +141,9 @@ async function loadAgentTools(
           eq(connections.status, "active"),
         ),
       )
-      .orderBy(tools.name),
+      .orderBy(tools.name, connections.name),
   );
+  return disambiguateToolNames(rows);
 }
 
 /** Conversations started by anonymous visitors through the web widget. */
