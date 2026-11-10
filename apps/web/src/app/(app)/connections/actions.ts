@@ -266,6 +266,26 @@ export async function updateTool(toolId: string, patch: unknown): Promise<Result
   return { ok: true, data: null };
 }
 
+/** Renames a connection; its tools keep working (they dispatch by source ref, not name). */
+export async function renameConnection(id: string, name: string): Promise<Result<null>> {
+  const ctx = await requireTenant("admin");
+  const clean = name.trim().replace(/\s+/g, " ");
+  if (!z.uuid().safeParse(id).success || !clean || clean.length > 80)
+    return { ok: false, error: "El nombre debe tener entre 1 y 80 caracteres." };
+  const [row] = await tenantTx(ctx, (tx) =>
+    tx
+      .update(connections)
+      .set({ name: clean, updatedAt: new Date() })
+      .where(eq(connections.id, id))
+      .returning({ agentId: connections.agentId }),
+  );
+  if (!row) return { ok: false, error: "Esta conexión ya no existe." };
+  revalidatePath(`/connections/${id}`);
+  revalidatePath("/connections");
+  if (row.agentId) revalidatePath(`/agents/${row.agentId}`);
+  return { ok: true, data: null };
+}
+
 export async function deleteConnection(id: string): Promise<Result<null>> {
   const ctx = await requireTenant("admin");
   if (!z.uuid().safeParse(id).success) return { ok: false, error: "Datos no válidos" };

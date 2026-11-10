@@ -57,6 +57,13 @@ test("create an agent, connect the demo database tools and use them", async ({ p
   await expect(page.getByTestId("tools-summary")).toHaveText("1 de 2 herramientas activas");
   await page.getByRole("switch", { name: "horas_equipo" }).check({ force: true });
   await expect(page.getByText(/cambio sin guardar/)).toHaveCount(0);
+  // Owners rename a connection in place (and back).
+  for (const name of ["Operaciones Ruiz", "Operaciones (demo)"]) {
+    await page.getByTestId("connection-rename").click();
+    await page.getByTestId("connection-name-input").fill(name);
+    await page.getByTestId("connection-name-input").press("Enter");
+    await expect(page.getByTestId("connection-name")).toHaveText(name);
+  }
 
   await page.goto("/agents");
   await expect(page.getByTestId("agent-list")).toContainText("2 herramientas");

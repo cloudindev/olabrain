@@ -6,6 +6,7 @@ import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 import { ConnectionActions } from "@/components/connections/connection-actions";
+import { ConnectionName } from "@/components/connections/connection-name";
 import { StudioEditor } from "@/components/connections/studio-editor";
 import { ToolsTable } from "@/components/connections/tools-table";
 import { MytutorPanel } from "@/components/connections/mytutor-panel";
@@ -51,7 +52,7 @@ export default async function ConnectionPage({
   return (
     <>
       <PageHeader
-        title={conn.name}
+        title={<ConnectionName connectionId={conn.id} name={conn.name} canEdit={canEdit} />}
         subtitle={
           <span className="flex flex-wrap items-center gap-2">
             <Badge>

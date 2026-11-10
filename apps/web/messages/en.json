@@ -419,7 +419,11 @@
     "forAgent": "For {name}",
     "changeAgent": "Change",
     "owner": "{name}'s",
-    "noOwner": "No agent"
+    "noOwner": "No agent",
+    "rename": "Rename",
+    "renameLabel": "Connection name",
+    "renameSave": "Save",
+    "renameCancel": "Cancel"
   },
   "studio": {
     "title": "Tool Studio",

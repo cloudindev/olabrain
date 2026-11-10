@@ -413,6 +413,7 @@ export default async function AgentPage({
           tools={data.toolList}
           assigned={data.assigned}
           connectionId={connectionId}
+          canEdit={ctx.role === "owner" || ctx.role === "admin"}
         />
       ) : null}
     </>

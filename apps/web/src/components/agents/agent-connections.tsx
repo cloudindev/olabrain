@@ -17,6 +17,7 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import { setAgentTools } from "@/app/(app)/agents/actions";
 import { AppIcon } from "@/components/connections/app-icon";
+import { ConnectionName } from "@/components/connections/connection-name";
 
 type ToolOption = {
   id: string;
@@ -48,8 +49,11 @@ export function AgentConnections({
   assigned,
   connectionId,
   unowned = [],
+  canEdit = false,
 }: {
   agentId: string;
+  /** Owners and admins may rename connections. */
+  canEdit?: boolean;
   connections: AgentConnection[];
   /** Organization connections without an owner yet (this agent may adopt them). */
   unowned?: AgentConnection[];
@@ -73,6 +77,7 @@ export function AgentConnections({
         connection={connection}
         tools={tools.filter((tool) => tool.connectionId === connection.id)}
         assigned={assigned}
+        canEdit={canEdit}
       />
     ) : (
       <div className="flex flex-col items-start gap-4">
@@ -221,12 +226,14 @@ function ConnectionDetail({
   connection,
   tools,
   assigned,
+  canEdit,
 }: {
   agentId: string;
   backHref: string;
   connection: AgentConnection;
   tools: ToolOption[];
   assigned: string[];
+  canEdit: boolean;
 }) {
   const t = useTranslations("agentConnections");
   const tc = useTranslations("connections");
@@ -286,7 +293,9 @@ function ConnectionDetail({
       <section className="flex flex-wrap items-center gap-5 rounded-[22px] border border-line bg-surface p-5">
         <AppIcon source={connection} size="lg" />
         <div className="min-w-0 flex-1">
-          <h2 className="font-display text-xl font-semibold tracking-tight">{connection.name}</h2>
+          <h2 className="font-display text-xl font-semibold tracking-tight">
+            <ConnectionName connectionId={connection.id} name={connection.name} canEdit={canEdit} />
+          </h2>
           <p className="text-sm text-ink-2">
             {tc(`kinds.${connection.kind}`)} · {t(`status.${connection.status}`)}
           </p>
