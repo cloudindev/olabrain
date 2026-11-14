@@ -23,11 +23,13 @@ export async function generateMetadata({
   const base = env().APP_URL.replace(/\/$/, "");
   const title = link.agentRole ? `${link.agentName} · ${link.agentRole}` : link.agentName;
   const description = `Habla con ${link.agentName}, asistente con IA de OlaBrain.`;
-  const image = link.avatarImage
-    ? /^https?:/.test(link.avatarImage)
-      ? link.avatarImage
-      : `${base}${link.avatarImage}`
-    : null;
+  // Uploaded pictures are data URLs: no link preview image for them.
+  const image =
+    link.avatarImage && !link.avatarImage.startsWith("data:")
+      ? /^https?:/.test(link.avatarImage)
+        ? link.avatarImage
+        : `${base}${link.avatarImage}`
+      : null;
   return {
     title: { absolute: title },
     description,

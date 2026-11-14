@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { AgentFace } from "@/components/avatar/agent-face";
 import { useMemo, useState, useTransition, type ReactNode } from "react";
 import { updateAgent } from "@/app/(app)/agents/actions";
+import { AgentImagePicker } from "./agent-image-picker";
 import { DeleteAgent } from "./delete-agent";
 
 type AgentValues = {
@@ -13,6 +14,7 @@ type AgentValues = {
   name: string;
   role: string;
   personaId: string | null;
+  avatarUrl: string | null;
   instructions: string;
   model: string | null;
   presenceMode: "text" | "voice";
@@ -102,6 +104,7 @@ export function AgentCustomize({
         name: values.name,
         role: values.role,
         personaId: values.personaId,
+        avatarUrl: values.avatarUrl,
         instructions: values.instructions,
         model: values.model,
         presenceMode: values.presenceMode,
@@ -149,6 +152,15 @@ export function AgentCustomize({
               placeholder={ta("rolePlaceholder")}
               maxLength={80}
               className="max-w-md"
+            />
+          </div>
+          <div>
+            <Label>{ta("image")}</Label>
+            <AgentImagePicker
+              value={values.avatarUrl}
+              fallback={personas.find((p) => p.id === values.personaId)?.avatarUrl ?? null}
+              name={values.name}
+              onChange={(v) => set("avatarUrl", v)}
             />
           </div>
           <div>

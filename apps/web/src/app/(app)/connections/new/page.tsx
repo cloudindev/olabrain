@@ -16,6 +16,7 @@ import {
   type NewConnectionKind,
 } from "@/components/connections/new-connection-forms";
 import { PageHeader } from "@/components/page-header";
+import { agentImage } from "@/lib/agent-avatar";
 import { requireTenant, tenantTx } from "@/lib/tenant";
 
 // Server actions here may run a MyTutor sync after responding (ADR-021).
@@ -42,7 +43,7 @@ export default async function NewConnectionPage({
 
   const agentList = await tenantTx(ctx, (tx) =>
     tx
-      .select({ id: agents.id, name: agents.name, role: agents.role, avatar: personas.avatarUrl })
+      .select({ id: agents.id, name: agents.name, role: agents.role, avatar: agentImage })
       .from(agents)
       .leftJoin(personas, eq(personas.id, agents.personaId))
       .orderBy(asc(agents.name)),

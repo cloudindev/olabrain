@@ -76,6 +76,8 @@ export const agents = pgTable(
     name: text("name").notNull(),
     /** What the agent does, written by the user (e.g. "Asistente personal", "Soporte"). */
     role: text("role").notNull().default(""),
+    /** The agent's own picture (data URL), uploaded by the user; overrides the persona's. */
+    avatarUrl: text("avatar_url"),
     instructions: text("instructions").notNull().default(""),
     model: text("model"),
     presenceMode: presenceMode("presence_mode").notNull().default("voice"),

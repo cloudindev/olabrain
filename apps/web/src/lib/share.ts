@@ -88,8 +88,8 @@ export const resolveShare = cache(async (channelId: string): Promise<SharedLink 
       agentId: row.agent.id,
       agentName: row.agent.name,
       agentRole: row.agent.role,
-      avatarImage: row.persona?.avatarUrl ?? null,
-      avatarVideo: row.persona?.avatarVideo ?? null,
+      avatarImage: row.agent.avatarUrl ?? row.persona?.avatarUrl ?? null,
+      avatarVideo: row.agent.avatarUrl ? null : (row.persona?.avatarVideo ?? null),
       config: parsed.data,
     };
   });

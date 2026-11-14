@@ -397,3 +397,11 @@ Implementa ADR-007 sin pagos (Stripe pendiente).
 - **Coste.** Tope de gasto por cliente y mes en la configuración del enlace (20 € por defecto, 0 = sin tope) y 60 mensajes y 6 llamadas por hora y cuenta. Lo paga el monedero de la empresa.
 
 **Consecuencias.** Solo ProfiECO puede servir a una extranet por ahora; Holded y WHMCS necesitan sus herramientas de cliente. Los documentos de control solo aparecen tras la siguiente sincronización (cuando se copia `client_id`). El aviso de pedido al equipo se envía desde la web: con el conector como proceso aparte (desarrollo local) no se envía. Las facturas de Coverde dependen de integrar Libra ERP.
+
+## ADR-031 — Imagen propia del agente (2026-11-14)
+
+**Contexto.** El usuario quiere poner su propia imagen al agente al crearlo o editarlo, no solo la foto del personaje.
+
+**Decisión.** Columna `agents.avatar_url` (nullable) con la imagen como *data URL*. Igual que el logo de la organización, el navegador la recorta a 3:4 y la redimensiona a 600×800 en WebP (o JPEG) antes de enviarla. El servidor solo acepta png, webp o jpeg de hasta 400 000 caracteres. Si existe, sustituye a la foto del personaje en todas las vistas: panel, leads, widget, enlace compartido y extranet. Con imagen propia no se muestran los vídeos del personaje, porque son de otra cara. Al quitarla se vuelve a la foto del personaje. El personaje sigue aportando la voz y el carácter.
+
+**Consecuencias.** No se añade almacenamiento S3 para un fichero pequeño. Los enlaces compartidos con imagen propia no muestran vista previa (`og:image`), porque un *data URL* no sirve ahí. Si más adelante hace falta, se puede pasar a S3 con una ruta pública.

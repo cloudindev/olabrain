@@ -278,7 +278,7 @@ export default async function AgentPage({
             <ArrowLeft className="size-4" />
           </Link>
           <AgentFace
-            src={persona?.avatarUrl}
+            src={agent.avatarUrl ?? persona?.avatarUrl}
             name={agent.name}
             className="size-12 rounded-full text-base"
           />
@@ -345,7 +345,10 @@ export default async function AgentPage({
             name: agent.name,
             role: agent.role || null,
             status: agent.status,
-            avatar: { image: persona?.avatarUrl ?? null, video: persona?.avatarVideo ?? null },
+            avatar: {
+              image: agent.avatarUrl ?? persona?.avatarUrl ?? null,
+              video: agent.avatarUrl ? null : (persona?.avatarVideo ?? null),
+            },
           }}
         />
       ) : null}
@@ -356,6 +359,7 @@ export default async function AgentPage({
             name: agent.name,
             role: agent.role,
             personaId: agent.personaId,
+            avatarUrl: agent.avatarUrl,
             instructions: agent.instructions,
             model: agent.model,
             presenceMode: agent.presenceMode,
@@ -397,7 +401,11 @@ export default async function AgentPage({
       ) : null}
       {tab === "publish" && !extranet ? (
         <AgentPublish
-          agent={{ id: agent.id, name: agent.name, avatar: persona?.avatarUrl ?? null }}
+          agent={{
+            id: agent.id,
+            name: agent.name,
+            avatar: agent.avatarUrl ?? persona?.avatarUrl ?? null,
+          }}
           widget={data.widget}
           share={data.share}
           canShare={ctx.role === "owner" || ctx.role === "admin"}

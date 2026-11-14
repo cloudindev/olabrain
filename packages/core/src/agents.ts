@@ -12,11 +12,21 @@ export const agentPolicySchema = z.object({
 });
 export type AgentPolicy = z.infer<typeof agentPolicySchema>;
 
+/** An agent's own picture: an image data URL, already resized in the browser (3:4). */
+export const AGENT_AVATAR_MAX_CHARS = 400_000;
+export const agentAvatarSchema = z
+  .string()
+  .max(AGENT_AVATAR_MAX_CHARS, "La imagen es demasiado grande")
+  .regex(/^data:image\/(png|webp|jpeg);base64,[A-Za-z0-9+/]+=*$/, "Imagen no válida")
+  .nullable();
+
 export const agentInputSchema = z.object({
   name: z.string().trim().min(1).max(80),
   /** What the agent does (free text): goes into its instructions. */
   role: z.string().trim().max(80).default(""),
   personaId: z.uuid().nullable(),
+  /** Own picture; omitted = unchanged, null = back to the persona's portrait. */
+  avatarUrl: agentAvatarSchema.optional(),
   instructions: z.string().max(20_000).default(""),
   /** "<provider>:<model>" from the model catalog in configuration; null = platform default. */
   model: z.string().max(120).nullable(),

@@ -11,6 +11,7 @@ import { LeadFollowUp } from "@/components/leads/lead-follow-up";
 import { RefreshOnRead } from "@/components/leads/refresh-on-read";
 import { PageHeader } from "@/components/page-header";
 import { LEAD_TONE } from "@/lib/lead-status";
+import { agentImage } from "@/lib/agent-avatar";
 import { requireTenant, tenantTx } from "@/lib/tenant";
 
 export const metadata = { title: "Lead" };
@@ -26,7 +27,7 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
       .select({
         lead: leads,
         currentAgentName: agents.name,
-        avatar: personas.avatarUrl,
+        avatar: agentImage,
       })
       .from(leads)
       .leftJoin(agents, eq(agents.id, leads.agentId))

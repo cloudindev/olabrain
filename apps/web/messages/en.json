@@ -167,7 +167,13 @@
       "standardHint": "For your team or website: chat, voice and your connections.",
       "extranet": "Customer extranet",
       "extranetHint": "Your customers sign in with their email and only see their own data and orders."
-    }
+    },
+    "image": "Agent picture",
+    "imageUpload": "Upload picture",
+    "imageChange": "Change picture",
+    "imageRemove": "Use the persona's",
+    "imageHint": "PNG, JPG or WebP. Cropped to portrait (3:4).",
+    "imageInvalid": "The picture could not be read."
   },
   "chat": {
     "placeholder": "Type a message…",

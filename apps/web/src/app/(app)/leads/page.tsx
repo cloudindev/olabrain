@@ -6,6 +6,7 @@ import Link from "next/link";
 import { AgentFace } from "@/components/avatar/agent-face";
 import { PageHeader } from "@/components/page-header";
 import { LEAD_TONE } from "@/lib/lead-status";
+import { agentImage } from "@/lib/agent-avatar";
 import { requireTenant, tenantTx } from "@/lib/tenant";
 
 export const metadata = { title: "Leads" };
@@ -33,7 +34,7 @@ export default async function LeadsPage() {
         agentName: leads.agentName,
         // The agent may have been deleted since: then only the name snapshot remains.
         currentAgentName: agents.name,
-        avatar: personas.avatarUrl,
+        avatar: agentImage,
       })
       .from(leads)
       .leftJoin(agents, eq(agents.id, leads.agentId))

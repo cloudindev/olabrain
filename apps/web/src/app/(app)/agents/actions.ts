@@ -5,6 +5,7 @@ import {
   EXTRANET_LINK,
   SHARE_LINK,
   WEB_WIDGET,
+  agentAvatarSchema,
   agentInputSchema,
   shareConfigSchema,
   shareInputSchema,
@@ -39,12 +40,15 @@ const createSchema = z.object({
   role: z.string().trim().max(80).default(""),
   /** "extranet": an agent for the organization's customers (ADR-030). */
   kind: z.enum(AGENT_KINDS).default("standard"),
+  /** Own picture instead of the persona's portrait. */
+  avatarUrl: agentAvatarSchema.default(null),
 });
 
 export async function createAgent(input: z.input<typeof createSchema>): Promise<ActionResult> {
   const ctx = await requireTenant("builder");
   const parsed = createSchema.safeParse(input);
-  if (!parsed.success) return { ok: false, error: "Datos no válidos" };
+  if (!parsed.success)
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Datos no válidos" };
 
   const id = await tenantTx(ctx, async (tx) => {
     // Global catalog or the tenant's own personas only (RLS also enforces it).
@@ -66,6 +70,7 @@ export async function createAgent(input: z.input<typeof createSchema>): Promise<
         name: parsed.data.name,
         role: parsed.data.role,
         personaId: persona.id,
+        avatarUrl: parsed.data.avatarUrl,
         presenceMode: "voice",
         kind: parsed.data.kind,
       })
@@ -105,6 +110,7 @@ export async function updateAgent(id: string, input: unknown): Promise<ActionRes
           ? { role: parsed.data.role }
           : {}),
         personaId: parsed.data.personaId,
+        ...(parsed.data.avatarUrl !== undefined ? { avatarUrl: parsed.data.avatarUrl } : {}),
         instructions: parsed.data.instructions,
         model: parsed.data.model,
         presenceMode: parsed.data.presenceMode,

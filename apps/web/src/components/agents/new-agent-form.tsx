@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import { createAgent } from "@/app/(app)/agents/actions";
 import { AgentFace } from "@/components/avatar/agent-face";
+import { AgentImagePicker } from "./agent-image-picker";
 
 type PersonaOption = {
   id: string;
@@ -19,6 +20,7 @@ export function NewAgentForm({ personas }: { personas: PersonaOption[] }) {
   const [selected, setSelected] = useState<PersonaOption | null>(null);
   const [name, setName] = useState("");
   const [role, setRole] = useState("");
+  const [image, setImage] = useState<string | null>(null);
   const [kind, setKind] = useState<"standard" | "extranet">("standard");
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -78,6 +80,7 @@ export function NewAgentForm({ personas }: { personas: PersonaOption[] }) {
                   name: name.trim() || selected.name,
                   role,
                   kind,
+                  avatarUrl: image,
                 });
                 if (res && !res.ok) setError(res.error);
               });
@@ -127,6 +130,15 @@ export function NewAgentForm({ personas }: { personas: PersonaOption[] }) {
                 maxLength={80}
               />
             </Field>
+            <div className="flex flex-col gap-1.5">
+              <span className="text-sm font-medium text-ink">{t("image")}</span>
+              <AgentImagePicker
+                value={image}
+                fallback={selected.avatarUrl}
+                name={name || selected.name}
+                onChange={setImage}
+              />
+            </div>
             {error ? <p className="text-sm text-bad">{error}</p> : null}
             <Button type="submit" disabled={pending}>
               {t("create")}

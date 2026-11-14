@@ -167,7 +167,13 @@
       "standardHint": "Para tu equipo o tu web: chat, voz y tus conexiones.",
       "extranet": "Extranet de clientes",
       "extranetHint": "Tus clientes entran con su email y solo ven sus datos y pedidos."
-    }
+    },
+    "image": "Imagen del agente",
+    "imageUpload": "Subir imagen",
+    "imageChange": "Cambiar imagen",
+    "imageRemove": "Usar la del personaje",
+    "imageHint": "PNG, JPG o WebP. Se recorta en vertical (3:4).",
+    "imageInvalid": "No se ha podido leer la imagen."
   },
   "chat": {
     "placeholder": "Escribe un mensaje…",

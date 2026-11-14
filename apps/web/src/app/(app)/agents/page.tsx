@@ -5,6 +5,7 @@ import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { AgentFace } from "@/components/avatar/agent-face";
 import { PageHeader } from "@/components/page-header";
+import { agentImage } from "@/lib/agent-avatar";
 import { requireTenant, tenantTx } from "@/lib/tenant";
 
 export const metadata = { title: "Agentes" };
@@ -20,7 +21,7 @@ export default async function AgentsPage() {
         status: agents.status,
         presenceMode: agents.presenceMode,
         role: agents.role,
-        personaAvatar: personas.avatarUrl,
+        personaAvatar: agentImage,
         tools: count(agentTools.toolId),
       })
       .from(agents)
