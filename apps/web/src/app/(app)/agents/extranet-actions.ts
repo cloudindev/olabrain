@@ -15,12 +15,14 @@ import {
   connections,
   customerAccounts,
   customerOrders,
+  tenants,
   type Tx,
 } from "@brainagent/db";
 import { and, asc, eq, ilike, isNull, or, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { trySendEmail } from "@/lib/email";
+import { invitationEmail } from "@/lib/email-invitation";
 import { env } from "@/lib/env";
 import { requireTenant, tenantTx, type TenantContext } from "@/lib/tenant";
 import type { ActionResult } from "./actions";
@@ -131,21 +133,19 @@ async function sendInvitation(
   url: string,
   account: { email: string; personName: string },
 ): Promise<boolean> {
-  return trySendEmail(
-    account.email,
-    `${ctx.tenantName} te da acceso a su área de clientes`,
-    [
-      account.personName ? `Hola, ${account.personName}:` : "Hola:",
-      "",
-      `${ctx.tenantName} te ha dado acceso a ${agentName}, su asistente para clientes. ` +
-        "Por chat o por voz puedes consultar tus pedidos, órdenes y documentos, y hacer pedidos nuevos.",
-      "",
-      `Entra en: ${url}`,
-      `Usa este email (${account.email}): cada vez que entres te enviaremos un código.`,
-      "",
-      "Es un asistente de inteligencia artificial.",
-    ].join("\n"),
+  // The organization's logo (if uploaded) heads the email.
+  const [org] = await tenantTx(ctx, (tx) =>
+    tx.select({ logo: tenants.logo }).from(tenants).where(eq(tenants.id, ctx.tenantId)).limit(1),
   );
+  const mail = await invitationEmail({
+    orgName: ctx.tenantName,
+    orgLogo: org?.logo || null,
+    agentName,
+    personName: account.personName,
+    email: account.email,
+    url,
+  });
+  return trySendEmail(account.email, mail.subject, mail.text, mail.extras);
 }
 
 /** The sign-in link for one person, with their email already filled in. */

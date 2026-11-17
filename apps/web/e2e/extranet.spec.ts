@@ -98,7 +98,8 @@ function smtpSink(): TcpServer {
             const raw = rest.join("\r\n\r\n");
             const body = /transfer-encoding: base64/i.test(head)
               ? Buffer.from(raw.replace(/\s+/g, ""), "base64").toString("utf8")
-              : /quoted-printable/i.test(head)
+              : // Also multipart (text + HTML): its parts carry the encoding.
+                /quoted-printable/i.test(head) || /transfer-encoding: quoted-printable/i.test(raw)
                 ? Buffer.from(
                     raw
                       .replace(/=\r\n/g, "")
