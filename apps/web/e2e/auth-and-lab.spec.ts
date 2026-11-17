@@ -64,3 +64,14 @@ test("unauthenticated visitors are sent to login", async ({ page }) => {
   await expect(page).toHaveURL(/\/login\?next=%2Flab$/);
   await expect(page.getByRole("heading", { name: "Entra en OlaBrain" })).toBeVisible();
 });
+
+test("the eye on the login shows and hides the password", async ({ page }) => {
+  await page.goto("/login");
+  const field = page.getByLabel("Contraseña", { exact: true });
+  await field.fill("secreta-123");
+  await expect(field).toHaveAttribute("type", "password");
+  await page.getByRole("button", { name: "Mostrar contraseña" }).click();
+  await expect(field).toHaveAttribute("type", "text");
+  await page.getByRole("button", { name: "Ocultar contraseña" }).click();
+  await expect(field).toHaveAttribute("type", "password");
+});

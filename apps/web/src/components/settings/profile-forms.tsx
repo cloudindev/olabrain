@@ -4,6 +4,7 @@ import { Button, Checkbox, Field, Input } from "@brainagent/ui";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState, useTransition, type FormEvent } from "react";
+import { PasswordInput } from "@/components/password-input";
 import {
   changePassword,
   revokeOtherSessions,
@@ -106,9 +107,8 @@ export function PasswordForm() {
   return (
     <form onSubmit={onSubmit} className="flex max-w-md flex-col gap-4">
       <Field label={t("currentPassword")} htmlFor="current-password">
-        <Input
+        <PasswordInput
           id="current-password"
-          type="password"
           autoComplete="current-password"
           value={current}
           onChange={(e) => setCurrent(e.target.value)}
@@ -116,9 +116,8 @@ export function PasswordForm() {
         />
       </Field>
       <Field label={t("newPassword")} htmlFor="new-password" hint={t("passwordHint")}>
-        <Input
+        <PasswordInput
           id="new-password"
-          type="password"
           autoComplete="new-password"
           minLength={8}
           maxLength={128}
@@ -128,9 +127,8 @@ export function PasswordForm() {
         />
       </Field>
       <Field label={t("confirmPassword")} htmlFor="confirm-password">
-        <Input
+        <PasswordInput
           id="confirm-password"
-          type="password"
           autoComplete="new-password"
           value={confirm}
           onChange={(e) => setConfirm(e.target.value)}

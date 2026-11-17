@@ -1,11 +1,12 @@
 "use client";
 
-import { Button, Field, Input } from "@brainagent/ui";
+import { Button, Field } from "@brainagent/ui";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { AgentFace } from "@/components/avatar/agent-face";
 import { Logo } from "@/components/logo";
+import { PasswordInput } from "@/components/password-input";
 
 /** Password form of a shared link; a right password reloads the page into the chat. */
 export function SharePassword({
@@ -46,9 +47,8 @@ export function SharePassword({
         <p className="text-sm text-ink-2">{t("intro")}</p>
         <div className="w-full text-left">
           <Field label={t("password")} htmlFor="share-pass">
-            <Input
+            <PasswordInput
               id="share-pass"
-              type="password"
               autoComplete="current-password"
               autoFocus
               value={password}

@@ -9,7 +9,7 @@ export async function signUpAndCreateOrg(page: Page, orgName: string) {
   await page.goto("/signup", { waitUntil: "networkidle" });
   await page.getByLabel("Nombre", { exact: true }).fill("Ana Prueba");
   await page.getByLabel("Email").fill(uniqueEmail("ana"));
-  await page.getByLabel("Contraseña").fill("contraseña-segura-123");
+  await page.getByLabel("Contraseña", { exact: true }).fill("contraseña-segura-123");
   await page.getByRole("button", { name: "Crear cuenta" }).click();
 
   await expect(page).toHaveURL(/\/onboarding$/);

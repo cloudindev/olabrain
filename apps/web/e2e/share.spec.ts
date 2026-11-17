@@ -30,10 +30,10 @@ test("share an agent with a password-protected link", async ({ page, browser, ba
   });
   expect(locked.status()).toBe(401);
 
-  await g.getByLabel("Contraseña").fill("mala-clave");
+  await g.getByLabel("Contraseña", { exact: true }).fill("mala-clave");
   await g.getByRole("button", { name: "Entrar" }).click();
   await expect(g.getByText("Contraseña incorrecta.")).toBeVisible();
-  await g.getByLabel("Contraseña").fill("secreta-123");
+  await g.getByLabel("Contraseña", { exact: true }).fill("secreta-123");
   await g.getByRole("button", { name: "Entrar" }).click();
   await expect(g.getByTestId("widget-log")).toBeVisible({ timeout: 30_000 });
   await expect(g.getByLabel("Escribe un mensaje…")).toBeVisible();

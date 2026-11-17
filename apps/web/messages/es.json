@@ -31,7 +31,9 @@
     "checkEmailTitle": "Revisa tu correo",
     "checkEmailBody": "Te hemos enviado un enlace a {email} para confirmar tu cuenta.",
     "backToSignIn": "Volver a entrar",
-    "legalNotice": "Al crear la cuenta aceptas el <notice>aviso legal</notice> y la <privacy>política de privacidad</privacy>."
+    "legalNotice": "Al crear la cuenta aceptas el <notice>aviso legal</notice> y la <privacy>política de privacidad</privacy>.",
+    "showPassword": "Mostrar contraseña",
+    "hidePassword": "Ocultar contraseña"
   },
   "onboarding": {
     "title": "Crea tu organización",

@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { authClient } from "@/lib/auth-client";
+import { PasswordInput } from "@/components/password-input";
 
 export function SignUpForm({ requiresVerification }: { requiresVerification: boolean }) {
   const t = useTranslations("auth");
@@ -47,10 +48,9 @@ export function SignUpForm({ requiresVerification }: { requiresVerification: boo
         <Input id="email" name="email" type="email" autoComplete="email" required />
       </Field>
       <Field label={t("password")} htmlFor="password" hint={t("passwordHint")}>
-        <Input
+        <PasswordInput
           id="password"
           name="password"
-          type="password"
           autoComplete="new-password"
           minLength={8}
           required

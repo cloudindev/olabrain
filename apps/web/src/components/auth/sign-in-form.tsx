@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { authClient } from "@/lib/auth-client";
+import { PasswordInput } from "@/components/password-input";
 
 export function SignInForm({ next }: { next?: string }) {
   const t = useTranslations("auth");
@@ -36,13 +37,7 @@ export function SignInForm({ next }: { next?: string }) {
         <Input id="email" name="email" type="email" autoComplete="email" required />
       </Field>
       <Field label={t("password")} htmlFor="password">
-        <Input
-          id="password"
-          name="password"
-          type="password"
-          autoComplete="current-password"
-          required
-        />
+        <PasswordInput id="password" name="password" autoComplete="current-password" required />
       </Field>
       {error ? (
         <p role="alert" className="text-sm text-bad">

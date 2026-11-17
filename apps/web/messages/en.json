@@ -31,7 +31,9 @@
     "checkEmailTitle": "Check your inbox",
     "checkEmailBody": "We sent a link to {email} to confirm your account.",
     "backToSignIn": "Back to sign in",
-    "legalNotice": "By creating an account you accept the <notice>legal notice</notice> and the <privacy>privacy policy</privacy>."
+    "legalNotice": "By creating an account you accept the <notice>legal notice</notice> and the <privacy>privacy policy</privacy>.",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password"
   },
   "onboarding": {
     "title": "Create your organization",
